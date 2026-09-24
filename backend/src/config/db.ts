@@ -3,6 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 
+mongoose.set('bufferCommands', false);
+
 // MongoDB Atlas connection if URI is configured
 const MONGODB_URI = process.env.MONGODB_URI || '';
 

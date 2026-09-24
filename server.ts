@@ -40,6 +40,22 @@ async function startServer() {
     res.json({ status: 'ok', service: 'EVENTHUB Full-Stack Engine', time: new Date().toISOString() });
   });
 
+  // API Error handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err.name === 'MongooseError' || err.name === 'MongoNetworkError' || (err.message && err.message.includes('buffering timed out'))) {
+      console.warn('[AI Studio] Database offline — returning fallback response');
+      if (req.method === 'GET') {
+        return res.json(req.path.endsWith('s') || req.path.endsWith('s/') ? [] : {});
+      }
+      return res.status(503).json({ error: 'Service temporarily unavailable (database offline)' });
+    }
+    if (req.path.startsWith('/api')) {
+      console.error('Unhandled API error:', err);
+      return res.status(err.status || 500).json({ success: false, message: err.message || 'Internal Server Error' });
+    }
+    next(err);
+  });
+
   if (isProd) {
     // In production, serve built client from dist/
     const distDir = path.resolve(process.cwd(), 'dist');

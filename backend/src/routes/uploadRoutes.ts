@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/', authenticate, uploadMiddleware.single('file'), (req: Request, res: Response) => {
+router.post('/', authenticate as any, uploadMiddleware.single('file') as any, (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file provided for upload.' });
