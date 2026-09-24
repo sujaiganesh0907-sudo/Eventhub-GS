@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
@@ -21,34 +21,124 @@ import { StudentProfilePage } from './pages/StudentProfilePage';
 import { CollegeProfilePage } from './pages/CollegeProfilePage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
-
 import { IEvent } from './types';
+
+// Public routes that never require authentication (Requirement 1 & 2)
+export const PUBLIC_ROUTES = new Set([
+  'landing',
+  'auth',
+  'login',
+  'register',
+  'register-student',
+  'register-college',
+  'verify-otp',
+  'otp',
+  'forgot-password',
+  'reset-password',
+]);
+
+const isPublicRoute = (tab: string): boolean => PUBLIC_ROUTES.has(tab);
+
+const isPublicAuthTab = (tab: string): boolean => {
+  return [
+    'auth',
+    'login',
+    'register',
+    'register-student',
+    'register-college',
+    'verify-otp',
+    'otp',
+  ].includes(tab);
+};
+
+const resolveTabFromPath = (pathname: string, authed: boolean): string => {
+  const p = pathname.toLowerCase().replace(/\/$/, '') || '/';
+  if (p === '/verify-otp' || p === '/otp') return 'verify-otp';
+  if (p === '/login' || p === '/auth') return 'auth';
+  if (p === '/register' || p === '/register/student') return 'register';
+  if (p === '/register/college') return 'register-college';
+  if (p === '/forgot-password' || p === '/reset-password') return 'auth';
+  if (p === '/' || p === '/landing') return authed ? 'home' : 'landing';
+
+  const sub = p.replace(/^\//, '');
+  if (['home', 'events', 'colleges', 'profile', 'college-profile', 'notifications', 'settings', 'view-event'].includes(sub)) {
+    return authed ? sub : 'landing';
+  }
+  return authed ? 'home' : 'landing';
+};
+
+const getPathForTab = (tab: string): string => {
+  switch (tab) {
+    case 'landing': return '/';
+    case 'auth':
+    case 'login': return '/login';
+    case 'register':
+    case 'register-student': return '/register';
+    case 'register-college': return '/register/college';
+    case 'verify-otp':
+    case 'otp': return '/verify-otp';
+    case 'home': return '/home';
+    case 'events': return '/events';
+    case 'colleges': return '/colleges';
+    case 'profile': return '/profile';
+    case 'college-profile': return '/college-profile';
+    case 'notifications': return '/notifications';
+    case 'settings': return '/settings';
+    case 'view-event': return '/event';
+    default: return '/';
+  }
+};
 
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, isCollege, isStudent } = useAuth();
   const { unreadCount } = useNotifications();
 
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<string>(isAuthenticated ? 'home' : 'landing');
+  // Navigation State initialized from URL pathname (Requirement 6 & 7)
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return resolveTabFromPath(window.location.pathname, isAuthenticated);
+  });
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | undefined>();
 
+  // Browser navigation sync
+  const updateUrl = (tab: string) => {
+    const targetPath = getPathForTab(tab);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+  };
+
   // Route protection navigator (Requirement 8 & 9)
   const navigateToTab = (tab: string, notice?: string) => {
-    if (!isAuthenticated && tab !== 'landing' && tab !== 'auth') {
+    if (!isAuthenticated && !isPublicRoute(tab)) {
       setAuthNotice(notice || 'Sign in to explore and register for events.');
       setActiveTab('auth');
+      updateUrl('auth');
       return;
     }
     setAuthNotice(notice);
     setActiveTab(tab);
+    updateUrl(tab);
   };
 
-  // Enforce route protection if session logs out
+  // Browser history navigation sync
+  useEffect(() => {
+    const handlePopState = () => {
+      const tab = resolveTabFromPath(window.location.pathname, isAuthenticated);
+      setActiveTab(tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isAuthenticated]);
+
+  // Enforce route protection ONLY on protected/private routes (Requirement 1, 2 & 10)
   React.useEffect(() => {
-    if (!isAuthenticated && activeTab !== 'landing' && activeTab !== 'auth') {
+    if (!isAuthenticated && !isPublicRoute(activeTab)) {
       setActiveTab('landing');
+      if (window.location.pathname !== '/' && window.location.pathname !== '/landing') {
+        window.history.replaceState(null, '', '/');
+      }
     }
   }, [isAuthenticated, activeTab]);
 
@@ -84,6 +174,7 @@ const AppContent: React.FC = () => {
     }
     setSelectedEventId(event._id);
     setActiveTab('view-event');
+    updateUrl('view-event');
   };
 
   const handleViewCollege = (collegeId: string) => {
@@ -93,6 +184,7 @@ const AppContent: React.FC = () => {
     }
     setSelectedCollegeId(collegeId);
     setActiveTab('college-profile');
+    updateUrl('college-profile');
   };
 
   return (
@@ -104,6 +196,7 @@ const AppContent: React.FC = () => {
           setSearchQuery(q);
           if (isAuthenticated && (activeTab === 'landing' || activeTab === 'view-event')) {
             setActiveTab('home');
+            updateUrl('home');
           }
         }}
         onOpenFilter={() => setIsFilterModalOpen(true)}
@@ -114,16 +207,16 @@ const AppContent: React.FC = () => {
           if (!isAuthenticated) {
             navigateToTab('auth');
           } else {
-            setActiveTab(isCollege ? 'college-profile' : 'profile');
+            navigateToTab(isCollege ? 'college-profile' : 'profile');
           }
         }}
-        onBrandClick={() => setActiveTab(isAuthenticated ? 'home' : 'landing')}
+        onBrandClick={() => navigateToTab(isAuthenticated ? 'home' : 'landing')}
       />
 
       {/* Main Body with Sidebar */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
-        {/* Desktop Sidebar (Only when authenticated) */}
-        {isAuthenticated && activeTab !== 'landing' && activeTab !== 'auth' && (
+        {/* Desktop Sidebar (Only when authenticated and on non-public routes) */}
+        {isAuthenticated && !isPublicRoute(activeTab) && (
           <aside className="hidden md:block w-60 shrink-0">
             <div className="sticky top-20">
               <Sidebar
@@ -150,34 +243,42 @@ const AppContent: React.FC = () => {
             <LandingPage
               onGetStarted={() => {
                 setAuthNotice(undefined);
-                setActiveTab('auth');
+                navigateToTab('register');
               }}
               onExploreEvents={() => {
                 // Requirement 8: For unauthenticated users, Browse Live Events redirects to Sign In
                 if (!isAuthenticated) {
                   navigateToTab('auth', 'Sign in to explore and register for events.');
                 } else {
-                  setActiveTab('home');
+                  navigateToTab('home');
                 }
               }}
               onExploreColleges={() => {
                 if (!isAuthenticated) {
                   navigateToTab('auth', 'Sign in to explore colleges.');
                 } else {
-                  setActiveTab('colleges');
+                  navigateToTab('colleges');
                 }
               }}
             />
           )}
 
-          {/* AUTHENTICATION PAGE */}
-          {activeTab === 'auth' && (
+          {/* AUTHENTICATION & OTP PAGES (Public Routes) */}
+          {isPublicAuthTab(activeTab) && (
             <AuthPage
-              initialMode="login"
+              initialMode={
+                activeTab === 'verify-otp' || activeTab === 'otp'
+                  ? 'otp'
+                  : activeTab.startsWith('register')
+                  ? 'register'
+                  : 'login'
+              }
+              initialRole={activeTab === 'register-college' ? 'college' : 'student'}
               noticeMessage={authNotice}
+              onNavigateTab={(tab, notice) => navigateToTab(tab, notice)}
               onSuccess={() => {
                 setAuthNotice(undefined);
-                setActiveTab('home');
+                navigateToTab('home');
               }}
             />
           )}
@@ -187,7 +288,7 @@ const AppContent: React.FC = () => {
             isCollege ? (
               <CollegeHomePage
                 onOpenCreateEvent={() => handleOpenCreateEvent(false)}
-                onSelectTab={(tab) => setActiveTab(tab)}
+                onSelectTab={(tab) => navigateToTab(tab)}
                 onViewEvent={handleViewEvent}
               />
             ) : (
@@ -196,7 +297,7 @@ const AppContent: React.FC = () => {
                 filters={filters}
                 onViewEvent={handleViewEvent}
                 onRegister={(ev) => setEventToRegister(ev)}
-                onSelectTab={(tab) => setActiveTab(tab)}
+                onSelectTab={(tab) => navigateToTab(tab)}
                 onOpenFilter={() => setIsFilterModalOpen(true)}
               />
             )
@@ -231,7 +332,7 @@ const AppContent: React.FC = () => {
           {isAuthenticated && activeTab === 'view-event' && selectedEventId && (
             <ViewEventPage
               eventId={selectedEventId}
-              onBack={() => setActiveTab(isCollege ? 'home' : 'home')}
+              onBack={() => navigateToTab(isCollege ? 'home' : 'home')}
               onSelectCollege={handleViewCollege}
             />
           )}
@@ -242,6 +343,7 @@ const AppContent: React.FC = () => {
               onSelectEvent={(eventId) => {
                 setSelectedEventId(eventId);
                 setActiveTab('view-event');
+                updateUrl('view-event');
               }}
             />
           )}
@@ -251,8 +353,8 @@ const AppContent: React.FC = () => {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation (Authenticated only) */}
-      {isAuthenticated && activeTab !== 'landing' && activeTab !== 'auth' && (
+      {/* Mobile Bottom Navigation (Authenticated only on non-public routes) */}
+      {isAuthenticated && !isPublicRoute(activeTab) && (
         <BottomNav
           activeTab={activeTab}
           onSelectTab={(tab) => {
@@ -298,6 +400,7 @@ const AppContent: React.FC = () => {
             setEventToRegister(null);
             if (selectedEventId) {
               setActiveTab('view-event');
+              updateUrl('view-event');
             }
           }}
         />
