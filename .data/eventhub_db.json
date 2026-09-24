@@ -1,0 +1,678 @@
+{
+  "users": [
+    {
+      "_id": "usr_col_apex_admin",
+      "email": "admin@apextech.edu",
+      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "role": "College Super Admin",
+      "fullName": "Dr. Eleanor Vance",
+      "isEmailVerified": true,
+      "collegeId": "col_apex_tech_01",
+      "id": "usr_col_apex_admin",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    },
+    {
+      "_id": "usr_col_apex_staff",
+      "email": "events@apextech.edu",
+      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "role": "College Admin",
+      "fullName": "Marcus Sterling",
+      "isEmailVerified": true,
+      "collegeId": "col_apex_tech_01",
+      "id": "usr_col_apex_staff",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    },
+    {
+      "_id": "usr_col_horizon_admin",
+      "email": "registrar@horizonuniv.edu",
+      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "role": "College Super Admin",
+      "fullName": "Prof. Arthur Pendelton",
+      "isEmailVerified": true,
+      "collegeId": "col_horizon_univ_02",
+      "id": "usr_col_horizon_admin",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    },
+    {
+      "_id": "usr_student_alex",
+      "email": "alex.chen@student.edu",
+      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "role": "Student",
+      "fullName": "Alexander Chen",
+      "isEmailVerified": true,
+      "id": "usr_student_alex",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    }
+  ],
+  "studentProfiles": [
+    {
+      "_id": "prof_student_alex",
+      "userId": "usr_student_alex",
+      "fullName": "Alexander Chen",
+      "email": "alex.chen@student.edu",
+      "collegeName": "Apex Institute of Technology",
+      "targetCollegeId": "col_apex_tech_01",
+      "phoneNumber": "+1 (555) 432-8890",
+      "department": "Computer Science & Engineering",
+      "yearOfStudy": "3rd Year",
+      "bio": "Full-stack builder & algorithm enthusiast. Lead organizer at Apex Coding Club. Passionate about distributed systems, UI design, and hackathons.",
+      "location": "Silicon Metro",
+      "profilePhoto": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+      "coverPhoto": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80",
+      "skills": [
+        "TypeScript",
+        "React",
+        "Node.js",
+        "System Design",
+        "Python",
+        "Docker"
+      ],
+      "achievements": [
+        "1st Place - Apex Annual Code Sprint 2025",
+        "Finalist - State Autonomous Robotics Challenge",
+        "Published Technical Paper on Real-Time Graph Analysis"
+      ],
+      "followersCount": 84,
+      "followingCount": 39,
+      "connectionsCount": 2,
+      "id": "prof_student_alex",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    }
+  ],
+  "colleges": [
+    {
+      "_id": "col_apex_tech_01",
+      "name": "Apex Institute of Technology",
+      "officialEmail": "admin@apextech.edu",
+      "officialDomain": "apextech.edu",
+      "contactNumber": "+1 (555) 234-5678",
+      "location": "Silicon Metro, Tech Corridor",
+      "bio": "Premier institution dedicated to excellence in computing, engineering research, and entrepreneurial student ventures. Accredited Tier-1 institute.",
+      "website": "https://apextech.edu",
+      "logo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "coverPhoto": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1200&auto=format&fit=crop&q=80",
+      "verificationStatus": "Verified",
+      "superAdminId": "usr_col_apex_admin",
+      "connectionsCount": 142,
+      "id": "col_apex_tech_01",
+      "createdAt": "2026-09-24T13:46:31.093Z",
+      "updatedAt": "2026-09-24T13:46:31.093Z"
+    },
+    {
+      "_id": "col_horizon_univ_02",
+      "name": "Horizon State University",
+      "officialEmail": "registrar@horizonuniv.edu",
+      "officialDomain": "horizonuniv.edu",
+      "contactNumber": "+1 (555) 876-5432",
+      "location": "Grandview Heights, North Campus",
+      "bio": "Fostering interdisciplinary innovation, cultural arts, and aerospace engineering. Home to 25,000 students across 12 faculties.",
+      "website": "https://horizonuniv.edu",
+      "logo": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&auto=format&fit=crop&q=80",
+      "coverPhoto": "https://images.unsplash.com/photo-1562774053-701939374585?w=1200&auto=format&fit=crop&q=80",
+      "verificationStatus": "Verified",
+      "superAdminId": "usr_col_horizon_admin",
+      "connectionsCount": 98,
+      "id": "col_horizon_univ_02",
+      "createdAt": "2026-09-24T13:46:31.094Z",
+      "updatedAt": "2026-09-24T13:46:31.094Z"
+    },
+    {
+      "_id": "col_nexus_eng_03",
+      "name": "Nexus Engineering College",
+      "officialEmail": "contact@nexuseng.edu",
+      "officialDomain": "nexuseng.edu",
+      "contactNumber": "+1 (555) 345-9876",
+      "location": "Metro Science Park",
+      "bio": "Specializing in Robotics, Artificial Intelligence, and Smart Mobility Systems. Industry-connected modern campus.",
+      "website": "https://nexuseng.edu",
+      "logo": "https://images.unsplash.com/photo-1568792923760-d70635a89fa1?w=300&auto=format&fit=crop&q=80",
+      "coverPhoto": "https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?w=1200&auto=format&fit=crop&q=80",
+      "verificationStatus": "Verified",
+      "superAdminId": "usr_col_nexus_admin",
+      "connectionsCount": 64,
+      "id": "col_nexus_eng_03",
+      "createdAt": "2026-09-24T13:46:31.094Z",
+      "updatedAt": "2026-09-24T13:46:31.094Z"
+    }
+  ],
+  "collegeVerifications": [],
+  "collegeAdminMemberships": [],
+  "events": [
+    {
+      "_id": "ev_hacktech_2026",
+      "title": "HackTech 2026: Inter-College Hackathon",
+      "poster": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200&auto=format&fit=crop&q=80",
+      "hostCollegeId": "col_apex_tech_01",
+      "hostCollegeName": "Apex Institute of Technology",
+      "hostCollegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "isCollegeVerified": true,
+      "category": "Hackathon",
+      "eventType": "Technical",
+      "tagline": "36 Hours of Collaborative Engineering & Rapid Prototyping",
+      "description": "HackTech 2026 is our flagship inter-college hackathon bringing together over 300 passionate student developers, designers, and innovators. Tackle real challenges in AI Systems, Clean Energy, Healthcare Tech, and Open Finance. Mentorship from top engineers, fully sponsored food and accommodation, and huge industry recognition.",
+      "eventDate": "2026-10-15",
+      "startTime": "09:00",
+      "endTime": "21:00",
+      "registrationDeadline": "2026-10-10T23:59",
+      "reportingTime": "08:30 AM",
+      "registrationOpensOn": "2026-09-01",
+      "eventMode": "Hybrid",
+      "venue": "Apex Innovation Center, Main Auditorium",
+      "hallRoom": "Hall A & Project Labs",
+      "buildingBlock": "Turing Block",
+      "address": "400 Innovation Way, Silicon Metro",
+      "googleMapsLink": "https://maps.google.com/?q=Innovation+Way",
+      "transportParkingNotes": "Visitor parking is accessible via Gate 3. Free shuttle from Metro Station every 15 mins.",
+      "meetingPlatform": "Zoom / Discord",
+      "meetingLink": "https://eventhub.apextech.edu/live-hacktech",
+      "registrationType": "Team",
+      "minTeamSize": 2,
+      "maxTeamSize": 4,
+      "isFree": true,
+      "registrationFee": 0,
+      "capacity": 250,
+      "registeredCount": 88,
+      "educationLevel": [
+        "UG",
+        "PG"
+      ],
+      "departments": [
+        "Computer Science",
+        "Information Tech",
+        "Electronics",
+        "Data Science",
+        "Any Technical Branch"
+      ],
+      "eligibleYears": [
+        "2nd Year",
+        "3rd Year",
+        "4th Year"
+      ],
+      "rulesAndGuidelines": "1. All code must be written during the hackathon.\n2. Pre-existing open source libraries are permitted.\n3. Every team must present a working demo in Round 2.\n4. Professional code of conduct is strictly enforced.",
+      "hasMultipleRounds": true,
+      "rounds": [
+        {
+          "name": "Round 1: Abstract & Architecture Review",
+          "description": "Submission of project problem statement, proposed architecture, and tech stack.",
+          "duration": "2 Hours",
+          "qualificationCriteria": "Top 40 teams qualify for final build",
+          "judgingCriteria": "Originality, Feasibility, Technical Depth"
+        },
+        {
+          "name": "Round 2: Live Prototype Demonstration & Pitch",
+          "description": "5-minute live demo before a jury panel of technical directors.",
+          "duration": "10 Mins per team",
+          "qualificationCriteria": "Podium awards selection",
+          "judgingCriteria": "Implementation, UX, Scalability, Presentation"
+        }
+      ],
+      "prizeAvailable": true,
+      "totalPrizePool": 5000,
+      "firstPrize": "$2,500 + Direct Incubation Interviews",
+      "secondPrize": "$1,500 + Cloud Credits",
+      "thirdPrize": "$1,000 + Hardware Kits",
+      "specialPrize": "Best AI Architecture Award ($500)",
+      "certificateAvailable": true,
+      "participationCertificate": true,
+      "winnerCertificate": true,
+      "certificateType": "Both",
+      "certificateEligibility": "Teams completing Round 1 & Round 2 evaluations.",
+      "deliveryMethod": "Digital download on EVENTHUB + Printed foil certificate at closing ceremony.",
+      "primaryCoordinator": {
+        "name": "Sarah Jenkins",
+        "role": "Student Tech Lead",
+        "phone": "+1 (555) 789-0123",
+        "email": "s.jenkins@apextech.edu"
+      },
+      "secondaryCoordinator": {
+        "name": "Dr. Ramesh Kumar",
+        "role": "Faculty Advisor",
+        "phone": "+1 (555) 789-0124",
+        "email": "r.kumar@apextech.edu"
+      },
+      "facilities": {
+        "food": true,
+        "foodDetails": "Complimentary breakfast, buffet lunch, dinner, midnight energy snacks & coffee.",
+        "accommodation": true,
+        "accommodationDetails": "Separate resting dorms inside Campus Guest House with security.",
+        "transport": true,
+        "transportDetails": "Continuous campus shuttles between station and hall.",
+        "parking": true,
+        "parkingDetails": "Designated parking zone near South Gate."
+      },
+      "customDetails": [
+        {
+          "id": "cd_1",
+          "label": "Discord Server",
+          "type": "Link",
+          "value": "https://discord.gg/hacktech2026",
+          "description": "Official communication channel for participants"
+        },
+        {
+          "id": "cd_2",
+          "label": "Wi-Fi Access",
+          "type": "Short Text",
+          "value": "High-speed 1Gbps dedicated SSID: HackTech_5G",
+          "description": "Credentials provided at check-in"
+        }
+      ],
+      "registrationQuestions": [
+        {
+          "id": "q_github",
+          "label": "Team GitHub / Portfolio URL",
+          "type": "Link",
+          "required": true,
+          "helperText": "Provide a link to your repositories or projects"
+        },
+        {
+          "id": "q_track",
+          "label": "Preferred Hackathon Track",
+          "type": "Dropdown",
+          "required": true,
+          "options": [
+            "AI & Intelligent Systems",
+            "Web3 & Fintech",
+            "Healthcare Tech",
+            "Smart Campus & IoT"
+          ]
+        },
+        {
+          "id": "q_dietary",
+          "label": "Dietary Preferences",
+          "type": "Dropdown",
+          "required": false,
+          "options": [
+            "Vegetarian",
+            "Non-Vegetarian",
+            "Vegan",
+            "Halal"
+          ]
+        }
+      ],
+      "creatorRole": "College",
+      "creatorUserId": "usr_col_apex_admin",
+      "status": "Published",
+      "viewsCount": 1420,
+      "attendanceCount": 0,
+      "certificatesIssuedCount": 0,
+      "id": "ev_hacktech_2026",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    },
+    {
+      "_id": "ev_robowars_2026",
+      "title": "National RoboWars & Combat Drone Derby",
+      "poster": "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=1200&auto=format&fit=crop&q=80",
+      "hostCollegeId": "col_horizon_univ_02",
+      "hostCollegeName": "Horizon State University",
+      "hostCollegeLogo": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&auto=format&fit=crop&q=80",
+      "isCollegeVerified": true,
+      "category": "Robotics",
+      "eventType": "Technical",
+      "tagline": "High-Torque Combat Arenas & Autonomous Aerial Navigation",
+      "description": "The premier national collegiate robotics showdown! Watch custom-engineered combat robots clash in a battle-hardened steel cage, alongside autonomous drone agility trials through obstacle tunnels.",
+      "eventDate": "2026-11-05",
+      "startTime": "10:00",
+      "endTime": "18:00",
+      "registrationDeadline": "2026-11-01T18:00",
+      "reportingTime": "09:00 AM",
+      "eventMode": "Offline",
+      "venue": "Horizon Indoor Arena",
+      "hallRoom": "Combat Zone A",
+      "buildingBlock": "Robotics Engineering Complex",
+      "address": "100 Horizon Drive, Grandview Heights",
+      "registrationType": "Team",
+      "minTeamSize": 2,
+      "maxTeamSize": 5,
+      "isFree": false,
+      "registrationFee": 25,
+      "capacity": 60,
+      "registeredCount": 22,
+      "educationLevel": [
+        "Diploma",
+        "UG",
+        "PG"
+      ],
+      "departments": [
+        "Mechanical",
+        "Electrical",
+        "Mechatronics",
+        "Robotics",
+        "Aeronautical"
+      ],
+      "eligibleYears": [
+        "1st Year",
+        "2nd Year",
+        "3rd Year",
+        "4th Year"
+      ],
+      "rulesAndGuidelines": "Bots must strictly adhere to weight categories (15kg and 30kg class). Weapon safety switches mandatory.",
+      "hasMultipleRounds": true,
+      "prizeAvailable": true,
+      "totalPrizePool": 3500,
+      "firstPrize": "$2,000 Trophy",
+      "secondPrize": "$1,000 Trophy",
+      "thirdPrize": "$500",
+      "certificateAvailable": true,
+      "participationCertificate": true,
+      "winnerCertificate": true,
+      "certificateType": "Digital",
+      "primaryCoordinator": {
+        "name": "David Reynolds",
+        "role": "Arena Director",
+        "phone": "+1 (555) 654-3210",
+        "email": "d.reynolds@horizonuniv.edu"
+      },
+      "facilities": {
+        "food": true,
+        "foodDetails": "Participant meal vouchers provided.",
+        "accommodation": false,
+        "transport": false,
+        "parking": true,
+        "parkingDetails": "Campus West Lot"
+      },
+      "paymentConfig": {
+        "payeeName": "Horizon Collegiate Robotics Fund",
+        "upiId": "horizon.robotics@bank",
+        "paymentInstructions": "Standard gateway payment or UPI reference.",
+        "refundPolicy": "Cancellations before deadline receive 80% refund."
+      },
+      "customDetails": [
+        {
+          "id": "cd_rw_1",
+          "label": "Arena Spec Sheet",
+          "type": "Link",
+          "value": "https://horizonuniv.edu/robowars-specs.pdf",
+          "description": "Download cage dimensions and safety hazards"
+        }
+      ],
+      "registrationQuestions": [
+        {
+          "id": "q_bot_name",
+          "label": "Robot / Drone Model Name",
+          "type": "Short Answer",
+          "required": true
+        },
+        {
+          "id": "q_weight",
+          "label": "Weight Category",
+          "type": "Dropdown",
+          "required": true,
+          "options": [
+            "15kg Featherweight",
+            "30kg Middleweight",
+            "Autonomous Quadcopter"
+          ]
+        }
+      ],
+      "creatorRole": "College",
+      "creatorUserId": "usr_col_horizon_admin",
+      "status": "Published",
+      "viewsCount": 890,
+      "attendanceCount": 0,
+      "certificatesIssuedCount": 0,
+      "id": "ev_robowars_2026",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    },
+    {
+      "_id": "ev_designverse_2026",
+      "title": "DesignVerse: UI/UX & Design Systems Championship",
+      "poster": "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?w=1200&auto=format&fit=crop&q=80",
+      "hostCollegeId": "col_apex_tech_01",
+      "hostCollegeName": "Apex Institute of Technology",
+      "hostCollegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "isCollegeVerified": true,
+      "category": "Design",
+      "eventType": "Workshop",
+      "tagline": "Design for the Next Billion Users in Figma & Protopie",
+      "description": "A 24-hour virtual design sprint where product designers compete to craft responsive design systems, accessible interfaces, and interactive micro-interactions.",
+      "eventDate": "2026-10-28",
+      "startTime": "11:00",
+      "endTime": "19:00",
+      "registrationDeadline": "2026-10-25T23:59",
+      "eventMode": "Online",
+      "meetingPlatform": "Google Meet",
+      "meetingLink": "https://meet.google.com/abc-defg-hij",
+      "registrationType": "Individual",
+      "isFree": true,
+      "registrationFee": 0,
+      "capacity": 150,
+      "registeredCount": 45,
+      "educationLevel": [
+        "School",
+        "Diploma",
+        "UG",
+        "PG"
+      ],
+      "departments": [
+        "All Branches Welcome"
+      ],
+      "eligibleYears": [
+        "All Years"
+      ],
+      "rulesAndGuidelines": "Figma files must have clean autolayout, components, and design tokens.",
+      "hasMultipleRounds": false,
+      "prizeAvailable": true,
+      "totalPrizePool": 1200,
+      "firstPrize": "$800 + 1-Year Figma Enterprise & Protopie Licenses",
+      "secondPrize": "$400",
+      "certificateAvailable": true,
+      "participationCertificate": true,
+      "winnerCertificate": true,
+      "certificateType": "Digital",
+      "primaryCoordinator": {
+        "name": "Aisha Patel",
+        "role": "Design Chapter Lead",
+        "phone": "+1 (555) 321-7654",
+        "email": "aisha.design@apextech.edu"
+      },
+      "facilities": {
+        "food": false,
+        "accommodation": false,
+        "transport": false,
+        "parking": false
+      },
+      "customDetails": [],
+      "registrationQuestions": [
+        {
+          "id": "q_portfolio",
+          "label": "Behance / Dribbble / Portfolio URL",
+          "type": "Link",
+          "required": true
+        }
+      ],
+      "creatorRole": "College",
+      "creatorUserId": "usr_col_apex_admin",
+      "status": "Published",
+      "viewsCount": 620,
+      "attendanceCount": 0,
+      "certificatesIssuedCount": 0,
+      "id": "ev_designverse_2026",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    }
+  ],
+  "eventRegistrations": [],
+  "payments": [],
+  "registrationQRs": [],
+  "attendances": [],
+  "certificates": [
+    {
+      "_id": "cert_alex_01",
+      "certificateId": "EH-CERT-2025-APEX-892",
+      "title": "1st Prize - Apex CodeSprint Hackathon",
+      "studentId": "prof_student_alex",
+      "issuingOrganization": "Apex Institute of Technology",
+      "achievementType": "Winner",
+      "issueDate": "2025-11-20",
+      "location": "Silicon Metro",
+      "eventName": "Apex Annual CodeSprint",
+      "description": "Awarded for developing an autonomous peer-to-peer resource sharing system during the 24-hour sprint.",
+      "fileUrl": "https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=800&auto=format&fit=crop&q=80",
+      "credentialUrl": "https://eventhub.apextech.edu/verify/EH-CERT-2025-APEX-892",
+      "visibility": "Public",
+      "tags": [
+        "Hackathon",
+        "Algorithms",
+        "Winner",
+        "TypeScript"
+      ],
+      "isDraft": false,
+      "id": "cert_alex_01",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    },
+    {
+      "certificateId": "EH-AWARD-2026-9339E5",
+      "title": "ddddddd",
+      "studentId": "prof_student_alex",
+      "issuingOrganization": "dddddddddd",
+      "achievementType": "Runner-up",
+      "issueDate": "2026-09-24",
+      "location": "",
+      "eventName": "ddddddddddd",
+      "description": "",
+      "fileUrl": "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80",
+      "credentialUrl": "",
+      "visibility": "Public",
+      "tags": [],
+      "isDraft": false,
+      "_id": "ddac929936ac7178f6b0ef3f",
+      "id": "ddac929936ac7178f6b0ef3f",
+      "createdAt": "2026-09-24T13:49:48.188Z",
+      "updatedAt": "2026-09-24T13:49:48.188Z"
+    }
+  ],
+  "placementPosts": [
+    {
+      "_id": "post_pl_01",
+      "collegeId": "col_apex_tech_01",
+      "collegeName": "Apex Institute of Technology",
+      "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "title": "Google Cloud Campus Placement Drive 2026",
+      "company": "Google",
+      "packageLPA": "48.5 LPA",
+      "placementStatistics": "14 Students Selected for Systems Engineering & Cloud Architecture",
+      "message": "Proud to announce that 14 of our graduating seniors from Computer Science and Electronics have secured high-impact roles at Google Cloud. Hearty congratulations to the students and faculty mentors!",
+      "mediaUrl": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1000&auto=format&fit=crop&q=80",
+      "mediaType": "image",
+      "date": "2026-09-18",
+      "likesCount": 230,
+      "id": "post_pl_01",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    },
+    {
+      "_id": "post_pl_02",
+      "collegeId": "col_horizon_univ_02",
+      "collegeName": "Horizon State University",
+      "collegeLogo": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&auto=format&fit=crop&q=80",
+      "title": "Microsoft R&D Software Engineering Offers",
+      "company": "Microsoft",
+      "packageLPA": "45.0 LPA",
+      "placementStatistics": "22 Offers Made in Core Systems & Security",
+      "message": "Exceptional milestone! Microsoft Campus recruitment culminated today with 22 stellar offers. We celebrate our students relentless preparation and competitive excellence.",
+      "mediaUrl": "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1000&auto=format&fit=crop&q=80",
+      "mediaType": "image",
+      "date": "2026-09-12",
+      "likesCount": 185,
+      "id": "post_pl_02",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    }
+  ],
+  "infrastructurePosts": [
+    {
+      "_id": "post_inf_01",
+      "collegeId": "col_apex_tech_01",
+      "collegeName": "Apex Institute of Technology",
+      "facilityTitle": "Advanced Robotics & Supercomputing Cluster Lab",
+      "facilityType": "Laboratory",
+      "description": "Equipped with 32 NVIDIA H100 GPU compute nodes, industrial robotic arms, motion tracking optical rigs, and high-frequency testing benches for interdisciplinary student projects.",
+      "googleMapsLink": "https://maps.google.com/?q=Apex+Robotics+Lab",
+      "mediaUrl": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1000&auto=format&fit=crop&q=80",
+      "mediaType": "image",
+      "id": "post_inf_01",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    },
+    {
+      "_id": "post_inf_02",
+      "collegeId": "col_apex_tech_01",
+      "collegeName": "Apex Institute of Technology",
+      "facilityTitle": "Dr. Vikram Sarabhai Digital Central Library",
+      "facilityType": "Library",
+      "description": "24/7 research library spanning 3 floors, featuring quiet cubicles, access to IEEE and ACM digital libraries, 80,000 physical volumes, and collaborative ideation pods.",
+      "googleMapsLink": "https://maps.google.com/?q=Apex+Central+Library",
+      "mediaUrl": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=1000&auto=format&fit=crop&q=80",
+      "mediaType": "image",
+      "id": "post_inf_02",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    },
+    {
+      "_id": "post_inf_03",
+      "collegeId": "col_horizon_univ_02",
+      "collegeName": "Horizon State University",
+      "facilityTitle": "Olympic Standard Indoor Sports Arena",
+      "facilityType": "Sports",
+      "description": "Air-conditioned multi-sport pavilion featuring 4 badminton courts, Olympic basketball arena, automated squash enclosures, and conditioning gym for collegiate athletics.",
+      "mediaUrl": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000&auto=format&fit=crop&q=80",
+      "mediaType": "image",
+      "id": "post_inf_03",
+      "createdAt": "2026-09-24T13:46:31.096Z",
+      "updatedAt": "2026-09-24T13:46:31.096Z"
+    }
+  ],
+  "connections": [
+    {
+      "studentId": "prof_student_alex",
+      "collegeId": "col_apex_tech_01",
+      "_id": "8be3370f260463dc15429435",
+      "id": "8be3370f260463dc15429435",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    },
+    {
+      "studentId": "prof_student_alex",
+      "collegeId": "col_horizon_univ_02",
+      "_id": "b6cd76199184db421138b647",
+      "id": "b6cd76199184db421138b647",
+      "createdAt": "2026-09-24T13:46:31.095Z",
+      "updatedAt": "2026-09-24T13:46:31.095Z"
+    }
+  ],
+  "follows": [],
+  "notifications": [],
+  "reminders": [],
+  "otpVerifications": [
+    {
+      "email": "sureshmanikkavasagam123@gmail.com",
+      "otpHash": "$2b$10$cLSkmli9OA4CsVs1P2vlKOtD6wDr2omI/zrhrX9vL.fNWK4jXYjRy",
+      "purpose": "STUDENT_REGISTRATION",
+      "payload": {
+        "fullName": "Suresh",
+        "email": "sureshmanikkavasagam123@gmail.com",
+        "collegeName": "M",
+        "phoneNumber": "8610458285",
+        "department": "Computer Science & Engineering",
+        "yearOfStudy": "3rd Year",
+        "passwordHash": "$2b$10$euZ8/sFYOhsSPBooku.yZOzd9DQ/xHA538RTD1duqkHWpaNro9eWS"
+      },
+      "expiresAt": "2026-09-24T14:16:56.962Z",
+      "resendAvailableAt": "2026-09-24T14:07:56.962Z",
+      "attempts": 0,
+      "verified": false,
+      "_id": "01e08a5ab82fc331e123199f",
+      "id": "01e08a5ab82fc331e123199f",
+      "createdAt": "2026-09-24T13:50:40.247Z",
+      "updatedAt": "2026-09-24T14:06:56.962Z"
+    }
+  ]
+}
