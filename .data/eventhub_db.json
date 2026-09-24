@@ -3,49 +3,49 @@
     {
       "_id": "usr_col_apex_admin",
       "email": "admin@apextech.edu",
-      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "passwordHash": "$2b$10$u2Z0eMQbDelDZeQudE68nOd/gU4qwKJ59QwBI5MQLDukVk39gZnDu",
       "role": "College Super Admin",
       "fullName": "Dr. Eleanor Vance",
       "isEmailVerified": true,
       "collegeId": "col_apex_tech_01",
       "id": "usr_col_apex_admin",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     },
     {
       "_id": "usr_col_apex_staff",
       "email": "events@apextech.edu",
-      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "passwordHash": "$2b$10$u2Z0eMQbDelDZeQudE68nOd/gU4qwKJ59QwBI5MQLDukVk39gZnDu",
       "role": "College Admin",
       "fullName": "Marcus Sterling",
       "isEmailVerified": true,
       "collegeId": "col_apex_tech_01",
       "id": "usr_col_apex_staff",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     },
     {
       "_id": "usr_col_horizon_admin",
       "email": "registrar@horizonuniv.edu",
-      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "passwordHash": "$2b$10$u2Z0eMQbDelDZeQudE68nOd/gU4qwKJ59QwBI5MQLDukVk39gZnDu",
       "role": "College Super Admin",
       "fullName": "Prof. Arthur Pendelton",
       "isEmailVerified": true,
       "collegeId": "col_horizon_univ_02",
       "id": "usr_col_horizon_admin",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     },
     {
       "_id": "usr_student_alex",
       "email": "alex.chen@student.edu",
-      "passwordHash": "$2b$10$Q69mAS1uPbc7pDKdU9bSHeVytWB7jyaaHShyR9RoLr0u6.PJe2m1.",
+      "passwordHash": "$2b$10$u2Z0eMQbDelDZeQudE68nOd/gU4qwKJ59QwBI5MQLDukVk39gZnDu",
       "role": "Student",
       "fullName": "Alexander Chen",
       "isEmailVerified": true,
       "id": "usr_student_alex",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     }
   ],
   "studentProfiles": [
@@ -59,7 +59,7 @@
       "phoneNumber": "+1 (555) 432-8890",
       "department": "Computer Science & Engineering",
       "yearOfStudy": "3rd Year",
-      "bio": "Full-stack builder & algorithm enthusiast. Lead organizer at Apex Coding Club. Passionate about distributed systems, UI design, and hackathons.",
+      "bio": "Passionate about distributed systems, robotics, and collegiate hackathons.",
       "location": "Silicon Metro",
       "profilePhoto": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
       "coverPhoto": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80",
@@ -80,8 +80,8 @@
       "followingCount": 39,
       "connectionsCount": 2,
       "id": "prof_student_alex",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T14:52:40.035Z"
     }
   ],
   "colleges": [
@@ -100,8 +100,8 @@
       "superAdminId": "usr_col_apex_admin",
       "connectionsCount": 142,
       "id": "col_apex_tech_01",
-      "createdAt": "2026-09-24T13:46:31.093Z",
-      "updatedAt": "2026-09-24T13:46:31.093Z"
+      "createdAt": "2026-09-24T13:38:09.698Z",
+      "updatedAt": "2026-09-24T13:38:09.698Z"
     },
     {
       "_id": "col_horizon_univ_02",
@@ -118,8 +118,8 @@
       "superAdminId": "usr_col_horizon_admin",
       "connectionsCount": 98,
       "id": "col_horizon_univ_02",
-      "createdAt": "2026-09-24T13:46:31.094Z",
-      "updatedAt": "2026-09-24T13:46:31.094Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     },
     {
       "_id": "col_nexus_eng_03",
@@ -136,8 +136,8 @@
       "superAdminId": "usr_col_nexus_admin",
       "connectionsCount": 64,
       "id": "col_nexus_eng_03",
-      "createdAt": "2026-09-24T13:46:31.094Z",
-      "updatedAt": "2026-09-24T13:46:31.094Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     }
   ],
   "collegeVerifications": [],
@@ -301,8 +301,8 @@
       "attendanceCount": 0,
       "certificatesIssuedCount": 0,
       "id": "ev_hacktech_2026",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     },
     {
       "_id": "ev_robowars_2026",
@@ -417,8 +417,8 @@
       "attendanceCount": 0,
       "certificatesIssuedCount": 0,
       "id": "ev_robowars_2026",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
     },
     {
       "_id": "ev_designverse_2026",
@@ -494,8 +494,106 @@
       "attendanceCount": 0,
       "certificatesIssuedCount": 0,
       "id": "ev_designverse_2026",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
+    },
+    {
+      "title": "Autonomous Drone Obstacle Challenge 2026",
+      "poster": "https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80",
+      "hostCollegeId": "col_apex_tech_01",
+      "hostCollegeName": "Apex Institute of Technology",
+      "hostCollegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "isCollegeVerified": true,
+      "category": "Competitions",
+      "eventType": "Technical",
+      "tagline": "",
+      "description": "Design and pilot autonomous quadcopters through dynamic indoor obstacles.",
+      "eventDate": "2026-11-20",
+      "startTime": "10:00",
+      "endTime": "16:00",
+      "registrationDeadline": "2026-11-19T23:59",
+      "reportingTime": "",
+      "registrationOpensOn": "2026-09-24",
+      "eventMode": "Offline",
+      "venue": "Main Sports Complex Arena",
+      "hallRoom": "",
+      "buildingBlock": "",
+      "address": "",
+      "googleMapsLink": "",
+      "transportParkingNotes": "",
+      "meetingPlatform": "",
+      "meetingLink": "",
+      "registrationType": "Team",
+      "minTeamSize": 2,
+      "maxTeamSize": 4,
+      "isFree": true,
+      "registrationFee": 0,
+      "capacity": 50,
+      "registeredCount": 0,
+      "educationLevel": [
+        "UG",
+        "PG"
+      ],
+      "departments": [
+        "All Departments"
+      ],
+      "eligibleYears": [
+        "All Years"
+      ],
+      "genderRestriction": "None",
+      "institutionRestriction": "Open to All Colleges",
+      "additionalEligibilityNotes": "",
+      "rulesAndGuidelines": "All UAVs must weigh under 2kg and comply with collegiate safety protocols.",
+      "hasMultipleRounds": false,
+      "rounds": [],
+      "requiredMaterials": "",
+      "thingsToCarry": "",
+      "softwareRequirements": "",
+      "hardwareRequirements": "",
+      "submissionRequirements": "",
+      "dressCode": "",
+      "prizeAvailable": false,
+      "totalPrizePool": 0,
+      "firstPrize": "",
+      "secondPrize": "",
+      "thirdPrize": "",
+      "specialPrize": "",
+      "prizeNotes": "",
+      "certificateAvailable": false,
+      "participationCertificate": false,
+      "winnerCertificate": false,
+      "certificateType": "Digital",
+      "certificateEligibility": "",
+      "deliveryMethod": "",
+      "primaryCoordinator": {
+        "name": "Alexander Chen",
+        "phone": "+1 (555) 234-5678",
+        "email": "alex.chen@student.edu"
+      },
+      "helpdeskContact": "",
+      "facilities": {
+        "food": false,
+        "accommodation": false,
+        "transport": false,
+        "parking": false
+      },
+      "importantNotes": "",
+      "reportingInstructions": "",
+      "idRequirement": "",
+      "paymentConfig": {},
+      "customDetails": [],
+      "registrationQuestions": [],
+      "creatorRole": "Student",
+      "creatorUserId": "usr_student_alex",
+      "targetCollegeId": "col_apex_tech_01",
+      "status": "Published",
+      "viewsCount": 0,
+      "attendanceCount": 0,
+      "certificatesIssuedCount": 0,
+      "_id": "c3497ad6fbaa9aba34854ccb",
+      "id": "c3497ad6fbaa9aba34854ccb",
+      "createdAt": "2026-09-24T14:52:40.061Z",
+      "updatedAt": "2026-09-24T14:52:40.173Z"
     }
   ],
   "eventRegistrations": [],
@@ -525,28 +623,8 @@
       ],
       "isDraft": false,
       "id": "cert_alex_01",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
-    },
-    {
-      "certificateId": "EH-AWARD-2026-9339E5",
-      "title": "ddddddd",
-      "studentId": "prof_student_alex",
-      "issuingOrganization": "dddddddddd",
-      "achievementType": "Runner-up",
-      "issueDate": "2026-09-24",
-      "location": "",
-      "eventName": "ddddddddddd",
-      "description": "",
-      "fileUrl": "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80",
-      "credentialUrl": "",
-      "visibility": "Public",
-      "tags": [],
-      "isDraft": false,
-      "_id": "ddac929936ac7178f6b0ef3f",
-      "id": "ddac929936ac7178f6b0ef3f",
-      "createdAt": "2026-09-24T13:49:48.188Z",
-      "updatedAt": "2026-09-24T13:49:48.188Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
     }
   ],
   "placementPosts": [
@@ -565,8 +643,8 @@
       "date": "2026-09-18",
       "likesCount": 230,
       "id": "post_pl_01",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
     },
     {
       "_id": "post_pl_02",
@@ -583,8 +661,8 @@
       "date": "2026-09-12",
       "likesCount": 185,
       "id": "post_pl_02",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
     }
   ],
   "infrastructurePosts": [
@@ -599,8 +677,8 @@
       "mediaUrl": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1000&auto=format&fit=crop&q=80",
       "mediaType": "image",
       "id": "post_inf_01",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
     },
     {
       "_id": "post_inf_02",
@@ -613,8 +691,8 @@
       "mediaUrl": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=1000&auto=format&fit=crop&q=80",
       "mediaType": "image",
       "id": "post_inf_02",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
     },
     {
       "_id": "post_inf_03",
@@ -626,53 +704,55 @@
       "mediaUrl": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000&auto=format&fit=crop&q=80",
       "mediaType": "image",
       "id": "post_inf_03",
-      "createdAt": "2026-09-24T13:46:31.096Z",
-      "updatedAt": "2026-09-24T13:46:31.096Z"
+      "createdAt": "2026-09-24T13:38:09.700Z",
+      "updatedAt": "2026-09-24T13:38:09.700Z"
     }
   ],
   "connections": [
     {
       "studentId": "prof_student_alex",
       "collegeId": "col_apex_tech_01",
-      "_id": "8be3370f260463dc15429435",
-      "id": "8be3370f260463dc15429435",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "_id": "64c8906e081c9fa2626b94eb",
+      "id": "64c8906e081c9fa2626b94eb",
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     },
     {
       "studentId": "prof_student_alex",
       "collegeId": "col_horizon_univ_02",
-      "_id": "b6cd76199184db421138b647",
-      "id": "b6cd76199184db421138b647",
-      "createdAt": "2026-09-24T13:46:31.095Z",
-      "updatedAt": "2026-09-24T13:46:31.095Z"
+      "_id": "66859facf731680376da87f8",
+      "id": "66859facf731680376da87f8",
+      "createdAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-24T13:38:09.699Z"
     }
   ],
   "follows": [],
-  "notifications": [],
-  "reminders": [],
-  "otpVerifications": [
+  "notifications": [
     {
-      "email": "sureshmanikkavasagam123@gmail.com",
-      "otpHash": "$2b$10$cLSkmli9OA4CsVs1P2vlKOtD6wDr2omI/zrhrX9vL.fNWK4jXYjRy",
-      "purpose": "STUDENT_REGISTRATION",
-      "payload": {
-        "fullName": "Suresh",
-        "email": "sureshmanikkavasagam123@gmail.com",
-        "collegeName": "M",
-        "phoneNumber": "8610458285",
-        "department": "Computer Science & Engineering",
-        "yearOfStudy": "3rd Year",
-        "passwordHash": "$2b$10$euZ8/sFYOhsSPBooku.yZOzd9DQ/xHA538RTD1duqkHWpaNro9eWS"
-      },
-      "expiresAt": "2026-09-24T14:16:56.962Z",
-      "resendAvailableAt": "2026-09-24T14:07:56.962Z",
-      "attempts": 0,
-      "verified": false,
-      "_id": "01e08a5ab82fc331e123199f",
-      "id": "01e08a5ab82fc331e123199f",
-      "createdAt": "2026-09-24T13:50:40.247Z",
-      "updatedAt": "2026-09-24T14:06:56.962Z"
+      "recipientUserId": "usr_col_apex_admin",
+      "type": "EVENT_APPROVAL",
+      "title": "New Student Event Proposal",
+      "message": "Student Alexander Chen submitted a proposal \"Autonomous Drone Obstacle Challenge 2026\" for your approval.",
+      "link": "/college/events?tab=requests",
+      "read": false,
+      "_id": "45bc131d8ac399e59c22f9a2",
+      "id": "45bc131d8ac399e59c22f9a2",
+      "createdAt": "2026-09-24T14:52:40.062Z",
+      "updatedAt": "2026-09-24T14:52:40.062Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "EVENT_APPROVAL",
+      "title": "Event Proposal Approved!",
+      "message": "Your event proposal \"Autonomous Drone Obstacle Challenge 2026\" was approved by Apex Institute of Technology and is now live!",
+      "link": "/events/c3497ad6fbaa9aba34854ccb",
+      "read": false,
+      "_id": "2ce914a7fb49e1a2305af5c9",
+      "id": "2ce914a7fb49e1a2305af5c9",
+      "createdAt": "2026-09-24T14:52:40.173Z",
+      "updatedAt": "2026-09-24T14:52:40.173Z"
     }
-  ]
+  ],
+  "reminders": [],
+  "otpVerifications": []
 }

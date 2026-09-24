@@ -41,6 +41,7 @@ import {
 import {
   issueCertificate,
   addStudentCertificate,
+  getMyCertificates,
   getStudentCertificates,
   deleteCertificate,
   updateCertificate,
@@ -114,15 +115,23 @@ apiRouter.post('/events', authenticate, createEvent);
 apiRouter.get('/events/:id/insights', authenticate, getEventInsights);
 apiRouter.post('/events/:id/approve', authenticate, requireRole(['College Super Admin', 'College Admin']), approveStudentEvent);
 apiRouter.post('/events/:id/reject', authenticate, requireRole(['College Super Admin', 'College Admin']), rejectStudentEvent);
+apiRouter.put('/events/:id/review', authenticate, requireRole(['College Super Admin', 'College Admin']), (req, res) => {
+  if (req.body && req.body.action === 'reject') {
+    return rejectStudentEvent(req, res);
+  }
+  return approveStudentEvent(req, res);
+});
 
 // Student events queries
 apiRouter.get('/student/my-events', authenticate, getStudentMyEvents);
+apiRouter.get('/students/my-proposals', authenticate, getStudentMyEvents);
 apiRouter.get('/college/events', authenticate, getCollegeEvents);
 apiRouter.get('/college/student-requests', authenticate, getCollegeStudentRequests);
 
 // 3. Registrations routes
 apiRouter.post('/registrations', authenticate, registerForEvent);
 apiRouter.get('/registrations/my', authenticate, getStudentRegistrations);
+apiRouter.get('/registrations/student', authenticate, getStudentRegistrations);
 apiRouter.get('/registrations/college', authenticate, getCollegeRegistrations);
 apiRouter.get('/registrations/ticket/:registrationId', authenticate, getRegistrationTicket);
 
@@ -138,11 +147,14 @@ apiRouter.get('/attendance/event/:eventId', authenticate, getEventAttendanceList
 // 6. Certificates routes
 apiRouter.post('/certificates/issue', authenticate, issueCertificate);
 apiRouter.post('/certificates/student', authenticate, addStudentCertificate);
+apiRouter.get('/certificates/my-certificates', authenticate, getMyCertificates);
 apiRouter.get('/certificates/student/:studentId', getStudentCertificates);
 apiRouter.patch('/certificates/:id', authenticate, updateCertificate);
 apiRouter.delete('/certificates/:id', authenticate, deleteCertificate);
+apiRouter.delete('/certificates/student/:id', authenticate, deleteCertificate);
 
 // 7. Students profile routes
+apiRouter.get('/students/me', authenticate, getStudentProfile);
 apiRouter.get('/students/search', searchStudents);
 apiRouter.get('/students/:id', getStudentProfile);
 apiRouter.put('/students/profile', authenticate, updateStudentProfile);

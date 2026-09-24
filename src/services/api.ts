@@ -1,4 +1,4 @@
-// Typed HTTP API Client for EVENTHUB
+// Typed HTTP API Client for EVENTHUB with Automatic 401 Refresh Token Retry
 
 const API_BASE = '/api';
 
@@ -13,8 +13,49 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('eventhub_token');
+let isRefreshing = false;
+let refreshSubscribers: Array<(newToken: string | null) => void> = [];
+
+function subscribeTokenRefresh(cb: (newToken: string | null) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed(newToken: string | null) {
+  refreshSubscribers.forEach((cb) => cb(newToken));
+  refreshSubscribers = [];
+}
+
+async function tryRefreshToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('eventhub_refresh');
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    if (data.success && data.tokens?.accessToken) {
+      localStorage.setItem('eventhub_token', data.tokens.accessToken);
+      if (data.tokens?.refreshToken) {
+        localStorage.setItem('eventhub_refresh', data.tokens.refreshToken);
+      }
+      return data.tokens.accessToken;
+    }
+  } catch (err) {
+    console.warn('Network error while refreshing token:', err);
+  }
+  return null;
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}, isRetry = false): Promise<T> {
+  let token = localStorage.getItem('eventhub_token');
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
   };
@@ -31,6 +72,47 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options,
     headers,
   });
+
+  // Handle 401 with Token Refresh (Requirement: Global 401 handling)
+  if (
+    response.status === 401 &&
+    !isRetry &&
+    !endpoint.includes('/auth/login') &&
+    !endpoint.includes('/auth/refresh-token') &&
+    !endpoint.includes('/auth/register')
+  ) {
+    const refreshToken = localStorage.getItem('eventhub_refresh');
+    if (refreshToken) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        const newToken = await tryRefreshToken();
+        isRefreshing = false;
+        onRefreshed(newToken);
+
+        if (newToken) {
+          headers['Authorization'] = `Bearer ${newToken}`;
+          return request<T>(endpoint, { ...options, headers }, true);
+        } else {
+          // Token refresh truly failed - clear tokens and dispatch event
+          localStorage.removeItem('eventhub_token');
+          localStorage.removeItem('eventhub_refresh');
+          window.dispatchEvent(new CustomEvent('eventhub:session_expired'));
+        }
+      } else {
+        // Wait for ongoing refresh
+        return new Promise<T>((resolve, reject) => {
+          subscribeTokenRefresh((newToken) => {
+            if (newToken) {
+              headers['Authorization'] = `Bearer ${newToken}`;
+              request<T>(endpoint, { ...options, headers }, true).then(resolve).catch(reject);
+            } else {
+              reject(new ApiError('Session expired. Please log in again.', 401));
+            }
+          });
+        });
+      }
+    }
+  }
 
   const text = await response.text();
   let data: any = {};

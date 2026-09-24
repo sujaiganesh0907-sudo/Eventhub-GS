@@ -165,6 +165,29 @@ export async function addStudentCertificate(req: AuthenticatedRequest, res: Resp
   }
 }
 
+export async function getMyCertificates(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const studentProfile = await StudentProfile.findOne({ userId: user._id });
+    if (!studentProfile) {
+      return res.json({ success: true, total: 0, certificates: [] });
+    }
+
+    const { includeDrafts } = req.query;
+    const filter: any = { studentId: studentProfile._id };
+    if (includeDrafts !== 'true') {
+      filter.isDraft = false;
+    }
+
+    const certificates = await Certificate.find(filter).sort({ issueDate: -1, createdAt: -1 }).exec();
+    return res.json({ success: true, total: certificates.length, certificates });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function getStudentCertificates(req: Request, res: Response) {
   try {
     const { studentId } = req.params;

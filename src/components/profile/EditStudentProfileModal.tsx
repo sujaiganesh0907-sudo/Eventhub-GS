@@ -61,8 +61,8 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
         skills,
       });
 
-      if (res.success && res.student) {
-        onSuccess(res.student);
+      if (res.success && (res.student || res.profile)) {
+        onSuccess(res.student || res.profile);
         onClose();
       } else {
         setError(res.message || 'Failed to update profile');
