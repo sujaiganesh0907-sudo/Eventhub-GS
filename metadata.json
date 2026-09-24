@@ -1,0 +1,8 @@
+{
+  "name": "EVENTHUB - Inter-College Event Discovery & Management",
+  "description": "Inter-college event discovery, registration, networking, attendance, certificate, and event-management platform.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

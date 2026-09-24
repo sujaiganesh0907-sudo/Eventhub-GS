@@ -1,0 +1,454 @@
+import { CollectionModel } from '../config/db';
+
+export interface IUser {
+  _id: string;
+  id?: string;
+  email: string;
+  passwordHash: string;
+  role: 'Student' | 'College Super Admin' | 'College Admin';
+  fullName: string;
+  isEmailVerified: boolean;
+  emailVerificationToken?: string;
+  collegeId?: string; // If College Admin/Super Admin
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IStudentProfile {
+  _id: string;
+  id?: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  collegeName: string;
+  targetCollegeId?: string;
+  phoneNumber: string;
+  department: string;
+  yearOfStudy: string;
+  bio?: string;
+  location?: string;
+  profilePhoto?: string;
+  coverPhoto?: string;
+  skills: string[];
+  achievements: string[];
+  followersCount: number;
+  followingCount: number;
+  connectionsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ICollege {
+  _id: string;
+  id?: string;
+  name: string;
+  officialEmail: string;
+  officialDomain: string;
+  contactNumber: string;
+  location: string;
+  bio: string;
+  website?: string;
+  logo: string;
+  coverPhoto: string;
+  verificationStatus: 'Pending' | 'Verified' | 'Rejected';
+  rejectionReason?: string;
+  superAdminId: string;
+  connectionsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ICollegeAdminMembership {
+  _id: string;
+  id?: string;
+  collegeId: string;
+  userId: string;
+  role: 'College Super Admin' | 'College Admin';
+  name: string;
+  email: string;
+  permissions: string[];
+  addedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IEventCustomField {
+  id: string;
+  label: string;
+  type: 'Short Text' | 'Long Text' | 'Number' | 'Link' | 'Image' | 'File' | 'Date' | 'Time' | 'Yes/No' | 'Single Select' | 'Multi Select';
+  value: string;
+  description?: string;
+}
+
+export interface IParticipantQuestion {
+  id: string;
+  label: string;
+  type: 'Short Answer' | 'Long Answer' | 'Number' | 'Email' | 'Phone' | 'Link' | 'Dropdown' | 'Multiple Choice' | 'Checkbox' | 'Date' | 'File Upload' | 'Image Upload';
+  required: boolean;
+  helperText?: string;
+  options?: string[];
+}
+
+export interface IEvent {
+  _id: string;
+  id?: string;
+  title: string;
+  poster: string;
+  hostCollegeId: string;
+  hostCollegeName: string;
+  hostCollegeLogo?: string;
+  isCollegeVerified: boolean;
+  category: string;
+  eventType: string; // e.g. Technical, Cultural, Workshop, Hackathon, Seminar, Sports
+  tagline?: string;
+  description: string;
+  
+  // Schedule
+  eventDate: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  registrationDeadline: string; // YYYY-MM-DDTHH:mm
+  reportingTime?: string;
+  registrationOpensOn?: string;
+  
+  // Mode & Location
+  eventMode: 'Offline' | 'Online' | 'Hybrid';
+  venue?: string;
+  hallRoom?: string;
+  buildingBlock?: string;
+  address?: string;
+  googleMapsLink?: string;
+  transportParkingNotes?: string;
+  meetingPlatform?: string;
+  meetingLink?: string;
+  
+  // Registration
+  registrationType: 'Individual' | 'Team';
+  minTeamSize?: number;
+  maxTeamSize?: number;
+  isFree: boolean;
+  registrationFee: number;
+  capacity: number;
+  registeredCount: number;
+  
+  // Eligibility
+  educationLevel: string[];
+  departments: string[];
+  eligibleYears: string[];
+  genderRestriction?: string;
+  institutionRestriction?: string;
+  additionalEligibilityNotes?: string;
+  
+  // Format
+  rulesAndGuidelines: string;
+  hasMultipleRounds: boolean;
+  rounds?: Array<{
+    name: string;
+    description: string;
+    duration?: string;
+    qualificationCriteria?: string;
+    judgingCriteria?: string;
+  }>;
+  requiredMaterials?: string;
+  thingsToCarry?: string;
+  softwareRequirements?: string;
+  hardwareRequirements?: string;
+  submissionRequirements?: string;
+  dressCode?: string;
+  
+  // Prizes
+  prizeAvailable: boolean;
+  totalPrizePool?: number;
+  firstPrize?: string;
+  secondPrize?: string;
+  thirdPrize?: string;
+  specialPrize?: string;
+  prizeNotes?: string;
+  
+  // Certificates
+  certificateAvailable: boolean;
+  participationCertificate: boolean;
+  winnerCertificate: boolean;
+  certificateType: 'Digital' | 'Physical' | 'Both';
+  certificateEligibility?: string;
+  deliveryMethod?: string;
+  
+  // Coordinators
+  primaryCoordinator: {
+    name: string;
+    role: string;
+    phone: string;
+    email: string;
+  };
+  secondaryCoordinator?: {
+    name: string;
+    role: string;
+    phone: string;
+    email: string;
+  };
+  helpdeskContact?: string;
+  
+  // Support & Facilities
+  facilities: {
+    food: boolean;
+    foodDetails?: string;
+    accommodation: boolean;
+    accommodationDetails?: string;
+    transport: boolean;
+    transportDetails?: string;
+    parking: boolean;
+    parkingDetails?: string;
+  };
+  importantNotes?: string;
+  reportingInstructions?: string;
+  idRequirement?: string;
+  
+  // Payment config
+  paymentConfig?: {
+    payeeName?: string;
+    upiId?: string;
+    paymentQr?: string;
+    paymentInstructions?: string;
+    refundPolicy?: string;
+  };
+  
+  // Custom information & Questions
+  customDetails: IEventCustomField[];
+  registrationQuestions: IParticipantQuestion[];
+  
+  // Creation & Approval status
+  creatorRole: 'Student' | 'College';
+  creatorUserId: string;
+  targetCollegeId?: string;
+  status: 'Draft' | 'Pending Approval' | 'Published' | 'Rejected' | 'Completed' | 'Cancelled';
+  rejectionReason?: string;
+  viewsCount: number;
+  attendanceCount: number;
+  certificatesIssuedCount: number;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IEventRegistration {
+  _id: string;
+  id?: string;
+  registrationId: string; // e.g. EH-2026-XXXXX
+  eventId: string;
+  studentId: string;
+  studentUserId: string;
+  collegeId: string;
+  studentName: string;
+  studentEmail: string;
+  studentPhone: string;
+  studentCollege: string;
+  studentDepartment: string;
+  studentYear: string;
+  
+  registrationType: 'Individual' | 'Team';
+  teamName?: string;
+  teamMembers?: string[];
+  
+  customResponses: Record<string, any>;
+  
+  isFree: boolean;
+  amount: number;
+  paymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Waived';
+  paymentId?: string;
+  
+  status: 'Confirmed' | 'Pending' | 'Cancelled';
+  attended: boolean;
+  attendedAt?: string;
+  certificateIssued: boolean;
+  certificateId?: string;
+  
+  qrToken: string;
+  qrCodeUrl?: string;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IPayment {
+  _id: string;
+  id?: string;
+  orderId: string;
+  paymentId: string;
+  registrationId: string;
+  eventId: string;
+  studentId: string;
+  amount: number;
+  currency: string;
+  gatewayStatus: 'Created' | 'Authorized' | 'Captured' | 'Failed';
+  verificationStatus: 'Pending' | 'Verified' | 'Failed';
+  paymentMethod: string;
+  receiptUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IRegistrationQR {
+  _id: string;
+  id?: string;
+  registrationId: string;
+  eventId: string;
+  studentId: string;
+  secureToken: string;
+  qrPayload: string; // JSON with non-sensitive identifiers
+  qrCodeDataUrl: string;
+  isUsed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IAttendance {
+  _id: string;
+  id?: string;
+  eventId: string;
+  registrationId: string;
+  studentId: string;
+  studentName: string;
+  studentCollege: string;
+  method: 'QR_SCAN' | 'MANUAL';
+  markedByUserId: string;
+  status: 'Present' | 'Absent';
+  markedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ICertificate {
+  _id: string;
+  id?: string;
+  certificateId: string; // Unique Credential ID
+  title: string;
+  eventId?: string;
+  registrationId?: string;
+  studentId: string;
+  collegeId?: string;
+  issuingOrganization: string;
+  achievementType: 'Winner' | 'Runner-up' | 'Participation' | 'Excellence' | 'Appreciation' | 'Completion';
+  issueDate: string;
+  location?: string;
+  eventName?: string;
+  description?: string;
+  fileUrl: string; // PDF or Image URL
+  credentialUrl?: string;
+  visibility: 'Public' | 'Connections Only' | 'Private';
+  tags: string[];
+  isDraft: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IPlacementPost {
+  _id: string;
+  id?: string;
+  collegeId: string;
+  collegeName: string;
+  collegeLogo: string;
+  title: string;
+  company: string;
+  packageLPA?: string;
+  placementStatistics?: string;
+  message: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  date: string;
+  likesCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IInfrastructurePost {
+  _id: string;
+  id?: string;
+  collegeId: string;
+  collegeName: string;
+  facilityTitle: string;
+  facilityType: 'Library' | 'Laboratory' | 'Hostel' | 'Sports' | 'Campus' | 'Classroom' | 'Other';
+  description: string;
+  googleMapsLink?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IConnection {
+  _id: string;
+  id?: string;
+  studentId: string;
+  collegeId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IFollow {
+  _id: string;
+  id?: string;
+  followerStudentId: string;
+  followingStudentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface INotification {
+  _id: string;
+  id?: string;
+  recipientUserId: string;
+  type: 'REGISTRATION' | 'PAYMENT' | 'REMINDER' | 'EVENT_APPROVAL' | 'EVENT_REJECTION' | 'EVENT_UPDATE' | 'CERTIFICATE' | 'ATTENDANCE';
+  title: string;
+  message: string;
+  link?: string;
+  read: boolean;
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IReminder {
+  _id: string;
+  id?: string;
+  studentId: string;
+  eventId: string;
+  reminderType: '1_day_before' | '3_hours_before' | '1_hour_before' | 'custom';
+  reminderTime: string;
+  notified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IOtpVerification {
+  _id: string;
+  id?: string;
+  email: string;
+  otpHash: string;
+  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION';
+  payload?: any;
+  expiresAt: string;
+  resendAvailableAt: string;
+  attempts: number;
+  verified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Instantiate Models connected to our persistent database collections
+export const User = new CollectionModel<IUser>('users');
+export const StudentProfile = new CollectionModel<IStudentProfile>('studentProfiles');
+export const College = new CollectionModel<ICollege>('colleges');
+export const CollegeAdminMembership = new CollectionModel<ICollegeAdminMembership>('collegeAdminMemberships');
+export const Event = new CollectionModel<IEvent>('events');
+export const EventRegistration = new CollectionModel<IEventRegistration>('eventRegistrations');
+export const Payment = new CollectionModel<IPayment>('payments');
+export const RegistrationQR = new CollectionModel<IRegistrationQR>('registrationQRs');
+export const Attendance = new CollectionModel<IAttendance>('attendances');
+export const Certificate = new CollectionModel<ICertificate>('certificates');
+export const PlacementPost = new CollectionModel<IPlacementPost>('placementPosts');
+export const InfrastructurePost = new CollectionModel<IInfrastructurePost>('infrastructurePosts');
+export const Connection = new CollectionModel<IConnection>('connections');
+export const Follow = new CollectionModel<IFollow>('follows');
+export const Notification = new CollectionModel<INotification>('notifications');
+export const Reminder = new CollectionModel<IReminder>('reminders');
+export const OtpVerification = new CollectionModel<IOtpVerification>('otpVerifications');
