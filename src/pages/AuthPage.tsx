@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   User,
@@ -18,12 +18,18 @@ import {
   Globe,
 } from 'lucide-react';
 import { OtpVerificationView } from '../components/auth/OtpVerificationView';
+import {
+  getPendingVerification,
+  setPendingVerification,
+  clearPendingVerification,
+} from '../services/verificationStorage';
 
 interface AuthPageProps {
-  initialMode?: 'login' | 'register';
+  initialMode?: 'login' | 'register' | 'otp';
   initialRole?: 'student' | 'college';
   noticeMessage?: string;
   onSuccess: () => void;
+  onNavigateTab?: (tab: string, notice?: string) => void;
 }
 
 const COMMON_DEPARTMENTS = [
@@ -54,6 +60,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   initialRole = 'student',
   noticeMessage,
   onSuccess,
+  onNavigateTab,
 }) => {
   const {
     login,
@@ -105,6 +112,44 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   // Is environment development/demo?
   const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
 
+  // Sync mode and role if initial props change
+  useEffect(() => {
+    if (initialMode && initialMode !== mode) {
+      setMode(initialMode);
+    }
+  }, [initialMode]);
+
+  useEffect(() => {
+    if (initialRole && initialRole !== role) {
+      setRole(initialRole);
+    }
+  }, [initialRole]);
+
+  // Restore pending verification state on OTP mode or page reload (Requirement 3 & 7)
+  useEffect(() => {
+    if (mode === 'otp') {
+      const pending = getPendingVerification();
+      if (pending && pending.email) {
+        setOtpEmail(pending.email);
+        setOtpPurpose(
+          pending.purpose === 'COLLEGE_REGISTRATION'
+            ? 'COLLEGE_REGISTRATION'
+            : 'STUDENT_REGISTRATION'
+        );
+        setRole(pending.role || 'student');
+      } else if (!otpEmail) {
+        // No pending verification and no in-memory email -> redirect to login with notification
+        setMessage('No pending verification found. Please register or sign in.');
+        setMode('login');
+        if (onNavigateTab) {
+          onNavigateTab('auth', 'No pending verification found. Please register or sign in.');
+        } else {
+          window.history.replaceState(null, '', '/login');
+        }
+      }
+    }
+  }, [mode, onNavigateTab, otpEmail]);
+
   // Dynamic Domain Check for College
   const cleanDomain = (d: string) => d.trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/.*$/, '');
   const enteredDomain = cleanDomain(collegeOfficialDomain);
@@ -138,10 +183,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       if (res.success) {
         onSuccess();
       } else if (res.requiresVerification) {
-        setOtpEmail(res.email || loginEmail);
-        setOtpPurpose(role === 'student' ? 'STUDENT_REGISTRATION' : 'COLLEGE_REGISTRATION');
+        const targetEmail = res.email || loginEmail;
+        const targetPurpose = role === 'student' ? 'STUDENT_REGISTRATION' : 'COLLEGE_REGISTRATION';
+        setPendingVerification({
+          role,
+          email: targetEmail,
+          purpose: targetPurpose,
+          status: 'pending',
+          createdAt: Date.now(),
+        });
+        setOtpEmail(targetEmail);
+        setOtpPurpose(targetPurpose);
         setMode('otp');
         setMessage(res.message || 'Please verify your email with the 6-digit code.');
+        if (onNavigateTab) {
+          onNavigateTab('verify-otp');
+        } else {
+          window.history.pushState(null, '', '/verify-otp');
+        }
       } else {
         setError(res.message || 'Invalid email or password.');
       }
@@ -186,10 +245,33 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       });
 
       if (res.success) {
+        // Store pending verification safely in sessionStorage (Requirement 3)
+        setPendingVerification({
+          role: 'student',
+          email: studentEmail,
+          purpose: 'STUDENT_REGISTRATION',
+          status: 'pending',
+          registrationData: {
+            fullName: studentFullName,
+            collegeName: studentCollegeName,
+            department: studentDepartment,
+            yearOfStudy: studentYearOfStudy,
+            phoneNumber: studentPhone,
+          },
+          createdAt: Date.now(),
+        });
+
         setOtpEmail(studentEmail);
         setOtpPurpose('STUDENT_REGISTRATION');
         setMode('otp');
         setMessage(res.message || 'Verification code dispatched to your email.');
+
+        // Navigate to OTP Verification route without resetting page (Requirement 4, 5, 6)
+        if (onNavigateTab) {
+          onNavigateTab('verify-otp');
+        } else {
+          window.history.pushState(null, '', '/verify-otp');
+        }
       } else {
         setError(res.message || 'Registration failed.');
       }
@@ -233,10 +315,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       });
 
       if (res.success) {
+        // Store pending verification safely in sessionStorage (Requirement 3)
+        setPendingVerification({
+          role: 'college',
+          email: collegeEmail,
+          purpose: 'COLLEGE_REGISTRATION',
+          status: 'pending',
+          registrationData: {
+            collegeName,
+            officialDomain: collegeOfficialDomain,
+            location: collegeLocation,
+            phoneNumber: collegePhone,
+          },
+          createdAt: Date.now(),
+        });
+
         setOtpEmail(collegeEmail);
         setOtpPurpose('COLLEGE_REGISTRATION');
         setMode('otp');
         setMessage(res.message || 'Verification code sent to official email.');
+
+        // Navigate to OTP Verification route without resetting page (Requirement 4, 5, 6)
+        if (onNavigateTab) {
+          onNavigateTab('verify-otp');
+        } else {
+          window.history.pushState(null, '', '/verify-otp');
+        }
       } else {
         setError(res.message || 'College registration failed.');
       }
@@ -248,11 +352,52 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   };
 
   const handleOtpSuccess = () => {
-    setMessage('Email verified successfully! Please sign in to access your account.');
+    clearPendingVerification();
+    const isCollegeRole = role === 'college' || otpPurpose === 'COLLEGE_REGISTRATION';
+    setMessage(
+      isCollegeRole
+        ? 'Email verified successfully! Institutional registration is pending accreditation review. Please sign in.'
+        : 'Email verified successfully! Please sign in with your credentials.'
+    );
     setMode('login');
     setLoginEmail(otpEmail);
     setLoginPassword('');
     setError(null);
+    if (onNavigateTab) {
+      onNavigateTab('auth');
+    } else {
+      window.history.pushState(null, '', '/login');
+    }
+  };
+
+  const handleBackToEdit = () => {
+    const pending = getPendingVerification();
+    if (pending?.registrationData) {
+      if (pending.role === 'student') {
+        if (pending.registrationData.fullName) setStudentFullName(pending.registrationData.fullName);
+        if (pending.registrationData.collegeName) setStudentCollegeName(pending.registrationData.collegeName);
+        if (pending.registrationData.department) setStudentDepartment(pending.registrationData.department);
+        if (pending.registrationData.yearOfStudy) setStudentYearOfStudy(pending.registrationData.yearOfStudy);
+        if (pending.registrationData.phoneNumber) setStudentPhone(pending.registrationData.phoneNumber);
+        if (pending.email) setStudentEmail(pending.email);
+        setRole('student');
+      } else {
+        if (pending.registrationData.collegeName) setCollegeName(pending.registrationData.collegeName);
+        if (pending.registrationData.officialDomain) setCollegeOfficialDomain(pending.registrationData.officialDomain);
+        if (pending.registrationData.location) setCollegeLocation(pending.registrationData.location);
+        if (pending.registrationData.phoneNumber) setCollegePhone(pending.registrationData.phoneNumber);
+        if (pending.email) setCollegeEmail(pending.email);
+        setRole('college');
+      }
+    }
+    setMode('register');
+    setError(null);
+    setMessage(null);
+    if (onNavigateTab) {
+      onNavigateTab(role === 'college' ? 'register-college' : 'register');
+    } else {
+      window.history.pushState(null, '', role === 'college' ? '/register/college' : '/register');
+    }
   };
 
   return (
@@ -818,11 +963,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             email={otpEmail}
             purpose={otpPurpose}
             onVerifiedSuccess={handleOtpSuccess}
-            onBackToEdit={() => {
-              setMode('register');
-              setError(null);
-              setMessage(null);
-            }}
+            onBackToEdit={handleBackToEdit}
           />
         )}
       </div>
