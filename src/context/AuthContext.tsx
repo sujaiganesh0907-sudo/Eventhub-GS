@@ -1,8 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { IUser, IStudentProfile, ICollege } from '../types';
 import { api } from '../services/api';
 
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
 interface AuthContextType {
+  status: AuthStatus;
   user: IUser | null;
   studentProfile: IStudentProfile | null;
   college: ICollege | null;
@@ -20,6 +23,8 @@ interface AuthContextType {
   verifyEmail: (email: string, code: string) => Promise<any>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  updateStudentProfileLocal: (profile: Partial<IStudentProfile>) => void;
+  updateCollegeProfileLocal: (college: Partial<ICollege>) => void;
   switchAccount: (role: 'student' | 'college-super' | 'college-admin') => Promise<void>;
 }
 
@@ -29,15 +34,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<IUser | null>(null);
   const [studentProfile, setStudentProfile] = useState<IStudentProfile | null>(null);
   const [college, setCollege] = useState<ICollege | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [status, setStatus] = useState<AuthStatus>(() => {
+    // If token exists in storage at boot time, we start in 'loading' to restore session
+    return localStorage.getItem('eventhub_token') ? 'loading' : 'unauthenticated';
+  });
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     const token = localStorage.getItem('eventhub_token');
     if (!token) {
       setUser(null);
       setStudentProfile(null);
       setCollege(null);
-      setLoading(false);
+      setStatus('unauthenticated');
       return;
     }
 
@@ -47,23 +55,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(res.user);
         setStudentProfile(res.studentProfile || null);
         setCollege(res.college || null);
+        setStatus('authenticated');
       } else {
+        // Only clear if server returned explicit failure
         localStorage.removeItem('eventhub_token');
+        localStorage.removeItem('eventhub_refresh');
         setUser(null);
+        setStudentProfile(null);
+        setCollege(null);
+        setStatus('unauthenticated');
       }
-    } catch (err) {
-      console.warn('Session expired or could not fetch user:', err);
-      localStorage.removeItem('eventhub_token');
-      setUser(null);
-      setStudentProfile(null);
-      setCollege(null);
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      console.warn('Session verification notice:', err?.message || err);
+      // If 401 error and refresh already failed in api.ts
+      if (err?.status === 401 && !localStorage.getItem('eventhub_token')) {
+        setUser(null);
+        setStudentProfile(null);
+        setCollege(null);
+        setStatus('unauthenticated');
+      } else if (!user) {
+        // If there is no existing in-memory user and request failed
+        setStatus('unauthenticated');
+      }
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     refreshProfile();
+  }, [refreshProfile]);
+
+  // Listen for session expiration event dispatched by api.ts when refresh token fails
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      setStudentProfile(null);
+      setCollege(null);
+      setStatus('unauthenticated');
+    };
+
+    window.addEventListener('eventhub:session_expired', handleSessionExpired);
+    return () => window.removeEventListener('eventhub:session_expired', handleSessionExpired);
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -76,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setStudentProfile(res.studentProfile || null);
       setCollege(res.college || null);
+      setStatus('authenticated');
     }
     return res;
   };
@@ -114,6 +146,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setStudentProfile(null);
     setCollege(null);
+    setStatus('unauthenticated');
+  };
+
+  const updateStudentProfileLocal = (updated: Partial<IStudentProfile>) => {
+    setStudentProfile((prev) => (prev ? { ...prev, ...updated } : (updated as IStudentProfile)));
+  };
+
+  const updateCollegeProfileLocal = (updated: Partial<ICollege>) => {
+    setCollege((prev) => (prev ? { ...prev, ...updated } : (updated as ICollege)));
   };
 
   const switchAccount = async (target: 'student' | 'college-super' | 'college-admin') => {
@@ -123,13 +164,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await login(email, 'Password123!');
   };
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = status === 'authenticated' && !!user;
   const isCollege = user?.role === 'College Super Admin' || user?.role === 'College Admin';
   const isStudent = user?.role === 'Student' || (!user && false);
+  const loading = status === 'loading';
 
   return (
     <AuthContext.Provider
       value={{
+        status,
         user,
         studentProfile,
         college,
@@ -147,6 +190,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyEmail,
         logout,
         refreshProfile,
+        updateStudentProfileLocal,
+        updateCollegeProfileLocal,
         switchAccount,
       }}
     >

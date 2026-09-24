@@ -5,10 +5,20 @@ import { AuthenticatedRequest } from '../middleware/auth';
 export async function getStudentProfile(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    let profile = await StudentProfile.findById(id);
-    if (!profile) {
-      profile = await StudentProfile.findOne({ userId: id });
+    let profile = null;
+
+    if (!id || id === 'me') {
+      const authReq = req as AuthenticatedRequest;
+      if (authReq.user) {
+        profile = await StudentProfile.findOne({ userId: authReq.user._id });
+      }
+    } else {
+      profile = await StudentProfile.findById(id);
+      if (!profile) {
+        profile = await StudentProfile.findOne({ userId: id });
+      }
     }
+
     if (!profile) {
       return res.status(404).json({ success: false, message: 'Student profile not found.' });
     }
@@ -19,16 +29,19 @@ export async function getStudentProfile(req: Request, res: Response) {
     const followersCount = await Follow.countDocuments({ followingStudentId: profile._id });
     const followingCount = await Follow.countDocuments({ followerStudentId: profile._id });
 
+    const profileData = {
+      ...((profile as any).toObject ? (profile as any).toObject() : profile),
+      certificatesCount,
+      eventsCount,
+      connectionsCount,
+      followersCount,
+      followingCount,
+    };
+
     return res.json({
       success: true,
-      profile: {
-        ...profile,
-        certificatesCount,
-        eventsCount,
-        connectionsCount,
-        followersCount,
-        followingCount,
-      },
+      profile: profileData,
+      student: profileData,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
@@ -81,6 +94,7 @@ export async function updateStudentProfile(req: AuthenticatedRequest, res: Respo
       success: true,
       message: 'Student profile updated successfully.',
       profile: updated,
+      student: updated,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

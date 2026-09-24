@@ -23,7 +23,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { IEvent } from './types';
 
-// Public routes that never require authentication (Requirement 1 & 2)
+// Public routes that never require authentication
 export const PUBLIC_ROUTES = new Set([
   'landing',
   'auth',
@@ -51,20 +51,23 @@ const isPublicAuthTab = (tab: string): boolean => {
   ].includes(tab);
 };
 
-const resolveTabFromPath = (pathname: string, authed: boolean): string => {
+const resolveTabFromPath = (pathname: string): string => {
   const p = pathname.toLowerCase().replace(/\/$/, '') || '/';
   if (p === '/verify-otp' || p === '/otp') return 'verify-otp';
   if (p === '/login' || p === '/auth') return 'auth';
   if (p === '/register' || p === '/register/student') return 'register';
   if (p === '/register/college') return 'register-college';
   if (p === '/forgot-password' || p === '/reset-password') return 'auth';
-  if (p === '/' || p === '/landing') return authed ? 'home' : 'landing';
+  if (p === '/' || p === '/landing') {
+    const hasToken = !!localStorage.getItem('eventhub_token');
+    return hasToken ? 'home' : 'landing';
+  }
 
   const sub = p.replace(/^\//, '');
   if (['home', 'events', 'colleges', 'profile', 'college-profile', 'notifications', 'settings', 'view-event'].includes(sub)) {
-    return authed ? sub : 'landing';
+    return sub;
   }
-  return authed ? 'home' : 'landing';
+  return 'home';
 };
 
 const getPathForTab = (tab: string): string => {
@@ -90,12 +93,12 @@ const getPathForTab = (tab: string): string => {
 };
 
 const AppContent: React.FC = () => {
-  const { user, isAuthenticated, isCollege, isStudent } = useAuth();
+  const { user, loading: authLoading, isAuthenticated, isCollege, isStudent } = useAuth();
   const { unreadCount } = useNotifications();
 
-  // Navigation State initialized from URL pathname (Requirement 6 & 7)
+  // Navigation State initialized safely from URL pathname
   const [activeTab, setActiveTab] = useState<string>(() => {
-    return resolveTabFromPath(window.location.pathname, isAuthenticated);
+    return resolveTabFromPath(window.location.pathname);
   });
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(null);
@@ -109,7 +112,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Route protection navigator (Requirement 8 & 9)
+  // Route protection navigator
   const navigateToTab = (tab: string, notice?: string) => {
     if (!isAuthenticated && !isPublicRoute(tab)) {
       setAuthNotice(notice || 'Sign in to explore and register for events.');
@@ -125,22 +128,25 @@ const AppContent: React.FC = () => {
   // Browser history navigation sync
   useEffect(() => {
     const handlePopState = () => {
-      const tab = resolveTabFromPath(window.location.pathname, isAuthenticated);
+      const tab = resolveTabFromPath(window.location.pathname);
       setActiveTab(tab);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isAuthenticated]);
+  }, []);
 
-  // Enforce route protection ONLY on protected/private routes (Requirement 1, 2 & 10)
-  React.useEffect(() => {
+  // Enforce route protection ONLY on protected/private routes after auth restoration finishes
+  useEffect(() => {
+    // CRITICAL: NEVER redirect while authentication status is restoring!
+    if (authLoading) return;
+
     if (!isAuthenticated && !isPublicRoute(activeTab)) {
       setActiveTab('landing');
       if (window.location.pathname !== '/' && window.location.pathname !== '/landing') {
         window.history.replaceState(null, '', '/');
       }
     }
-  }, [isAuthenticated, activeTab]);
+  }, [authLoading, isAuthenticated, activeTab]);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -186,6 +192,18 @@ const AppContent: React.FC = () => {
     setActiveTab('college-profile');
     updateUrl('college-profile');
   };
+
+  // During auth restoration, show clean full-screen loader without redirecting
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center space-y-3">
+        <div className="w-8 h-8 rounded-full border-3 border-[var(--primary-color)] border-t-transparent animate-spin" />
+        <p className="text-xs font-semibold text-[var(--text-muted)]">
+          Restoring EVENTHUB session...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col antialiased">
@@ -246,7 +264,6 @@ const AppContent: React.FC = () => {
                 navigateToTab('register');
               }}
               onExploreEvents={() => {
-                // Requirement 8: For unauthenticated users, Browse Live Events redirects to Sign In
                 if (!isAuthenticated) {
                   navigateToTab('auth', 'Sign in to explore and register for events.');
                 } else {
@@ -329,12 +346,23 @@ const AppContent: React.FC = () => {
           )}
 
           {/* VIEW SINGLE EVENT */}
-          {isAuthenticated && activeTab === 'view-event' && selectedEventId && (
-            <ViewEventPage
-              eventId={selectedEventId}
-              onBack={() => navigateToTab(isCollege ? 'home' : 'home')}
-              onSelectCollege={handleViewCollege}
-            />
+          {isAuthenticated && activeTab === 'view-event' && (
+            selectedEventId ? (
+              <ViewEventPage
+                eventId={selectedEventId}
+                onBack={() => navigateToTab(isCollege ? 'home' : 'home')}
+                onSelectCollege={handleViewCollege}
+              />
+            ) : (
+              <StudentHomePage
+                searchQuery={searchQuery}
+                filters={filters}
+                onViewEvent={handleViewEvent}
+                onRegister={(ev) => setEventToRegister(ev)}
+                onSelectTab={(tab) => navigateToTab(tab)}
+                onOpenFilter={() => setIsFilterModalOpen(true)}
+              />
+            )
           )}
 
           {/* NOTIFICATIONS */}
@@ -376,7 +404,11 @@ const AppContent: React.FC = () => {
           onClose={() => setIsCreateEventOpen(false)}
           onSuccess={(newEvent) => {
             setIsCreateEventOpen(false);
-            handleViewEvent(newEvent);
+            if (newEvent && newEvent._id) {
+              handleViewEvent(newEvent);
+            } else {
+              navigateToTab(isCollege ? 'home' : 'events');
+            }
           }}
           isStudentProposal={isStudentProposal}
         />
@@ -397,11 +429,7 @@ const AppContent: React.FC = () => {
           onClose={() => setEventToRegister(null)}
           event={eventToRegister}
           onRegistrationSuccess={() => {
-            setEventToRegister(null);
-            if (selectedEventId) {
-              setActiveTab('view-event');
-              updateUrl('view-event');
-            }
+            // Modal manages showing the ticket pass before closing
           }}
         />
       )}

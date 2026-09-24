@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 export const StudentProfilePage: React.FC = () => {
-  const { user, studentProfile } = useAuth();
+  const { user, studentProfile, updateStudentProfileLocal } = useAuth();
 
   const [profile, setProfile] = useState<IStudentProfile | null>(studentProfile || null);
   const [certificates, setCertificates] = useState<ICertificate[]>([]);
@@ -46,7 +46,11 @@ export const StudentProfilePage: React.FC = () => {
         api.get<any>('/registrations/student'),
       ]);
 
-      if (profRes.success && profRes.student) setProfile(profRes.student);
+      if (profRes.success && (profRes.student || profRes.profile)) {
+        const p = profRes.student || profRes.profile;
+        setProfile(p);
+        updateStudentProfileLocal(p);
+      }
       if (certRes.success) setCertificates(certRes.certificates || []);
       if (regRes.success) setRegistrations(regRes.registrations || []);
     } catch (err) {
@@ -272,7 +276,10 @@ export const StudentProfilePage: React.FC = () => {
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
           profile={profile}
-          onSuccess={(updated) => setProfile(updated)}
+          onSuccess={(updated) => {
+            setProfile(updated);
+            updateStudentProfileLocal(updated);
+          }}
         />
       )}
 
