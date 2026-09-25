@@ -68,6 +68,17 @@
       "id": "0e324d4013afe7e579d45339",
       "createdAt": "2026-09-25T01:31:11.968Z",
       "updatedAt": "2026-09-25T01:31:11.968Z"
+    },
+    {
+      "email": "sujaiganesh0907@gmail.com",
+      "passwordHash": "$2b$10$zXgcqZrvbvpzQrAjZ/w5Fusi860nftcml8hKhmh79aeGckmh87SnG",
+      "role": "Student",
+      "fullName": "Sujai  Ganesh K",
+      "isEmailVerified": true,
+      "_id": "8d254e7a0ffe4f12eae91060",
+      "id": "8d254e7a0ffe4f12eae91060",
+      "createdAt": "2026-09-25T04:22:04.685Z",
+      "updatedAt": "2026-09-25T04:23:25.929Z"
     }
   ],
   "studentProfiles": [
@@ -144,6 +155,27 @@
       "id": "ad99efcaa557ec5179fb7637",
       "createdAt": "2026-09-25T01:31:11.968Z",
       "updatedAt": "2026-09-25T01:31:11.968Z"
+    },
+    {
+      "userId": "8d254e7a0ffe4f12eae91060",
+      "fullName": "Sujai  Ganesh K",
+      "email": "sujaiganesh0907@gmail.com",
+      "collegeName": "Erode Sengunthar Engineering College",
+      "phoneNumber": "9952348477",
+      "department": "Computer Science & Engineering",
+      "yearOfStudy": "3rd Year",
+      "skills": [],
+      "achievements": [],
+      "followersCount": 0,
+      "followingCount": 0,
+      "connectionsCount": 0,
+      "_id": "6536522e2f969663e8448fc0",
+      "id": "6536522e2f969663e8448fc0",
+      "createdAt": "2026-09-25T04:22:04.686Z",
+      "updatedAt": "2026-09-25T04:23:25.929Z",
+      "bio": "",
+      "location": "",
+      "profilePhoto": "/uploads/upload-1790310193133-528150284.jpeg"
     }
   ],
   "colleges": [
@@ -1051,6 +1083,28 @@
       "id": "9e285acd9af6668db063a1fa",
       "createdAt": "2026-09-25T01:29:02.853Z",
       "updatedAt": "2026-09-25T01:31:11.968Z"
+    },
+    {
+      "email": "sujaiganesh0907@gmail.com",
+      "otpHash": "$2b$10$wH6a9nKbMIgq9IWYD3vvQeUHwCctOyocsIZZAgoQkCfrMm37Y4hDi",
+      "purpose": "STUDENT_REGISTRATION",
+      "payload": {
+        "fullName": "Sujai  Ganesh K",
+        "email": "sujaiganesh0907@gmail.com",
+        "collegeName": "Erode Sengunthar Engineering College",
+        "phoneNumber": "9952348477",
+        "department": "Computer Science & Engineering",
+        "yearOfStudy": "3rd Year",
+        "passwordHash": "$2b$10$zXgcqZrvbvpzQrAjZ/w5Fusi860nftcml8hKhmh79aeGckmh87SnG"
+      },
+      "expiresAt": "2026-09-25T04:31:41.004Z",
+      "resendAvailableAt": "2026-09-25T04:22:41.004Z",
+      "attempts": 0,
+      "verified": true,
+      "_id": "7145f9fb5dd24db779eb421b",
+      "id": "7145f9fb5dd24db779eb421b",
+      "createdAt": "2026-09-25T04:21:41.004Z",
+      "updatedAt": "2026-09-25T04:22:04.685Z"
     }
   ]
 }
