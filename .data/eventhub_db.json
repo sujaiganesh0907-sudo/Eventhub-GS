@@ -46,6 +46,28 @@
       "id": "usr_student_alex",
       "createdAt": "2026-09-24T13:38:09.699Z",
       "updatedAt": "2026-09-24T13:38:09.699Z"
+    },
+    {
+      "email": "sureshmanikkavasagam123@gmail.com",
+      "passwordHash": "$2b$10$L5H/L5konlchy1qQdzVVw.ZJxTLlUrhIgsJUbqiPds929PZfhqztW",
+      "role": "Student",
+      "fullName": "Suresh",
+      "isEmailVerified": true,
+      "_id": "e9560105e93fa99a682097a6",
+      "id": "e9560105e93fa99a682097a6",
+      "createdAt": "2026-09-24T15:16:29.112Z",
+      "updatedAt": "2026-09-24T15:18:22.949Z"
+    },
+    {
+      "email": "sureshmanikkavasakam@gmail.com",
+      "passwordHash": "$2b$10$YFTdHF7Nk8eHUKu7uTg1juMTKlYaeLeXjdMboAuufHRGJ633x4RWG",
+      "role": "Student",
+      "fullName": "Suresh",
+      "isEmailVerified": true,
+      "_id": "0e324d4013afe7e579d45339",
+      "id": "0e324d4013afe7e579d45339",
+      "createdAt": "2026-09-25T01:31:11.968Z",
+      "updatedAt": "2026-09-25T01:31:11.968Z"
     }
   ],
   "studentProfiles": [
@@ -82,6 +104,46 @@
       "id": "prof_student_alex",
       "createdAt": "2026-09-24T13:38:09.699Z",
       "updatedAt": "2026-09-24T14:52:40.035Z"
+    },
+    {
+      "userId": "e9560105e93fa99a682097a6",
+      "fullName": "Suresh",
+      "email": "sureshmanikkavasagam123@gmail.com",
+      "collegeName": "Erode Sengunthar Engineering College",
+      "phoneNumber": "8610458285",
+      "department": "Computer Science & Engineering",
+      "yearOfStudy": "3rd Year",
+      "skills": [],
+      "achievements": [],
+      "followersCount": 0,
+      "followingCount": 0,
+      "connectionsCount": 0,
+      "_id": "d64333f639c7fdf3cbc7dcd2",
+      "id": "d64333f639c7fdf3cbc7dcd2",
+      "createdAt": "2026-09-24T15:16:29.112Z",
+      "updatedAt": "2026-09-24T15:18:22.949Z",
+      "bio": "I am a Computer Science Engineering student specializing in Cyber Security, with a strong interest in cybersecurity, cloud computing, and software development. I enjoy building practical projects, exploring new technologies, and continuously improving my technical and problem-solving skills. I am passionate about gaining real-world experience and developing secure, useful technology solutions.",
+      "location": "Erode",
+      "profilePhoto": "/uploads/upload-1790263054626-49822254.jpg",
+      "coverPhoto": "/uploads/upload-1790263049559-973993541.jpeg"
+    },
+    {
+      "userId": "0e324d4013afe7e579d45339",
+      "fullName": "Suresh",
+      "email": "sureshmanikkavasakam@gmail.com",
+      "collegeName": "M",
+      "phoneNumber": "8610458285",
+      "department": "Information Technology",
+      "yearOfStudy": "3rd Year",
+      "skills": [],
+      "achievements": [],
+      "followersCount": 0,
+      "followingCount": 0,
+      "connectionsCount": 0,
+      "_id": "ad99efcaa557ec5179fb7637",
+      "id": "ad99efcaa557ec5179fb7637",
+      "createdAt": "2026-09-25T01:31:11.968Z",
+      "updatedAt": "2026-09-25T01:31:11.968Z"
     }
   ],
   "colleges": [
@@ -594,6 +656,185 @@
       "id": "c3497ad6fbaa9aba34854ccb",
       "createdAt": "2026-09-24T14:52:40.061Z",
       "updatedAt": "2026-09-24T14:52:40.173Z"
+    },
+    {
+      "title": "AAAAAAAAAAAAA",
+      "poster": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&auto=format&fit=crop&q=80",
+      "hostCollegeId": "col_horizon_univ_02",
+      "hostCollegeName": "Horizon State University",
+      "hostCollegeLogo": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&auto=format&fit=crop&q=80",
+      "isCollegeVerified": true,
+      "category": "Hackathon",
+      "eventType": "Technical",
+      "tagline": "",
+      "description": "I am a Computer Science Engineering student specializing in Cyber Security, with a strong interest in cybersecurity, cloud computing, and software development. I enjoy building practical projects, exploring new technologies, and continuously improving my technical and problem-solving skills. I am passionate about gaining real-world experience and developing secure, useful technology solutions.",
+      "eventDate": "2026-10-08",
+      "startTime": "09:30",
+      "endTime": "17:30",
+      "registrationDeadline": "2026-10-04T15:21",
+      "reportingTime": "08:45 AM",
+      "registrationOpensOn": "2026-09-24",
+      "eventMode": "Hybrid",
+      "venue": "Main Campus Auditorium",
+      "hallRoom": "Seminar Hall 1",
+      "buildingBlock": "Computing Complex",
+      "address": "Campus Innovation Plaza",
+      "googleMapsLink": "",
+      "transportParkingNotes": "Visitor parking available near Gate 2.",
+      "meetingPlatform": "Google Meet",
+      "meetingLink": "https://meet.google.com/xyz-abcd-efg",
+      "registrationType": "Individual",
+      "minTeamSize": 1,
+      "maxTeamSize": 1,
+      "isFree": true,
+      "registrationFee": 0,
+      "capacity": 100,
+      "registeredCount": 0,
+      "educationLevel": [
+        "UG",
+        "PG"
+      ],
+      "departments": [
+        "Computer Science",
+        "Information Technology",
+        "All Disciplines"
+      ],
+      "eligibleYears": [
+        "1st Year",
+        "2nd Year",
+        "3rd Year",
+        "4th Year"
+      ],
+      "genderRestriction": "None",
+      "institutionRestriction": "Open to All Colleges",
+      "additionalEligibilityNotes": "Bring college student identity card.",
+      "rulesAndGuidelines": "1. Maintain academic integrity.\n2. Arrive on time with necessary materials.",
+      "hasMultipleRounds": true,
+      "rounds": [
+        {
+          "name": "Round 1: Screening & Idea Pitch",
+          "description": "Preliminary presentation of project concepts and architecture.",
+          "duration": "15 Mins",
+          "qualificationCriteria": "Top 50% advance to final demonstration.",
+          "judgingCriteria": "Innovation, Problem Statement, Feasibility"
+        },
+        {
+          "name": "Round 2: Prototype Evaluation",
+          "description": "Working demo before jury panel.",
+          "duration": "10 Mins",
+          "qualificationCriteria": "Podium awards selection",
+          "judgingCriteria": "Execution, Completeness, Design Quality"
+        }
+      ],
+      "requiredMaterials": "Laptop with charger and development environment.",
+      "thingsToCarry": "Government/College ID card.",
+      "softwareRequirements": "",
+      "hardwareRequirements": "",
+      "submissionRequirements": "GitHub repository or deck PDF.",
+      "dressCode": "Smart Casuals",
+      "prizeAvailable": true,
+      "totalPrizePool": 2000,
+      "firstPrize": "$1,000 + Trophy",
+      "secondPrize": "$600",
+      "thirdPrize": "$400",
+      "specialPrize": "Best Innovation Award ($200)",
+      "prizeNotes": "Cash prizes disbursed via direct bank transfer.",
+      "certificateAvailable": true,
+      "participationCertificate": true,
+      "winnerCertificate": true,
+      "certificateType": "Both",
+      "certificateEligibility": "All participants attending both rounds.",
+      "deliveryMethod": "Digital download on EVENTHUB.",
+      "primaryCoordinator": {
+        "name": "Suresh",
+        "role": "Lead Coordinator",
+        "phone": "+1 (555) 019-2834",
+        "email": "sureshmanikkavasagam123@gmail.com"
+      },
+      "secondaryCoordinator": {
+        "name": "Faculty In-Charge",
+        "role": "Staff Advisor",
+        "phone": "+1 (555) 982-3741",
+        "email": "faculty@college.edu"
+      },
+      "helpdeskContact": "+1 (555) 000-1122",
+      "facilities": {
+        "food": true,
+        "foodDetails": "Complimentary lunch and high tea snacks provided.",
+        "accommodation": false,
+        "accommodationDetails": "",
+        "transport": true,
+        "transportDetails": "Campus shuttle from central railway hub.",
+        "parking": true,
+        "parkingDetails": "Free on-campus parking in Visitor Bay."
+      },
+      "importantNotes": "Photography and recording permitted in designated zones.",
+      "reportingInstructions": "",
+      "idRequirement": "",
+      "paymentConfig": {
+        "payeeName": "Collegiate Event Account",
+        "upiId": "eventhub@upi",
+        "paymentQr": "",
+        "paymentInstructions": "Pay online via payment gateway or UPI reference.",
+        "refundPolicy": "70% refund for cancellations made 48 hours before event."
+      },
+      "customDetails": [
+        {
+          "id": "cd_wifi",
+          "label": "Campus Wi-Fi",
+          "type": "Short Text",
+          "value": "EVENTHUB_GUEST (Password: Hack2026)",
+          "description": "Available throughout the venue"
+        },
+        {
+          "id": "cd_1790263320569",
+          "label": "",
+          "type": "Short Text",
+          "value": "",
+          "description": ""
+        },
+        {
+          "id": "cd_1790263322237",
+          "label": "",
+          "type": "Short Text",
+          "value": "",
+          "description": ""
+        }
+      ],
+      "registrationQuestions": [
+        {
+          "id": "q_portfolio",
+          "label": "Portfolio or GitHub Profile Link",
+          "type": "Link",
+          "required": true,
+          "helperText": "Share your repositories or Behance profile"
+        },
+        {
+          "id": "q_diet",
+          "label": "Lunch Preference",
+          "type": "Dropdown",
+          "required": false,
+          "options": [
+            "Vegetarian",
+            "Non-Vegetarian",
+            "Vegan"
+          ]
+        }
+      ],
+      "creatorRole": "Student",
+      "creatorUserId": "e9560105e93fa99a682097a6",
+      "targetCollegeId": "col_horizon_univ_02",
+      "status": "Pending Approval",
+      "viewsCount": 2,
+      "attendanceCount": 0,
+      "certificatesIssuedCount": 0,
+      "_id": "a148f766ad6ab5f953b735b2",
+      "id": "a148f766ad6ab5f953b735b2",
+      "createdAt": "2026-09-24T15:22:07.230Z",
+      "updatedAt": "2026-09-24T15:22:07.255Z",
+      "$inc": {
+        "viewsCount": 1
+      }
     }
   ],
   "eventRegistrations": [],
@@ -734,11 +975,11 @@
       "title": "New Student Event Proposal",
       "message": "Student Alexander Chen submitted a proposal \"Autonomous Drone Obstacle Challenge 2026\" for your approval.",
       "link": "/college/events?tab=requests",
-      "read": false,
+      "read": true,
       "_id": "45bc131d8ac399e59c22f9a2",
       "id": "45bc131d8ac399e59c22f9a2",
       "createdAt": "2026-09-24T14:52:40.062Z",
-      "updatedAt": "2026-09-24T14:52:40.062Z"
+      "updatedAt": "2026-09-24T15:55:16.147Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -751,8 +992,65 @@
       "id": "2ce914a7fb49e1a2305af5c9",
       "createdAt": "2026-09-24T14:52:40.173Z",
       "updatedAt": "2026-09-24T14:52:40.173Z"
+    },
+    {
+      "recipientUserId": "usr_col_horizon_admin",
+      "type": "EVENT_APPROVAL",
+      "title": "New Student Event Proposal",
+      "message": "Student Suresh submitted a proposal \"AAAAAAAAAAAAA\" for your approval.",
+      "link": "/college/events?tab=requests",
+      "read": false,
+      "_id": "a5653d0dfb1e08f519d2908d",
+      "id": "a5653d0dfb1e08f519d2908d",
+      "createdAt": "2026-09-24T15:22:07.230Z",
+      "updatedAt": "2026-09-24T15:22:07.230Z"
     }
   ],
   "reminders": [],
-  "otpVerifications": []
+  "otpVerifications": [
+    {
+      "email": "sureshmanikkavasagam123@gmail.com",
+      "otpHash": "$2b$10$j6pQMbyNt.pUWVamcDOmM.MAlIJjcCRjUgNTFcI6njLHl17ikXTfe",
+      "purpose": "STUDENT_REGISTRATION",
+      "payload": {
+        "fullName": "Suresh",
+        "email": "sureshmanikkavasagam123@gmail.com",
+        "collegeName": "Erode Sengunthar Engineering College",
+        "phoneNumber": "8610458285",
+        "department": "Computer Science & Engineering",
+        "yearOfStudy": "3rd Year",
+        "passwordHash": "$2b$10$L5H/L5konlchy1qQdzVVw.ZJxTLlUrhIgsJUbqiPds929PZfhqztW"
+      },
+      "expiresAt": "2026-09-24T15:26:20.007Z",
+      "resendAvailableAt": "2026-09-24T15:17:20.007Z",
+      "attempts": 0,
+      "verified": true,
+      "_id": "4e8ec003eac3812bbd2ec5c2",
+      "id": "4e8ec003eac3812bbd2ec5c2",
+      "createdAt": "2026-09-24T15:16:20.007Z",
+      "updatedAt": "2026-09-24T15:16:29.112Z"
+    },
+    {
+      "email": "sureshmanikkavasakam@gmail.com",
+      "otpHash": "$2b$10$LsWB4./jOAZzosJY3f4FjuvfS0M6XuQH2qSayqvmhZuG3.lwGUrhG",
+      "purpose": "STUDENT_REGISTRATION",
+      "payload": {
+        "fullName": "Suresh",
+        "email": "sureshmanikkavasakam@gmail.com",
+        "collegeName": "M",
+        "phoneNumber": "8610458285",
+        "department": "Information Technology",
+        "yearOfStudy": "3rd Year",
+        "passwordHash": "$2b$10$YFTdHF7Nk8eHUKu7uTg1juMTKlYaeLeXjdMboAuufHRGJ633x4RWG"
+      },
+      "expiresAt": "2026-09-25T01:39:02.853Z",
+      "resendAvailableAt": "2026-09-25T01:30:02.853Z",
+      "attempts": 0,
+      "verified": true,
+      "_id": "9e285acd9af6668db063a1fa",
+      "id": "9e285acd9af6668db063a1fa",
+      "createdAt": "2026-09-25T01:29:02.853Z",
+      "updatedAt": "2026-09-25T01:31:11.968Z"
+    }
+  ]
 }
