@@ -6,8 +6,10 @@ import mongoose from 'mongoose';
 // MongoDB Atlas connection if URI is configured
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
+mongoose.set('bufferCommands', false);
+
 if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
+  mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 2000 })
     .then(() => console.log('Successfully connected to MongoDB Atlas.'))
     .catch((err) => console.warn('Could not connect to MongoDB Atlas, running on persistent embedded engine:', err.message));
 }

@@ -1,10 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { uploadMiddleware } from '../middleware/upload';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/', authenticate, uploadMiddleware.single('file'), (req: Request, res: Response) => {
+router.post('/', authenticate as any, uploadMiddleware.single('file') as any, (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file provided for upload.' });
