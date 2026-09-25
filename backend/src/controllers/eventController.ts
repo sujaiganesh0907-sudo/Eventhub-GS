@@ -492,3 +492,139 @@ export async function getEventInsights(req: AuthenticatedRequest, res: Response)
     return res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function updateEvent(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+
+    const { id } = req.params;
+    const event = await Event.findById(id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
+
+    const isStudent = user.role === 'Student';
+    const isCollegeStaff = user.role === 'College Super Admin' || user.role === 'College Admin';
+    const isCreator = event.creatorUserId === user._id;
+    const isHostCollege = isCollegeStaff && (event.hostCollegeId === user.collegeId || event.targetCollegeId === user.collegeId);
+
+    // Permission rules:
+    // Student can only edit before college approval (status !== 'Published')
+    if (isStudent) {
+      if (!isCreator) {
+        return res.status(403).json({ success: false, message: 'You can only edit events you created.' });
+      }
+      if (event.status === 'Published') {
+        return res.status(403).json({
+          success: false,
+          message: 'Approved events can no longer be edited by students. Contact the host college administrator.',
+        });
+      }
+    } else if (isCollegeStaff) {
+      if (!isHostCollege) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to edit events for this institution.' });
+      }
+    } else {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const body = req.body;
+    const updated = await Event.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          ...(body.title && { title: body.title }),
+          ...(body.poster && { poster: body.poster }),
+          ...(body.category && { category: body.category }),
+          ...(body.eventType && { eventType: body.eventType }),
+          ...(body.tagline !== undefined && { tagline: body.tagline }),
+          ...(body.description && { description: body.description }),
+          ...(body.eventDate && { eventDate: body.eventDate }),
+          ...(body.startTime && { startTime: body.startTime }),
+          ...(body.endTime && { endTime: body.endTime }),
+          ...(body.registrationDeadline && { registrationDeadline: body.registrationDeadline }),
+          ...(body.reportingTime !== undefined && { reportingTime: body.reportingTime }),
+          ...(body.eventMode && { eventMode: body.eventMode }),
+          ...(body.venue !== undefined && { venue: body.venue }),
+          ...(body.hallRoom !== undefined && { hallRoom: body.hallRoom }),
+          ...(body.buildingBlock !== undefined && { buildingBlock: body.buildingBlock }),
+          ...(body.address !== undefined && { address: body.address }),
+          ...(body.googleMapsLink !== undefined && { googleMapsLink: body.googleMapsLink }),
+          ...(body.meetingPlatform !== undefined && { meetingPlatform: body.meetingPlatform }),
+          ...(body.meetingLink !== undefined && { meetingLink: body.meetingLink }),
+          ...(body.registrationType && { registrationType: body.registrationType }),
+          ...(body.minTeamSize !== undefined && { minTeamSize: Number(body.minTeamSize) }),
+          ...(body.maxTeamSize !== undefined && { maxTeamSize: Number(body.maxTeamSize) }),
+          ...(body.isFree !== undefined && { isFree: Boolean(body.isFree) }),
+          ...(body.registrationFee !== undefined && { registrationFee: Number(body.registrationFee) }),
+          ...(body.capacity !== undefined && { capacity: Number(body.capacity) }),
+          ...(body.educationLevel && { educationLevel: body.educationLevel }),
+          ...(body.departments && { departments: body.departments }),
+          ...(body.eligibleYears && { eligibleYears: body.eligibleYears }),
+          ...(body.rulesAndGuidelines && { rulesAndGuidelines: body.rulesAndGuidelines }),
+          ...(body.hasMultipleRounds !== undefined && { hasMultipleRounds: Boolean(body.hasMultipleRounds) }),
+          ...(body.rounds && { rounds: body.rounds }),
+          ...(body.prizeAvailable !== undefined && { prizeAvailable: Boolean(body.prizeAvailable) }),
+          ...(body.totalPrizePool !== undefined && { totalPrizePool: Number(body.totalPrizePool) }),
+          ...(body.firstPrize !== undefined && { firstPrize: body.firstPrize }),
+          ...(body.secondPrize !== undefined && { secondPrize: body.secondPrize }),
+          ...(body.thirdPrize !== undefined && { thirdPrize: body.thirdPrize }),
+          ...(body.certificateAvailable !== undefined && { certificateAvailable: Boolean(body.certificateAvailable) }),
+          ...(body.primaryCoordinator && { primaryCoordinator: body.primaryCoordinator }),
+          ...(body.secondaryCoordinator !== undefined && { secondaryCoordinator: body.secondaryCoordinator }),
+          ...(body.customDetails && { customDetails: body.customDetails }),
+          ...(body.registrationQuestions && { registrationQuestions: body.registrationQuestions }),
+          ...(body.status && !isStudent && { status: body.status }),
+        },
+      }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Event updated successfully.',
+      event: updated ? enrichEvent(updated) : enrichEvent(event),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+
+    const { id } = req.params;
+    const event = await Event.findById(id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
+
+    const isStudent = user.role === 'Student';
+    const isCollegeStaff = user.role === 'College Super Admin' || user.role === 'College Admin';
+    const isCreator = event.creatorUserId === user._id;
+    const isHostCollege = isCollegeStaff && (event.hostCollegeId === user.collegeId || event.targetCollegeId === user.collegeId);
+
+    // Permission rules:
+    // Student can only delete before college approval (status !== 'Published')
+    if (isStudent) {
+      if (!isCreator) {
+        return res.status(403).json({ success: false, message: 'You can only delete events you created.' });
+      }
+      if (event.status === 'Published') {
+        return res.status(403).json({
+          success: false,
+          message: 'Approved events cannot be deleted by students. Contact the host college administrator.',
+        });
+      }
+    } else if (isCollegeStaff) {
+      if (!isHostCollege) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to delete events for this institution.' });
+      }
+    } else {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await Event.findByIdAndDelete(id);
+    return res.json({ success: true, message: 'Event deleted successfully.' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}

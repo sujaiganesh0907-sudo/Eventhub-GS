@@ -8,12 +8,14 @@ interface AddCertificateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (cert: any) => void;
+  certificateToEdit?: any | null;
 }
 
 export const AddCertificateModal: React.FC<AddCertificateModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  certificateToEdit,
 }) => {
   const [title, setTitle] = useState('');
   const [issuingOrganization, setIssuingOrganization] = useState('');
@@ -32,6 +34,36 @@ export const AddCertificateModal: React.FC<AddCertificateModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (certificateToEdit) {
+      setTitle(certificateToEdit.title || '');
+      setIssuingOrganization(certificateToEdit.issuingOrganization || '');
+      setAchievementType(certificateToEdit.achievementType || 'Winner');
+      setIssueDate(certificateToEdit.issueDate || new Date().toISOString().split('T')[0]);
+      setEventName(certificateToEdit.eventName || '');
+      setLocation(certificateToEdit.location || '');
+      setDescription(certificateToEdit.description || '');
+      setCredentialUrl(certificateToEdit.credentialUrl || '');
+      setFileUrl(certificateToEdit.fileUrl || '');
+      setVisibility(certificateToEdit.visibility || 'Public');
+      setIsDraft(Boolean(certificateToEdit.isDraft));
+    } else {
+      setTitle('');
+      setIssuingOrganization('');
+      setAchievementType('Winner');
+      setIssueDate(new Date().toISOString().split('T')[0]);
+      setEventName('');
+      setLocation('');
+      setDescription('');
+      setCredentialUrl('');
+      setFileUrl(
+        'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80'
+      );
+      setVisibility('Public');
+      setIsDraft(false);
+    }
+  }, [certificateToEdit, isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !issuingOrganization.trim() || !fileUrl) {
@@ -43,7 +75,7 @@ export const AddCertificateModal: React.FC<AddCertificateModalProps> = ({
     setError(null);
 
     try {
-      const res = await api.post<any>('/certificates/student', {
+      const payload = {
         title,
         issuingOrganization,
         achievementType,
@@ -55,7 +87,11 @@ export const AddCertificateModal: React.FC<AddCertificateModalProps> = ({
         fileUrl,
         visibility,
         isDraft,
-      });
+      };
+
+      const res = certificateToEdit
+        ? await api.patch<any>(`/certificates/${certificateToEdit._id}`, payload)
+        : await api.post<any>('/certificates/student', payload);
 
       if (res.success && res.certificate) {
         onSuccess(res.certificate);
@@ -74,8 +110,8 @@ export const AddCertificateModal: React.FC<AddCertificateModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add Award & Certificate"
-      subtitle="Showcase verifiable collegiate achievements on your Student ID"
+      title={certificateToEdit ? 'Edit Award & Certificate' : 'Add Award & Certificate'}
+      subtitle={certificateToEdit ? 'Update details of your existing credential' : 'Showcase verifiable collegiate achievements on your Student ID'}
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-2">

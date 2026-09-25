@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { StudentProfile, User, Connection, Follow, Certificate, EventRegistration } from '../models/index';
+import { StudentProfile, User, Connection, Follow, Certificate, EventRegistration, Event } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export async function getStudentProfile(req: Request, res: Response) {
@@ -24,7 +24,10 @@ export async function getStudentProfile(req: Request, res: Response) {
     }
 
     const certificatesCount = await Certificate.countDocuments({ studentId: profile._id, isDraft: false });
-    const eventsCount = await EventRegistration.countDocuments({ studentId: profile._id, status: 'Confirmed' });
+    const registeredCount = await EventRegistration.countDocuments({ studentId: profile._id });
+    const attendedEventsCount = await EventRegistration.countDocuments({ studentId: profile._id, attended: true });
+    const organizedCount = await Event.countDocuments({ creatorUserId: profile.userId });
+    const eventsCount = registeredCount + organizedCount;
     const connectionsCount = await Connection.countDocuments({ studentId: profile._id });
     const followersCount = await Follow.countDocuments({ followingStudentId: profile._id });
     const followingCount = await Follow.countDocuments({ followerStudentId: profile._id });
@@ -33,6 +36,9 @@ export async function getStudentProfile(req: Request, res: Response) {
       ...((profile as any).toObject ? (profile as any).toObject() : profile),
       certificatesCount,
       eventsCount,
+      registeredCount,
+      attendedEventsCount,
+      organizedCount,
       connectionsCount,
       followersCount,
       followingCount,

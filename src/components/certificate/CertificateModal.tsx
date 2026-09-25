@@ -1,13 +1,14 @@
 import React from 'react';
 import { Modal } from '../common/Modal';
 import { ICertificate } from '../../types';
-import { Download, Award, Calendar, Building2, MapPin, ExternalLink, ShieldCheck, Trash2 } from 'lucide-react';
+import { Download, Award, Calendar, Building2, MapPin, ExternalLink, ShieldCheck, Trash2, Edit3 } from 'lucide-react';
 
 interface CertificateModalProps {
   isOpen: boolean;
   onClose: () => void;
   certificate: ICertificate | null;
   onDelete?: (id: string) => void;
+  onEdit?: (cert: ICertificate) => void;
 }
 
 export const CertificateModal: React.FC<CertificateModalProps> = ({
@@ -15,6 +16,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
   onClose,
   certificate,
   onDelete,
+  onEdit,
 }) => {
   if (!certificate) return null;
 
@@ -112,7 +114,19 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
 
         {/* Actions Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-[var(--border-color)]">
-          <div>
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(certificate);
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-600 hover:bg-amber-500/10 flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Edit Details
+              </button>
+            )}
             {onDelete && (
               <button
                 type="button"

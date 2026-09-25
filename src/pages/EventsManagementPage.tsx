@@ -7,6 +7,8 @@ import { TicketModal } from '../components/registration/TicketModal';
 import { AttendanceModal } from '../components/attendance/AttendanceModal';
 import { EventInsightsModal } from '../components/event/EventInsightsModal';
 import { ReminderModal } from '../components/event/ReminderModal';
+import { OrganizedEventCard } from '../components/event/OrganizedEventCard';
+import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { Modal } from '../components/common/Modal';
 import {
   Calendar,
@@ -59,6 +61,28 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processingAction, setProcessingAction] = useState(false);
+
+  // Student proposal edit modal
+  const [editingProposal, setEditingProposal] = useState<IEvent | null>(null);
+  const [isEditProposalOpen, setIsEditProposalOpen] = useState(false);
+
+  const handleEditProposal = (event: IEvent) => {
+    setEditingProposal(event);
+    setIsEditProposalOpen(true);
+  };
+
+  const handleDeleteProposal = async (eventId: string) => {
+    try {
+      const res = await api.delete<any>(`/events/${eventId}`);
+      if (res.success) {
+        setStudentProposals((prev) => prev.filter((p) => p._id !== eventId));
+      } else {
+        alert(res.message || 'Failed to delete event proposal');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete event proposal');
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -310,44 +334,17 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {studentProposals.map((prop) => (
-                    <div
+                    <OrganizedEventCard
                       key={prop._id}
-                      className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-[var(--text-muted)]">
-                          {prop.category}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                            prop.status === 'Published'
-                              ? 'bg-emerald-500/10 text-emerald-600'
-                              : prop.status === 'Rejected'
-                              ? 'bg-red-500/10 text-red-600'
-                              : 'bg-amber-500/10 text-amber-600'
-                          }`}
-                        >
-                          {prop.status === 'Published' ? 'Approved & Live' : prop.status}
-                        </span>
-                      </div>
-
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">{prop.title}</h3>
-                      <p className="text-xs text-[var(--text-secondary)] line-clamp-2">{prop.description}</p>
-
-                      {prop.rejectionReason && (
-                        <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs">
-                          <span className="font-bold">Admin Feedback: </span>
-                          {prop.rejectionReason}
-                        </div>
-                      )}
-
-                      <div className="pt-2 border-t border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)]">
-                        <span>Date: {prop.eventDate}</span>
-                        <span>Fee: {prop.isFree ? 'Free' : `$${prop.registrationFee}`}</span>
-                      </div>
-                    </div>
+                      event={prop}
+                      isStudent={true}
+                      onViewEvent={onViewEvent}
+                      onEditEvent={handleEditProposal}
+                      onDeleteEvent={handleDeleteProposal}
+                      onViewInsights={(ev) => setSelectedEventForInsights(ev)}
+                    />
                   ))}
                 </div>
               )}
@@ -552,6 +549,24 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Edit Student Proposal Modal */}
+      {isEditProposalOpen && editingProposal && (
+        <MultiStepEventForm
+          isOpen={isEditProposalOpen}
+          eventToEdit={editingProposal}
+          isStudentProposal={true}
+          onClose={() => {
+            setIsEditProposalOpen(false);
+            setEditingProposal(null);
+          }}
+          onSuccess={(updated) => {
+            setIsEditProposalOpen(false);
+            setEditingProposal(null);
+            fetchData();
+          }}
+        />
       )}
     </div>
   );
