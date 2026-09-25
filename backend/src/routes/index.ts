@@ -16,6 +16,8 @@ import {
   getEvents,
   getEventById,
   createEvent,
+  updateEvent,
+  deleteEvent,
   approveStudentEvent,
   rejectStudentEvent,
   getStudentMyEvents,
@@ -112,6 +114,8 @@ apiRouter.get('/stats', getPublicStats);
 apiRouter.get('/events', getEvents);
 apiRouter.get('/events/:id', getEventById);
 apiRouter.post('/events', authenticate, createEvent);
+apiRouter.put('/events/:id', authenticate, updateEvent);
+apiRouter.delete('/events/:id', authenticate, deleteEvent);
 apiRouter.get('/events/:id/insights', authenticate, getEventInsights);
 apiRouter.post('/events/:id/approve', authenticate, requireRole(['College Super Admin', 'College Admin']), approveStudentEvent);
 apiRouter.post('/events/:id/reject', authenticate, requireRole(['College Super Admin', 'College Admin']), rejectStudentEvent);

@@ -334,7 +334,12 @@ const AppContent: React.FC = () => {
           )}
 
           {/* STUDENT PROFILE */}
-          {isAuthenticated && activeTab === 'profile' && <StudentProfilePage />}
+          {isAuthenticated && activeTab === 'profile' && (
+            <StudentProfilePage
+              onViewEvent={handleViewEvent}
+              onSelectCollege={handleViewCollege}
+            />
+          )}
 
           {/* COLLEGE PROFILE */}
           {isAuthenticated && activeTab === 'college-profile' && (

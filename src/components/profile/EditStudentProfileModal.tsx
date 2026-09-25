@@ -19,6 +19,7 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
   onSuccess,
 }) => {
   const [fullName, setFullName] = useState(profile.fullName || '');
+  const [collegeName, setCollegeName] = useState(profile.collegeName || '');
   const [phoneNumber, setPhoneNumber] = useState(profile.phoneNumber || '');
   const [department, setDepartment] = useState(profile.department || '');
   const [yearOfStudy, setYearOfStudy] = useState(profile.yearOfStudy || '');
@@ -51,6 +52,7 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
     try {
       const res = await api.put<any>('/students/profile', {
         fullName,
+        collegeName,
         phoneNumber,
         department,
         yearOfStudy,
@@ -122,6 +124,22 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
 
           <div>
             <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+              College / Institution *
+            </label>
+            <input
+              type="text"
+              required
+              value={collegeName}
+              onChange={(e) => setCollegeName(e.target.value)}
+              placeholder="e.g. Apex Institute of Technology"
+              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
               Phone Number
             </label>
             <input
@@ -131,9 +149,22 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+              Location
+            </label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="City, State"
+              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
               Department
@@ -163,19 +194,6 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
               <option value="Postgraduate">Postgraduate</option>
               <option value="Alumni">Alumni</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Location
-            </label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="City, State"
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
-            />
           </div>
         </div>
 

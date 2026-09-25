@@ -25,6 +25,7 @@ import { api } from '../../services/api';
 
 interface MultiStepEventFormProps {
   colleges?: ICollege[];
+  eventToEdit?: any | null;
   onSuccess: (event: any) => void;
   onCancel?: () => void;
   onClose?: () => void;
@@ -49,6 +50,7 @@ const STEPS = [
 
 export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   colleges: propColleges,
+  eventToEdit,
   onSuccess,
   onCancel,
   onClose,
@@ -227,6 +229,80 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     ] as IParticipantQuestion[],
   });
 
+  useEffect(() => {
+    if (eventToEdit) {
+      setFormData((prev) => ({
+        ...prev,
+        title: eventToEdit.title || '',
+        poster: eventToEdit.poster || prev.poster,
+        targetCollegeId: eventToEdit.targetCollegeId || eventToEdit.hostCollegeId || prev.targetCollegeId,
+        category: eventToEdit.category || 'Hackathon',
+        eventType: eventToEdit.eventType || 'Technical',
+        tagline: eventToEdit.tagline || '',
+        description: eventToEdit.description || '',
+        eventDate: eventToEdit.eventDate || prev.eventDate,
+        startTime: eventToEdit.startTime || '09:30',
+        endTime: eventToEdit.endTime || '17:30',
+        registrationDeadline: eventToEdit.registrationDeadline ? eventToEdit.registrationDeadline.slice(0, 16) : prev.registrationDeadline,
+        reportingTime: eventToEdit.reportingTime || '',
+        registrationOpensOn: eventToEdit.registrationOpensOn || prev.registrationOpensOn,
+        eventMode: eventToEdit.eventMode || 'Offline',
+        venue: eventToEdit.venue || '',
+        hallRoom: eventToEdit.hallRoom || '',
+        buildingBlock: eventToEdit.buildingBlock || '',
+        address: eventToEdit.address || '',
+        googleMapsLink: eventToEdit.googleMapsLink || '',
+        transportParkingNotes: eventToEdit.transportParkingNotes || '',
+        meetingPlatform: eventToEdit.meetingPlatform || '',
+        meetingLink: eventToEdit.meetingLink || '',
+        registrationType: eventToEdit.registrationType || 'Individual',
+        minTeamSize: eventToEdit.minTeamSize || 2,
+        maxTeamSize: eventToEdit.maxTeamSize || 4,
+        isFree: eventToEdit.isFree !== undefined ? eventToEdit.isFree : true,
+        registrationFee: eventToEdit.registrationFee || 0,
+        capacity: eventToEdit.capacity || 100,
+        educationLevel: eventToEdit.educationLevel || ['UG', 'PG'],
+        departments: eventToEdit.departments || ['All Disciplines'],
+        eligibleYears: eventToEdit.eligibleYears || ['All Years'],
+        genderRestriction: eventToEdit.genderRestriction || 'None',
+        institutionRestriction: eventToEdit.institutionRestriction || 'Open to All Colleges',
+        additionalEligibilityNotes: eventToEdit.additionalEligibilityNotes || '',
+        rulesAndGuidelines: eventToEdit.rulesAndGuidelines || '',
+        hasMultipleRounds: eventToEdit.hasMultipleRounds || false,
+        rounds: eventToEdit.rounds || [],
+        requiredMaterials: eventToEdit.requiredMaterials || '',
+        thingsToCarry: eventToEdit.thingsToCarry || '',
+        softwareRequirements: eventToEdit.softwareRequirements || '',
+        hardwareRequirements: eventToEdit.hardwareRequirements || '',
+        submissionRequirements: eventToEdit.submissionRequirements || '',
+        dressCode: eventToEdit.dressCode || '',
+        prizeAvailable: eventToEdit.prizeAvailable || false,
+        totalPrizePool: eventToEdit.totalPrizePool || 0,
+        firstPrize: eventToEdit.firstPrize || '',
+        secondPrize: eventToEdit.secondPrize || '',
+        thirdPrize: eventToEdit.thirdPrize || '',
+        specialPrize: eventToEdit.specialPrize || '',
+        prizeNotes: eventToEdit.prizeNotes || '',
+        certificateAvailable: eventToEdit.certificateAvailable || false,
+        participationCertificate: eventToEdit.participationCertificate || false,
+        winnerCertificate: eventToEdit.winnerCertificate || false,
+        certificateType: eventToEdit.certificateType || 'Digital',
+        certificateEligibility: eventToEdit.certificateEligibility || '',
+        deliveryMethod: eventToEdit.deliveryMethod || '',
+        primaryCoordinator: eventToEdit.primaryCoordinator || prev.primaryCoordinator,
+        secondaryCoordinator: eventToEdit.secondaryCoordinator || prev.secondaryCoordinator,
+        helpdeskContact: eventToEdit.helpdeskContact || '',
+        facilities: eventToEdit.facilities || prev.facilities,
+        importantNotes: eventToEdit.importantNotes || '',
+        reportingInstructions: eventToEdit.reportingInstructions || '',
+        idRequirement: eventToEdit.idRequirement || '',
+        paymentConfig: eventToEdit.paymentConfig || prev.paymentConfig,
+        customDetails: eventToEdit.customDetails || [],
+        registrationQuestions: eventToEdit.registrationQuestions || [],
+      }));
+    }
+  }, [eventToEdit]);
+
   const updateField = (field: string, val: any) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
   };
@@ -314,14 +390,17 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         saveAsDraft,
       };
 
-      const res = await api.post<any>('/events', payload);
+      const res = eventToEdit
+        ? await api.put<any>(`/events/${eventToEdit._id}`, payload)
+        : await api.post<any>('/events', payload);
+
       if (res.success) {
         onSuccess(res.event);
       } else {
-        setError(res.message || 'Failed to create event');
+        setError(res.message || 'Failed to save event');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to create event. Please verify all fields.');
+      setError(err.message || 'Failed to save event. Please verify all fields.');
     } finally {
       setSubmitting(false);
     }
@@ -333,7 +412,9 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
       <div className="mb-6 pb-4 border-b border-[var(--border-color)] flex items-center justify-between">
         <div>
           <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">
-            {isStudent ? 'Create Student Event Proposal' : 'Create & Publish College Event'}
+            {eventToEdit
+              ? (isStudent ? 'Edit Student Event Proposal' : 'Edit Event')
+              : (isStudent ? 'Create Student Event Proposal' : 'Create & Publish College Event')}
           </h2>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
             Step {currentStep} of 12: {STEPS[currentStep - 1].name}

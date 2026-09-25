@@ -42,6 +42,8 @@ export interface IStudentProfile {
   connectionsCount: number;
   certificatesCount?: number;
   eventsCount?: number;
+  registeredCount?: number;
+  organizedCount?: number;
 }
 
 export interface ICollege {
@@ -57,6 +59,7 @@ export interface ICollege {
   logo: string;
   coverPhoto: string;
   verificationStatus: 'Pending' | 'Verified' | 'Rejected';
+  isVerified?: boolean;
   rejectionReason?: string;
   superAdminId: string;
   connectionsCount: number;
@@ -193,7 +196,7 @@ export interface IEvent {
   creatorRole: 'Student' | 'College';
   creatorUserId: string;
   targetCollegeId?: string;
-  status: 'Draft' | 'Pending Approval' | 'Published' | 'Rejected' | 'Completed' | 'Cancelled';
+  status: 'Draft' | 'Pending Approval' | 'Changes Requested' | 'Approved' | 'Published' | 'Rejected' | 'Completed' | 'Cancelled';
   rejectionReason?: string;
   viewsCount: number;
   attendanceCount: number;

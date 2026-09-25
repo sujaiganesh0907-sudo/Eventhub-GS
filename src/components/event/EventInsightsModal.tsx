@@ -68,8 +68,13 @@ export const EventInsightsModal: React.FC<EventInsightsModalProps> = ({
                   <Eye className="w-3.5 h-3.5" /> Total Views
                 </span>
                 <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
-                  {insights.viewsCount || 0}
+                  {insights.views ?? insights.viewsCount ?? 0}
                 </span>
+                {insights.conversionRate !== undefined && (
+                  <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                    {insights.conversionRate}% conversion
+                  </span>
+                )}
               </div>
 
               <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
@@ -77,7 +82,10 @@ export const EventInsightsModal: React.FC<EventInsightsModalProps> = ({
                   <Users className="w-3.5 h-3.5" /> Registrations
                 </span>
                 <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
-                  {insights.totalRegistrations || 0} / {insights.capacity || event.capacity}
+                  {insights.registrations ?? insights.totalRegistrations ?? 0} / {insights.capacity || event.capacity}
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                  {insights.seatsFilledPercent || 0}% capacity
                 </span>
               </div>
 
@@ -86,7 +94,10 @@ export const EventInsightsModal: React.FC<EventInsightsModalProps> = ({
                   <CheckCircle2 className="w-3.5 h-3.5" /> Attendance Rate
                 </span>
                 <span className="text-xl font-black text-emerald-600 mt-1 block">
-                  {insights.attendanceRate}% ({insights.attendedCount})
+                  {insights.attendanceRate || 0}% ({insights.attendanceCount ?? insights.attendedCount ?? 0})
+                </span>
+                <span className="text-[10px] text-emerald-600/80 font-medium">
+                  Present attendees
                 </span>
               </div>
 
@@ -95,7 +106,10 @@ export const EventInsightsModal: React.FC<EventInsightsModalProps> = ({
                   <DollarSign className="w-3.5 h-3.5" /> Total Revenue
                 </span>
                 <span className="text-xl font-black text-[var(--primary-color)] mt-1 block">
-                  ${insights.totalRevenue || 0}
+                  ${insights.revenue ?? insights.totalRevenue ?? 0}
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                  {event.isFree ? 'Free Event' : `Fee: $${event.registrationFee}`}
                 </span>
               </div>
             </div>
