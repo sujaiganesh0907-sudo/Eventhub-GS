@@ -41,6 +41,11 @@ async function startServer() {
     res.json({ status: 'ok', service: 'EVENTHUB Full-Stack Engine', time: new Date().toISOString() });
   });
 
+  // Direct any index requests straight to the web browser root
+  app.get(['/index', '/index.ts', '/index.js'], (_req, res) => {
+    res.redirect('/');
+  });
+
   if (isProd) {
     // In production, serve built client from dist/
     const distDir = path.resolve(process.cwd(), 'dist');
@@ -58,7 +63,21 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`EVENTHUB server running at http://0.0.0.0:${PORT}`);
+    const localUrl = `http://localhost:${PORT}`;
+    console.log(`\n==================================================`);
+    console.log(`  EVENTHUB Web Application is Live!`);
+    console.log(`  Directing to web browser: ${localUrl}`);
+    console.log(`  Network access:         http://0.0.0.0:${PORT}`);
+    console.log(`==================================================\n`);
+
+    // In local non-CI environments, attempt to automatically open default browser
+    if (process.env.NODE_ENV !== 'production' && !process.env.CI && process.env.OPEN_BROWSER === 'true') {
+      import('child_process').then(({ exec }) => {
+        const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+        exec(`${cmd} ${localUrl}`, () => {});
+      }).catch(() => {});
+    }
+
     // Run reminder processor every 20 seconds
     setInterval(() => {
       processDueReminders().catch((e) => console.error('Error in reminder processor:', e));
