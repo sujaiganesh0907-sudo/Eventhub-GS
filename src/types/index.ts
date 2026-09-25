@@ -201,6 +201,11 @@ export interface IEvent {
   viewsCount: number;
   attendanceCount: number;
   certificatesIssuedCount: number;
+  attendanceFinalized?: boolean;
+  attendanceFinalizedAt?: string;
+  attendanceFinalizedBy?: string;
+  certificateTemplateUrl?: string;
+  certificateTemplateName?: string;
   createdAt: string;
 }
 
@@ -229,14 +234,35 @@ export interface IEventRegistration {
   status: 'Confirmed' | 'Pending' | 'Cancelled';
   attended: boolean;
   attendedAt?: string;
+  attendanceMethod?: 'QR_SCAN' | 'MANUAL';
   certificateIssued: boolean;
   certificateId?: string;
+  certificateStatus?: 'Not Eligible' | 'Pending' | 'Generated' | 'Sent' | 'Failed';
+  certificateEmailSent?: boolean;
+  certificateProfilePublished?: boolean;
+  certificateFileUrl?: string;
   qrToken: string;
   qrCodeUrl?: string;
   createdAt: string;
   event?: IEvent;
   eventTitle?: string;
   eventDate?: string;
+}
+
+export interface IReminder {
+  _id: string;
+  id?: string;
+  studentId: string;
+  studentUserId?: string;
+  eventId: string;
+  registrationId?: string;
+  reminderType: '1_day_before' | '3_hours_before' | '1_hour_before' | '30_mins_before' | 'custom';
+  reminderDate?: string;
+  reminderTime: string;
+  status: 'Pending' | 'Triggered' | 'Cancelled';
+  notified: boolean;
+  createdAt: string;
+  event?: IEvent;
 }
 
 export interface ICertificate {

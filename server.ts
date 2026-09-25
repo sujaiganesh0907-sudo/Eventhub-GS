@@ -5,6 +5,7 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import apiRouter from './backend/src/routes/index';
 import { seedDatabaseIfEmpty } from './backend/src/config/seed';
+import { processDueReminders } from './backend/src/controllers/reminderController';
 
 const PORT = Number(process.env.PORT) || 3000;
 const isProd = process.env.NODE_ENV === 'production';
@@ -58,6 +59,10 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`EVENTHUB server running at http://0.0.0.0:${PORT}`);
+    // Run reminder processor every 20 seconds
+    setInterval(() => {
+      processDueReminders().catch((e) => console.error('Error in reminder processor:', e));
+    }, 20000);
   });
 }
 

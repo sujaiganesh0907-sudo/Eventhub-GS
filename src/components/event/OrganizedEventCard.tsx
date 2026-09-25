@@ -22,6 +22,7 @@ interface OrganizedEventCardProps {
   onEditEvent?: (event: IEvent) => void;
   onDeleteEvent?: (eventId: string) => void;
   onViewInsights?: (event: IEvent) => void;
+  onOpenCheckInDesk?: (event: IEvent) => void;
 }
 
 export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
@@ -31,6 +32,7 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
   onEditEvent,
   onDeleteEvent,
   onViewInsights,
+  onOpenCheckInDesk,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -238,19 +240,37 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
                     </>
                   )}
 
-                  {/* After Approval: Student can only View & See Insights */}
-                  {(isApproved || isCompleted) && onViewInsights && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpen(false);
-                        onViewInsights(event);
-                      }}
-                      className="w-full px-3 py-2 text-xs font-semibold text-left text-[var(--text-primary)] hover:bg-[var(--surface-hover)] flex items-center gap-2 cursor-pointer transition-colors"
-                    >
-                      <BarChart3 className="w-3.5 h-3.5 text-emerald-500" /> Event Insights
-                    </button>
+                  {/* After Approval: Student can View, Open Check-In Desk, and See Insights */}
+                  {(isApproved || isCompleted) && (
+                    <>
+                      {onOpenCheckInDesk && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpen(false);
+                            onOpenCheckInDesk(event);
+                          }}
+                          className="w-full px-3 py-2 text-xs font-semibold text-left text-[var(--text-primary)] hover:bg-[var(--surface-hover)] flex items-center gap-2 cursor-pointer transition-colors"
+                        >
+                          <Users className="w-3.5 h-3.5 text-purple-500" /> Check-In Desk
+                        </button>
+                      )}
+
+                      {onViewInsights && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpen(false);
+                            onViewInsights(event);
+                          }}
+                          className="w-full px-3 py-2 text-xs font-semibold text-left text-[var(--text-primary)] hover:bg-[var(--surface-hover)] flex items-center gap-2 cursor-pointer transition-colors"
+                        >
+                          <BarChart3 className="w-3.5 h-3.5 text-emerald-500" /> Event Insights
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}

@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { User, CollegeAdminMembership, College } from '../models/index';
+import { User, CollegeAdminMembership } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export async function getCollegeAdmins(req: AuthenticatedRequest, res: Response) {
@@ -22,7 +22,13 @@ export async function addCollegeAdmin(req: AuthenticatedRequest, res: Response) 
       return res.status(403).json({ success: false, message: 'Only College Super Admin can add authorized administrators.' });
     }
 
-    const { name, email, password = 'Password123!', permissions = ['EVENTS_MANAGE', 'ATTENDANCE_SCAN', 'CERTIFICATES_ISSUE'] } = req.body;
+    const {
+      name,
+      email,
+      password = 'Password123!',
+      permissions = ['EVENTS_MANAGE', 'ATTENDANCE_SCAN', 'CERTIFICATES_ISSUE', 'ANALYTICS_VIEW'],
+    } = req.body;
+
     if (!name || !email) {
       return res.status(400).json({ success: false, message: 'Admin name and email are required.' });
     }
@@ -87,6 +93,45 @@ export async function addCollegeAdmin(req: AuthenticatedRequest, res: Response) 
       success: true,
       message: 'Authorized college administrator added successfully.',
       membership,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateCollegeAdmin(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user || user.role !== 'College Super Admin' || !user.collegeId) {
+      return res.status(403).json({ success: false, message: 'Only College Super Admin can update administrator permissions.' });
+    }
+
+    const { membershipId } = req.params;
+    const { name, permissions } = req.body;
+
+    const membership = await CollegeAdminMembership.findById(membershipId);
+    if (!membership) return res.status(404).json({ success: false, message: 'Membership not found.' });
+
+    if (membership.collegeId !== user.collegeId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized for this institution.' });
+    }
+
+    if (membership.role === 'College Super Admin') {
+      return res.status(400).json({ success: false, message: 'Cannot modify primary Super Admin permissions.' });
+    }
+
+    const updated = await CollegeAdminMembership.findByIdAndUpdate(
+      membershipId,
+      {
+        name: name || membership.name,
+        permissions: permissions || membership.permissions,
+      }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Administrator permissions updated successfully.',
+      membership: updated,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

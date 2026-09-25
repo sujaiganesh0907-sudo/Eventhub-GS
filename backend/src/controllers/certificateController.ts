@@ -14,8 +14,8 @@ import { AuthenticatedRequest } from '../middleware/auth';
 export async function issueCertificate(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
-    if (!user || !user.collegeId) {
-      return res.status(403).json({ success: false, message: 'Only authorized college organizers can issue certificates.' });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
     const {
@@ -40,10 +40,25 @@ export async function issueCertificate(req: AuthenticatedRequest, res: Response)
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
 
+    // Authorization check
+    let authorized = false;
+    if (user.role === 'Student') {
+      authorized = event.creatorUserId === user._id && ['Published', 'Approved', 'Completed'].includes(event.status);
+    } else if (user.collegeId && user.collegeId === event.hostCollegeId) {
+      authorized = true;
+    }
+
+    if (!authorized) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to issue certificates for this event.',
+      });
+    }
+
     const registration = await EventRegistration.findOne({ registrationId, eventId });
     if (!registration) return res.status(404).json({ success: false, message: 'Registration not found.' });
 
-    const college = await College.findById(user.collegeId);
+    const college = user.collegeId ? await College.findById(user.collegeId) : null;
     const issuingOrg = college ? college.name : event.hostCollegeName;
 
     // Generate unique Certificate ID
@@ -176,7 +191,12 @@ export async function getMyCertificates(req: AuthenticatedRequest, res: Response
     }
 
     const { includeDrafts } = req.query;
-    const filter: any = { studentId: studentProfile._id };
+    const filter: any = {
+      $or: [
+        { studentId: studentProfile._id },
+        { studentUserId: user._id },
+      ],
+    };
     if (includeDrafts !== 'true') {
       filter.isDraft = false;
     }
@@ -230,3 +250,56 @@ export async function updateCertificate(req: AuthenticatedRequest, res: Response
     return res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function retryCertificateEmail(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    let cert = await Certificate.findOne({
+      $or: [{ _id: id }, { certificateId: id }, { registrationId: id }],
+    });
+
+    if (!cert) {
+      return res.status(404).json({ success: false, message: 'Certificate not found.' });
+    }
+
+    const reg = await EventRegistration.findOne({
+      $or: [{ certificateId: cert.certificateId }, { registrationId: cert.registrationId }],
+    });
+
+    if (!reg) {
+      return res.status(404).json({ success: false, message: 'Registration record not found for certificate.' });
+    }
+
+    const { sendCertificateEmail } = await import('../services/emailService');
+    const emailRes = await sendCertificateEmail({
+      recipientEmail: reg.studentEmail,
+      studentName: reg.studentName,
+      eventTitle: cert.eventName || 'Collegiate Event',
+      issuingCollegeName: cert.issuingOrganization,
+      certificateId: cert.certificateId,
+      certificateUrl: cert.fileUrl,
+    });
+
+    if (emailRes.success) {
+      await Certificate.findByIdAndUpdate(cert._id, { emailStatus: 'Sent' });
+      await EventRegistration.findByIdAndUpdate(reg._id, {
+        certificateEmailSent: true,
+        certificateStatus: 'Sent',
+      });
+      return res.json({ success: true, message: `Certificate email successfully dispatched to ${reg.studentEmail}.` });
+    } else {
+      await Certificate.findByIdAndUpdate(cert._id, { emailStatus: 'Failed', emailError: emailRes.error });
+      await EventRegistration.findByIdAndUpdate(reg._id, {
+        certificateEmailSent: false,
+        certificateStatus: 'Failed',
+      });
+      return res.status(500).json({ success: false, message: emailRes.error || 'Failed to send certificate email.' });
+    }
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+

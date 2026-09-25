@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { PaymentModal } from './PaymentModal';
 import { TicketModal } from './TicketModal';
+import { FileUpload } from '../common/FileUpload';
 import {
   User,
   Mail,
@@ -69,7 +70,14 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     } else if (step === 2) {
       // Validate required questions
       for (const q of event.registrationQuestions || []) {
-        if (q.required && !customResponses[q.id]) {
+        const val = customResponses[q.id];
+        const isEmpty =
+          val === undefined ||
+          val === null ||
+          (typeof val === 'string' && val.trim() === '') ||
+          (Array.isArray(val) && val.length === 0);
+
+        if (q.required && isEmpty) {
           setError(`Please answer the required question: "${q.label}"`);
           return;
         }
@@ -246,57 +254,179 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 Event Organizer Specific Questions
               </h4>
 
-              {event.registrationQuestions.map((q) => (
-                <div key={q.id} className="space-y-1">
-                  <label className="block text-xs font-semibold text-[var(--text-primary)]">
-                    {q.label} {q.required && <span className="text-red-500">*</span>}
-                  </label>
-                  {q.helperText && <p className="text-[11px] text-[var(--text-muted)]">{q.helperText}</p>}
+              {event.registrationQuestions.map((q) => {
+                const currentVal = customResponses[q.id];
 
-                  {q.type === 'Short Answer' && (
-                    <input
-                      type="text"
-                      value={customResponses[q.id] || ''}
-                      onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)]"
-                    />
-                  )}
+                return (
+                  <div key={q.id} className="space-y-1">
+                    <label className="block text-xs font-semibold text-[var(--text-primary)]">
+                      {q.label} {q.required && <span className="text-red-500">*</span>}
+                    </label>
+                    {q.helperText && <p className="text-[11px] text-[var(--text-muted)]">{q.helperText}</p>}
 
-                  {q.type === 'Long Answer' && (
-                    <textarea
-                      rows={3}
-                      value={customResponses[q.id] || ''}
-                      onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)]"
-                    />
-                  )}
+                    {/* Short Answer / Text */}
+                    {(q.type === 'Short Answer' || q.type === 'Text') && (
+                      <input
+                        type="text"
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    )}
 
-                  {q.type === 'Link' && (
-                    <input
-                      type="url"
-                      placeholder="https://..."
-                      value={customResponses[q.id] || ''}
-                      onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)]"
-                    />
-                  )}
+                    {/* Long Answer / Textarea */}
+                    {(q.type === 'Long Answer' || q.type === 'Textarea') && (
+                      <textarea
+                        rows={3}
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    )}
 
-                  {q.type === 'Dropdown' && q.options && (
-                    <select
-                      value={customResponses[q.id] || ''}
-                      onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)]"
-                    >
-                      <option value="">Select option</option>
-                      {q.options.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              ))}
+                    {/* Number */}
+                    {q.type === 'Number' && (
+                      <input
+                        type="number"
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    )}
+
+                    {/* Email */}
+                    {q.type === 'Email' && (
+                      <input
+                        type="email"
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    )}
+
+                    {/* Phone */}
+                    {(q.type === 'Phone' || q.type === 'Tel') && (
+                      <input
+                        type="tel"
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    )}
+
+                    {/* Date */}
+                    {q.type === 'Date' && (
+                      <input
+                        type="date"
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    )}
+
+                    {/* Link / URL */}
+                    {(q.type === 'Link' || q.type === 'URL') && (
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    )}
+
+                    {/* Dropdown */}
+                    {(q.type === 'Dropdown' || q.type === 'Select') && q.options && (
+                      <select
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                      >
+                        <option value="">Select an option</option>
+                        {q.options.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {/* Multiple Choice / Single Choice (Radio) */}
+                    {(q.type === 'Multiple Choice' || q.type === 'MCQ' || q.type === 'Radio') && q.options && (
+                      <div className="space-y-1.5 pt-1">
+                        {q.options.map((opt) => (
+                          <label
+                            key={opt}
+                            className={`flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                              currentVal === opt
+                                ? 'border-[var(--primary-color)] bg-[var(--primary-light)] font-semibold text-[var(--primary-color)]'
+                                : 'border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)]'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${q.id}`}
+                              value={opt}
+                              checked={currentVal === opt}
+                              onChange={() => setCustomResponses({ ...customResponses, [q.id]: opt })}
+                              className="accent-[var(--primary-color)]"
+                            />
+                            <span>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Checkbox / Multiple Selection */}
+                    {(q.type === 'Checkbox' || q.type === 'Multi-Select') && q.options && (
+                      <div className="space-y-1.5 pt-1">
+                        {q.options.map((opt) => {
+                          const selectedList: string[] = Array.isArray(currentVal) ? currentVal : [];
+                          const isChecked = selectedList.includes(opt);
+
+                          return (
+                            <label
+                              key={opt}
+                              className={`flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                                isChecked
+                                  ? 'border-[var(--primary-color)] bg-[var(--primary-light)] font-semibold text-[var(--primary-color)]'
+                                  : 'border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)]'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                value={opt}
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const nextList = e.target.checked
+                                    ? [...selectedList, opt]
+                                    : selectedList.filter((item) => item !== opt);
+                                  setCustomResponses({ ...customResponses, [q.id]: nextList });
+                                }}
+                                className="accent-[var(--primary-color)] rounded-xs"
+                              />
+                              <span>{opt}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* File Upload / Image Upload */}
+                    {(q.type === 'File Upload' || q.type === 'Image Upload' || q.type === 'File' || q.type === 'Image') && (
+                      <div className="pt-1">
+                        <FileUpload
+                          label={undefined}
+                          value={currentVal || ''}
+                          onChange={(url) => setCustomResponses({ ...customResponses, [q.id]: url })}
+                          accept={q.type.includes('Image') ? 'image/jpeg,image/png,image/webp' : undefined}
+                          maxSizeMB={15}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 

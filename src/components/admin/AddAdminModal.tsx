@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { api } from '../../services/api';
-import { AlertCircle, Check, UserPlus } from 'lucide-react';
+import { AlertCircle, Check, UserPlus, Shield, Edit3 } from 'lucide-react';
 
 interface AddAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (admin: any) => void;
   currentAdminCount: number;
+  adminToEdit?: any | null;
 }
 
 export const AddAdminModal: React.FC<AddAdminModalProps> = ({
@@ -15,23 +16,49 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
   onClose,
   onSuccess,
   currentAdminCount,
+  adminToEdit,
 }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(adminToEdit?.name || '');
+  const [email, setEmail] = useState(adminToEdit?.email || '');
   const [password, setPassword] = useState('AdminSecurePass123!');
-  const [permissions, setPermissions] = useState<string[]>([
-    'EVENTS_MANAGE',
-    'ATTENDANCE_SCAN',
-    'CERTIFICATES_ISSUE',
-  ]);
+  const [permissions, setPermissions] = useState<string[]>(
+    adminToEdit?.permissions || [
+      'EVENTS_MANAGE',
+      'ATTENDANCE_MANAGE',
+      'CERTIFICATES_MANAGE',
+      'ANALYTICS_VIEW',
+    ]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (adminToEdit) {
+      setName(adminToEdit.name || '');
+      setEmail(adminToEdit.email || '');
+      setPermissions(adminToEdit.permissions || []);
+    } else {
+      setName('');
+      setEmail('');
+      setPassword('AdminSecurePass123!');
+      setPermissions([
+        'EVENTS_MANAGE',
+        'ATTENDANCE_MANAGE',
+        'CERTIFICATES_MANAGE',
+        'ANALYTICS_VIEW',
+      ]);
+    }
+  }, [adminToEdit, isOpen]);
+
   const availablePermissions = [
     { id: 'EVENTS_MANAGE', label: 'Create & Manage Events' },
-    { id: 'ATTENDANCE_SCAN', label: 'Scan & Mark Entry Attendance' },
-    { id: 'CERTIFICATES_ISSUE', label: 'Issue Verified Certificates' },
-    { id: 'PROPOSALS_REVIEW', label: 'Review Student Event Proposals' },
+    { id: 'ATTENDANCE_MANAGE', label: 'Check-In Desk, Scan QR & Mark Attendance' },
+    { id: 'CERTIFICATES_MANAGE', label: 'Issue & Manage Verified Certificates' },
+    { id: 'ANALYTICS_VIEW', label: 'View Analytics & Registered Students Roster' },
+    { id: 'REGISTRATIONS_MANAGE', label: 'Manage Participant Registrations & Passes' },
+    { id: 'PROPOSALS_REVIEW', label: 'Review & Approve Student Event Proposals' },
+    { id: 'PLACEMENTS_MANAGE', label: 'Manage Placement Drives & Statistics' },
+    { id: 'INFRASTRUCTURE_MANAGE', label: 'Manage Campus Facilities & Infrastructure' },
   ];
 
   const handleTogglePermission = (id: string) => {
@@ -44,12 +71,16 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      setError('Admin name and email address are required.');
+    if (!name.trim()) {
+      setError('Administrator name is required.');
+      return;
+    }
+    if (!adminToEdit && !email.trim()) {
+      setError('Official email address is required.');
       return;
     }
 
-    if (currentAdminCount >= 10) {
+    if (!adminToEdit && currentAdminCount >= 10) {
       setError('Maximum limit of 10 authorized college administrators reached.');
       return;
     }
@@ -58,21 +89,29 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
     setError(null);
 
     try {
-      const res = await api.post<any>('/admins', {
-        name,
-        email,
-        password,
-        permissions,
-      });
+      let res: any;
+      if (adminToEdit?._id) {
+        res = await api.put<any>(`/admins/${adminToEdit._id}`, {
+          name,
+          permissions,
+        });
+      } else {
+        res = await api.post<any>('/admins', {
+          name,
+          email,
+          password,
+          permissions,
+        });
+      }
 
       if (res.success && res.membership) {
         onSuccess(res.membership);
         onClose();
       } else {
-        setError(res.message || 'Failed to add administrator');
+        setError(res.message || 'Failed to save administrator.');
       }
     } catch (err: any) {
-      setError(err.message || 'Error adding administrator');
+      setError(err.message || 'Error processing administrator update.');
     } finally {
       setLoading(false);
     }
@@ -82,8 +121,12 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add Authorized College Administrator"
-      subtitle={`Staff & Event Coordinator Delegation (${currentAdminCount}/10 slots used)`}
+      title={adminToEdit ? 'Edit Administrator Permissions' : 'Add Authorized College Administrator'}
+      subtitle={
+        adminToEdit
+          ? `${adminToEdit.name} (${adminToEdit.email})`
+          : `Staff & Event Coordinator Delegation (${currentAdminCount}/10 slots used)`
+      }
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-2">
@@ -115,37 +158,42 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
           <input
             type="email"
             required
+            disabled={Boolean(adminToEdit)}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="e.g. dmiller@apextech.edu"
-            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden disabled:opacity-60"
           />
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            The administrator will use this email to log in and manage your institution's events.
-          </p>
+          {!adminToEdit && (
+            <p className="text-[11px] text-[var(--text-muted)] mt-1">
+              The administrator will use this email to log in and manage your institution's events.
+            </p>
+          )}
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-            Initial Login Password
-          </label>
-          <input
-            type="text"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs font-mono text-[var(--text-primary)] focus:outline-hidden"
-          />
-        </div>
+        {!adminToEdit && (
+          <div>
+            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+              Initial Login Password
+            </label>
+            <input
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs font-mono text-[var(--text-primary)] focus:outline-hidden"
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-bold text-[var(--text-primary)] mb-2">
-            Assigned Permissions
+            Assigned Permissions & Modules
           </label>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
             {availablePermissions.map((perm) => (
               <label
                 key={perm.id}
-                className="flex items-center gap-2 p-2.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] cursor-pointer"
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs text-[var(--text-primary)] cursor-pointer transition-colors"
               >
                 <input
                   type="checkbox"
@@ -153,7 +201,7 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
                   onChange={() => handleTogglePermission(perm.id)}
                   className="w-4 h-4 rounded-sm accent-[var(--primary-color)]"
                 />
-                <span>{perm.label}</span>
+                <span className="font-medium">{perm.label}</span>
               </label>
             ))}
           </div>
@@ -169,10 +217,11 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
           </button>
           <button
             type="submit"
-            disabled={loading || currentAdminCount >= 10}
+            disabled={loading || (!adminToEdit && currentAdminCount >= 10)}
             className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
           >
-            <UserPlus className="w-4 h-4" /> {loading ? 'Adding...' : 'Add Administrator'}
+            {adminToEdit ? <Edit3 className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+            {loading ? 'Saving...' : adminToEdit ? 'Save Changes' : 'Add Administrator'}
           </button>
         </div>
       </form>

@@ -283,6 +283,9 @@ export async function getRegistrationTicket(req: AuthenticatedRequest, res: Resp
         attended: registration.attended,
         hostCollegeName: hostCollege?.name,
         hostCollegeLogo: hostCollege?.logo,
+        qrToken: registration.qrToken,
+        passId: registration.qrToken,
+        customResponses: registration.customResponses || {},
         qrCodeUrl,
       },
     });

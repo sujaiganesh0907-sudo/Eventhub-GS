@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { IEvent, IEventRegistration } from '../types';
+import { IEvent, IEventRegistration, IReminder } from '../types';
 import { EventCard } from '../components/event/EventCard';
 import { TicketModal } from '../components/registration/TicketModal';
 import { AttendanceModal } from '../components/attendance/AttendanceModal';
@@ -25,6 +25,9 @@ import {
   Edit,
   Loader2,
   FileQuestion,
+  Eye,
+  Bell,
+  BellRing,
 } from 'lucide-react';
 
 interface EventsManagementPageProps {
@@ -46,6 +49,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
 
   // Data
   const [registrations, setRegistrations] = useState<IEventRegistration[]>([]);
+  const [reminders, setReminders] = useState<IReminder[]>([]);
   const [collegeEvents, setCollegeEvents] = useState<IEvent[]>([]);
   const [studentProposals, setStudentProposals] = useState<IEvent[]>([]);
   const [pendingRequests, setPendingRequests] = useState<IEvent[]>([]);
@@ -56,6 +60,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   const [selectedEventForAttendance, setSelectedEventForAttendance] = useState<IEvent | null>(null);
   const [selectedEventForInsights, setSelectedEventForInsights] = useState<IEvent | null>(null);
   const [selectedEventForReminder, setSelectedEventForReminder] = useState<IEvent | null>(null);
+  const [selectedRegForReminder, setSelectedRegForReminder] = useState<IEventRegistration | null>(null);
 
   // College proposal rejection modal
   const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
@@ -95,12 +100,14 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
         if (evRes.success) setCollegeEvents(evRes.events || []);
         if (reqRes.success) setPendingRequests(reqRes.requests || []);
       } else {
-        const [regRes, propRes] = await Promise.all([
+        const [regRes, propRes, remRes] = await Promise.all([
           api.get<any>('/registrations/student'),
           api.get<any>('/students/my-proposals'),
+          api.get<any>('/reminders'),
         ]);
         if (regRes.success) setRegistrations(regRes.registrations || []);
         if (propRes.success) setStudentProposals(propRes.events || []);
+        if (remRes.success) setReminders(remRes.reminders || []);
       }
     } catch (err) {
       console.error('Failed to load events management data', err);
@@ -276,45 +283,116 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(studentRegSubTab === 'upcoming' ? upcomingRegistrations : completedRegistrations).map((reg) => (
-                    <div
-                      key={reg._id}
-                      className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-4 flex flex-col justify-between"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
-                            {reg.registrationId}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              reg.attended
-                                ? 'bg-emerald-500/10 text-emerald-600'
-                                : 'bg-blue-500/10 text-blue-600'
-                            }`}
-                          >
-                            {reg.attended ? 'Attended (Present)' : 'Confirmed Pass'}
-                          </span>
+                  {(studentRegSubTab === 'upcoming' ? upcomingRegistrations : completedRegistrations).map((reg) => {
+                    const existingRem = reminders.find(
+                      (r) => r.registrationId === reg.registrationId || r.eventId === reg.eventId
+                    );
+
+                    return (
+                      <div
+                        key={reg._id}
+                        className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-4 flex flex-col justify-between"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
+                              {reg.registrationId}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                reg.attended
+                                  ? 'bg-emerald-500/10 text-emerald-600'
+                                  : 'bg-blue-500/10 text-blue-600'
+                              }`}
+                            >
+                              {reg.attended ? 'Attended (Present)' : 'Confirmed Pass'}
+                            </span>
+                          </div>
+
+                          <h3 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">
+                            {reg.eventTitle || 'Collegiate Event'}
+                          </h3>
+                          <p className="text-xs text-[var(--text-muted)]">
+                            {reg.eventDate} · {reg.registrationType} Registration
+                          </p>
+
+                          {reg.certificateStatus && reg.certificateStatus !== 'Not Eligible' && (
+                            <div className="pt-1">
+                              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                                <Award className="w-3 h-3" /> Certificate: {reg.certificateStatus}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
-                        <h3 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">
-                          {reg.eventTitle || 'Collegiate Event'}
-                        </h3>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {reg.eventDate} · {reg.registrationType} Registration
-                        </p>
-                      </div>
+                        <div className="pt-3 border-t border-[var(--border-color)] flex flex-wrap items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (reg.event) {
+                                onViewEvent(reg.event);
+                              } else {
+                                try {
+                                  const res = await api.get<any>(`/events/${reg.eventId}`);
+                                  if (res.success && res.event) onViewEvent(res.event);
+                                } catch (e) {
+                                  console.error('Failed to open event', e);
+                                }
+                              }
+                            }}
+                            className="flex-1 min-w-[110px] px-3 py-2 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-blue-500" /> View Event
+                          </button>
 
-                      <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between gap-2">
-                        <button
-                          onClick={() => setSelectedReg(reg)}
-                          className="grow px-3 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                        >
-                          <Ticket className="w-3.5 h-3.5" /> View Ticket Pass
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReg(reg)}
+                            className="flex-1 min-w-[110px] px-3 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Ticket className="w-3.5 h-3.5" /> View Pass QR
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              let ev = reg.event;
+                              if (!ev) {
+                                try {
+                                  const res = await api.get<any>(`/events/${reg.eventId}`);
+                                  if (res.success && res.event) ev = res.event;
+                                } catch (e) {}
+                              }
+                              if (ev) {
+                                setSelectedEventForReminder(ev);
+                                setSelectedRegForReminder(reg);
+                              }
+                            }}
+                            className={`w-full px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                              existingRem
+                                ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 hover:bg-indigo-500/20'
+                                : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                            }`}
+                          >
+                            {existingRem ? (
+                              <>
+                                <BellRing className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>
+                                  Reminder: {new Date(existingRem.reminderTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} at{' '}
+                                  {new Date(existingRem.reminderTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (Click to edit)
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Bell className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                                <span>Add Event Reminder</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -344,6 +422,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                       onEditEvent={handleEditProposal}
                       onDeleteEvent={handleDeleteProposal}
                       onViewInsights={(ev) => setSelectedEventForInsights(ev)}
+                      onOpenCheckInDesk={(ev) => setSelectedEventForAttendance(ev)}
                     />
                   ))}
                 </div>
@@ -510,6 +589,27 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
           isOpen={!!selectedEventForInsights}
           onClose={() => setSelectedEventForInsights(null)}
           event={selectedEventForInsights}
+        />
+      )}
+
+      {/* Reminder Modal */}
+      {selectedEventForReminder && (
+        <ReminderModal
+          isOpen={!!selectedEventForReminder}
+          onClose={() => {
+            setSelectedEventForReminder(null);
+            setSelectedRegForReminder(null);
+          }}
+          event={selectedEventForReminder}
+          registrationId={selectedRegForReminder?.registrationId}
+          existingReminder={reminders.find(
+            (r) =>
+              r.eventId === selectedEventForReminder._id ||
+              (selectedRegForReminder && r.registrationId === selectedRegForReminder.registrationId)
+          )}
+          onReminderSaved={() => {
+            fetchData();
+          }}
         />
       )}
 

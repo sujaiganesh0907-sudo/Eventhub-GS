@@ -59,6 +59,7 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
   const [showAddPlacementModal, setShowAddPlacementModal] = useState(false);
   const [showAddInfraModal, setShowAddInfraModal] = useState(false);
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [adminToEdit, setAdminToEdit] = useState<any | null>(null);
 
   const fetchCollegeData = async () => {
     if (!targetCollegeId) return;
@@ -468,19 +469,35 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
                       {adm.email}
                     </span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600">
+                      {adm.role}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    Permissions: {adm.permissions?.join(', ') || 'All Features'}
+                  <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                    Permissions: <span className="font-medium text-[var(--text-secondary)]">{adm.permissions?.join(', ') || 'All Features'}</span>
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleRemoveAdmin(adm._id)}
-                  className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" /> Revoke
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminToEdit(adm);
+                      setShowAddAdminModal(true);
+                    }}
+                    className="p-2 text-[var(--primary-color)] hover:bg-[var(--primary-light)] rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit className="w-4 h-4" /> Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAdmin(adm._id)}
+                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" /> Revoke
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -516,9 +533,23 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
       {showAddAdminModal && (
         <AddAdminModal
           isOpen={showAddAdminModal}
-          onClose={() => setShowAddAdminModal(false)}
-          onSuccess={(newAdmin) => setAdmins([...admins, newAdmin])}
+          onClose={() => {
+            setShowAddAdminModal(false);
+            setAdminToEdit(null);
+          }}
+          onSuccess={(savedAdmin) => {
+            if (adminToEdit) {
+              setAdmins((prev) =>
+                prev.map((a) => (a._id === savedAdmin._id ? savedAdmin : a))
+              );
+            } else {
+              setAdmins([...admins, savedAdmin]);
+            }
+            setShowAddAdminModal(false);
+            setAdminToEdit(null);
+          }}
           currentAdminCount={admins.length}
+          adminToEdit={adminToEdit}
         />
       )}
     </div>

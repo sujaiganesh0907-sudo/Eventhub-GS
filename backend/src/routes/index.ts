@@ -39,6 +39,8 @@ import {
   verifyAndScanQR,
   markAttendance,
   getEventAttendanceList,
+  finishAttendance,
+  downloadAttendanceReport,
 } from '../controllers/attendanceController';
 import {
   issueCertificate,
@@ -47,6 +49,7 @@ import {
   getStudentCertificates,
   deleteCertificate,
   updateCertificate,
+  retryCertificateEmail,
 } from '../controllers/certificateController';
 import {
   getStudentProfile,
@@ -78,6 +81,7 @@ import {
 import {
   getCollegeAdmins,
   addCollegeAdmin,
+  updateCollegeAdmin,
   removeCollegeAdmin,
 } from '../controllers/adminController';
 import {
@@ -86,6 +90,8 @@ import {
 } from '../controllers/notificationController';
 import {
   createReminder,
+  updateReminder,
+  deleteReminder,
   getStudentReminders,
 } from '../controllers/reminderController';
 import uploadRouter from './uploadRoutes';
@@ -147,6 +153,8 @@ apiRouter.post('/payments/verify', authenticate, verifyPayment);
 apiRouter.post('/attendance/scan', authenticate, verifyAndScanQR);
 apiRouter.post('/attendance/mark', authenticate, markAttendance);
 apiRouter.get('/attendance/event/:eventId', authenticate, getEventAttendanceList);
+apiRouter.post('/attendance/event/:eventId/finalize', authenticate, finishAttendance);
+apiRouter.get('/attendance/event/:eventId/export', authenticate, downloadAttendanceReport);
 
 // 6. Certificates routes
 apiRouter.post('/certificates/issue', authenticate, issueCertificate);
@@ -154,6 +162,7 @@ apiRouter.post('/certificates/student', authenticate, addStudentCertificate);
 apiRouter.get('/certificates/my-certificates', authenticate, getMyCertificates);
 apiRouter.get('/certificates/student/:studentId', getStudentCertificates);
 apiRouter.patch('/certificates/:id', authenticate, updateCertificate);
+apiRouter.post('/certificates/:id/retry-email', authenticate, retryCertificateEmail);
 apiRouter.delete('/certificates/:id', authenticate, deleteCertificate);
 apiRouter.delete('/certificates/student/:id', authenticate, deleteCertificate);
 
@@ -189,12 +198,15 @@ apiRouter.delete('/infrastructure/:id', authenticate, deleteInfrastructurePost);
 // 11. Admin Management
 apiRouter.get('/admins', authenticate, getCollegeAdmins);
 apiRouter.post('/admins', authenticate, addCollegeAdmin);
+apiRouter.put('/admins/:membershipId', authenticate, updateCollegeAdmin);
 apiRouter.delete('/admins/:membershipId', authenticate, removeCollegeAdmin);
 
 // 12. Notifications & Reminders
 apiRouter.get('/notifications', authenticate, getUserNotifications);
 apiRouter.patch('/notifications/:id/read', authenticate, markNotificationAsRead);
 apiRouter.post('/reminders', authenticate, createReminder);
+apiRouter.put('/reminders/:id', authenticate, updateReminder);
+apiRouter.delete('/reminders/:id', authenticate, deleteReminder);
 apiRouter.get('/reminders', authenticate, getStudentReminders);
 
 // 13. File Uploads

@@ -1477,14 +1477,20 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                   >
                     <option value="Short Answer">Short Answer</option>
                     <option value="Long Answer">Long Answer</option>
+                    <option value="Number">Number</option>
+                    <option value="Email">Email</option>
+                    <option value="Phone">Phone</option>
+                    <option value="Date">Date</option>
                     <option value="Dropdown">Dropdown</option>
-                    <option value="Multiple Choice">Multiple Choice</option>
+                    <option value="Multiple Choice">Multiple Choice (Single Choice)</option>
+                    <option value="Checkbox">Checkbox (Multi-Select)</option>
                     <option value="Link">Link / URL</option>
-                    <option value="File Upload">File Upload</option>
+                    <option value="File Upload">File Upload (PDF / Document)</option>
+                    <option value="Image Upload">Image Upload</option>
                   </select>
                 </div>
 
-                {(q.type === 'Dropdown' || q.type === 'Multiple Choice') && (
+                {(q.type === 'Dropdown' || q.type === 'Multiple Choice' || q.type === 'Checkbox') && (
                   <input
                     type="text"
                     value={(q.options || []).join(', ')}

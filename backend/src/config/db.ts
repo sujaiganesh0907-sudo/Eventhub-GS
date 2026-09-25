@@ -106,6 +106,16 @@ export function generateId(): string {
 function matchFilter(doc: any, filter: any): boolean {
   if (!filter || Object.keys(filter).length === 0) return true;
   for (const [key, val] of Object.entries(filter)) {
+    if (key === '$or' && Array.isArray(val)) {
+      const anyMatched = val.some((subFilter) => matchFilter(doc, subFilter));
+      if (!anyMatched) return false;
+      continue;
+    }
+    if (key === '$and' && Array.isArray(val)) {
+      const allMatched = val.every((subFilter) => matchFilter(doc, subFilter));
+      if (!allMatched) return false;
+      continue;
+    }
     if (key === '_id' || key === 'id') {
       const docId = doc._id || doc.id;
       if (typeof val === 'object' && val !== null) {

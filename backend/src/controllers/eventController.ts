@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Event, College, StudentProfile, Notification, IEvent, User } from '../models/index';
+import { Event, College, StudentProfile, Notification, IEvent, User, EventRegistration } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 function calculateDeadlineStatus(deadlineStr: string): 'Open' | 'Closing Soon' | 'Closed' {
@@ -459,16 +459,76 @@ export async function getCollegeStudentRequests(req: AuthenticatedRequest, res: 
 
 export async function getEventInsights(req: AuthenticatedRequest, res: Response) {
   try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
     const { id } = req.params;
     const event = await Event.findById(id);
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
 
+    // Authorization check
+    const isStudent = user.role === 'Student';
+    const isCreator = event.creatorUserId === user._id;
+    const isHostCollege = user.collegeId && event.hostCollegeId === user.collegeId;
+
+    if (isStudent && !isCreator) {
+      return res.status(403).json({ success: false, message: 'You can only view analytics for events you organized.' });
+    }
+    if (!isStudent && !isHostCollege) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to view analytics for this college event.' });
+    }
+
+    // Fetch real registrations
+    const registrationsList = await EventRegistration.find({ eventId: event._id }).sort({ createdAt: -1 }).exec();
+
     const views = event.viewsCount || 0;
-    const registrations = event.registeredCount || 0;
+    const totalRegistrations = registrationsList.length;
     const capacity = event.capacity || 100;
-    const seatsFilledPercent = Math.min(100, Math.round((registrations / capacity) * 100));
-    const conversionRate = views > 0 ? ((registrations / views) * 100).toFixed(1) : '0.0';
-    const revenue = event.isFree ? 0 : registrations * (event.registrationFee || 0);
+    const seatsFilledPercent = Math.min(100, Math.round((totalRegistrations / capacity) * 100));
+    const conversionRate = views > 0 ? ((totalRegistrations / views) * 100).toFixed(1) : '0.0';
+    const revenue = event.isFree ? 0 : registrationsList.filter((r: any) => r.paymentStatus === 'Completed').length * (event.registrationFee || 0);
+
+    const attendedCount = registrationsList.filter((r: any) => r.attended).length;
+    const attendanceRate = totalRegistrations > 0 ? Math.round((attendedCount / totalRegistrations) * 100) : 0;
+
+    // Breakdown maps
+    const departmentBreakdown: Record<string, number> = {};
+    const collegeBreakdown: Record<string, number> = {};
+
+    for (const reg of registrationsList) {
+      if (reg.studentDepartment) {
+        departmentBreakdown[reg.studentDepartment] = (departmentBreakdown[reg.studentDepartment] || 0) + 1;
+      }
+      if (reg.studentCollege) {
+        collegeBreakdown[reg.studentCollege] = (collegeBreakdown[reg.studentCollege] || 0) + 1;
+      }
+    }
+
+    const registeredStudents = registrationsList.map((r: any) => ({
+      _id: r._id,
+      registrationId: r.registrationId,
+      passId: r.qrToken,
+      qrToken: r.qrToken,
+      qrCodeUrl: r.qrCodeUrl,
+      studentName: r.studentName,
+      studentEmail: r.studentEmail,
+      studentPhone: r.studentPhone,
+      studentCollege: r.studentCollege,
+      studentDepartment: r.studentDepartment,
+      studentYear: r.studentYear,
+      registrationType: r.registrationType,
+      teamName: r.teamName,
+      paymentStatus: r.paymentStatus,
+      attended: r.attended,
+      attendedAt: r.attendedAt,
+      status: r.status,
+      createdAt: r.createdAt,
+      customResponses: r.customResponses || {},
+      certificateIssued: r.certificateIssued,
+      certificateStatus: r.certificateStatus || (r.attended ? (r.certificateIssued ? 'Generated' : 'Pending') : 'Not Eligible'),
+      certificateId: r.certificateId,
+      certificateFileUrl: r.certificateFileUrl,
+    }));
 
     return res.json({
       success: true,
@@ -476,16 +536,23 @@ export async function getEventInsights(req: AuthenticatedRequest, res: Response)
         eventId: event._id,
         eventTitle: event.title,
         views,
-        registrations,
+        viewsCount: views,
+        registrations: totalRegistrations,
+        totalRegistrations,
         capacity,
         seatsFilledPercent,
         conversionRate: Number(conversionRate),
         revenue,
+        totalRevenue: revenue,
         isFree: event.isFree,
         fee: event.registrationFee,
-        attendanceCount: event.attendanceCount || 0,
-        attendanceRate: registrations > 0 ? Math.round(((event.attendanceCount || 0) / registrations) * 100) : 0,
+        attendanceCount: attendedCount,
+        attendedCount,
+        attendanceRate,
         certificatesIssuedCount: event.certificatesIssuedCount || 0,
+        departmentBreakdown,
+        collegeBreakdown,
+        registeredStudents,
       },
     });
   } catch (error: any) {

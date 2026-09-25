@@ -226,6 +226,13 @@ export interface IEvent {
   attendanceCount: number;
   certificatesIssuedCount: number;
   
+  // Attendance Finalization & Certificate Template
+  attendanceFinalized?: boolean;
+  attendanceFinalizedAt?: string;
+  attendanceFinalizedBy?: string;
+  certificateTemplateUrl?: string;
+  certificateTemplateName?: string;
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -259,8 +266,14 @@ export interface IEventRegistration {
   status: 'Confirmed' | 'Pending' | 'Cancelled';
   attended: boolean;
   attendedAt?: string;
+  attendanceMethod?: 'QR_SCAN' | 'MANUAL';
+  
   certificateIssued: boolean;
   certificateId?: string;
+  certificateStatus?: 'Not Eligible' | 'Pending' | 'Generated' | 'Sent' | 'Failed';
+  certificateEmailSent?: boolean;
+  certificateProfilePublished?: boolean;
+  certificateFileUrl?: string;
   
   qrToken: string;
   qrCodeUrl?: string;
@@ -325,6 +338,7 @@ export interface ICertificate {
   eventId?: string;
   registrationId?: string;
   studentId: string;
+  studentUserId?: string;
   collegeId?: string;
   issuingOrganization: string;
   achievementType: 'Winner' | 'Runner-up' | 'Participation' | 'Excellence' | 'Appreciation' | 'Completion';
@@ -337,6 +351,9 @@ export interface ICertificate {
   visibility: 'Public' | 'Connections Only' | 'Private';
   tags: string[];
   isDraft: boolean;
+  emailStatus?: 'Pending' | 'Sent' | 'Failed';
+  emailError?: string;
+  profilePublished?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -411,9 +428,13 @@ export interface IReminder {
   _id: string;
   id?: string;
   studentId: string;
+  studentUserId?: string;
   eventId: string;
-  reminderType: '1_day_before' | '3_hours_before' | '1_hour_before' | 'custom';
+  registrationId?: string;
+  reminderType: '1_day_before' | '3_hours_before' | '1_hour_before' | '30_mins_before' | 'custom';
+  reminderDate?: string;
   reminderTime: string;
+  status: 'Pending' | 'Triggered' | 'Cancelled';
   notified: boolean;
   createdAt: string;
   updatedAt: string;
