@@ -8,6 +8,7 @@ import { BottomNav } from './components/common/BottomNav';
 import { MultiStepEventForm } from './components/event/MultiStepEventForm';
 import { EventFilterModal, FilterState } from './components/event/EventFilterModal';
 import { RegistrationModal } from './components/registration/RegistrationModal';
+import { api } from './services/api';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
@@ -21,6 +22,7 @@ import { StudentProfilePage } from './pages/StudentProfilePage';
 import { CollegeProfilePage } from './pages/CollegeProfilePage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MessagesPage } from './pages/MessagesPage';
 import { IEvent } from './types';
 
 // Public routes that never require authentication
@@ -64,7 +66,7 @@ const resolveTabFromPath = (pathname: string): string => {
   }
 
   const sub = p.replace(/^\//, '');
-  if (['home', 'events', 'colleges', 'profile', 'college-profile', 'notifications', 'settings', 'view-event'].includes(sub)) {
+  if (['home', 'events', 'colleges', 'profile', 'college-profile', 'notifications', 'settings', 'view-event', 'messages'].includes(sub)) {
     return sub;
   }
   return 'home';
@@ -88,9 +90,18 @@ const getPathForTab = (tab: string): string => {
     case 'notifications': return '/notifications';
     case 'settings': return '/settings';
     case 'view-event': return '/event';
+    case 'messages': return '/messages';
     default: return '/';
   }
 };
+
+interface NavHistoryItem {
+  tab: string;
+  selectedEventId?: string | null;
+  selectedCollegeId?: string | null;
+  selectedStudentId?: string | null;
+  selectedConversationId?: string | null;
+}
 
 const AppContent: React.FC = () => {
   const { user, loading: authLoading, isAuthenticated, isCollege, isStudent } = useAuth();
@@ -102,13 +113,68 @@ const AppContent: React.FC = () => {
   });
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
   const [authNotice, setAuthNotice] = useState<string | undefined>();
+
+  // Navigation history stack for seamless return to previous page (Requirement 17)
+  const [navHistory, setNavHistory] = useState<NavHistoryItem[]>([]);
 
   // Browser navigation sync
   const updateUrl = (tab: string) => {
     const targetPath = getPathForTab(tab);
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
+    }
+  };
+
+  // Push new state onto history stack
+  const pushNavState = (
+    newTab: string,
+    details?: {
+      selectedEventId?: string | null;
+      selectedCollegeId?: string | null;
+      selectedStudentId?: string | null;
+      selectedConversationId?: string | null;
+    }
+  ) => {
+    setNavHistory((prev) => [
+      ...prev,
+      {
+        tab: activeTab,
+        selectedEventId,
+        selectedCollegeId,
+        selectedStudentId,
+        selectedConversationId,
+      },
+    ]);
+    if (details?.selectedEventId !== undefined) setSelectedEventId(details.selectedEventId);
+    if (details?.selectedCollegeId !== undefined) setSelectedCollegeId(details.selectedCollegeId);
+    if (details?.selectedStudentId !== undefined) setSelectedStudentId(details.selectedStudentId);
+    if (details?.selectedConversationId !== undefined) setSelectedConversationId(details.selectedConversationId);
+    setActiveTab(newTab);
+    updateUrl(newTab);
+  };
+
+  // Go back to previous page
+  const goBack = () => {
+    if (navHistory.length > 0) {
+      const prev = navHistory[navHistory.length - 1];
+      setNavHistory((prevStack) => prevStack.slice(0, -1));
+      setActiveTab(prev.tab);
+      setSelectedEventId(prev.selectedEventId || null);
+      setSelectedCollegeId(prev.selectedCollegeId || null);
+      setSelectedStudentId(prev.selectedStudentId || null);
+      setSelectedConversationId(prev.selectedConversationId || null);
+      updateUrl(prev.tab);
+    } else {
+      if (activeTab === 'view-event') {
+        setActiveTab('events');
+        updateUrl('events');
+      } else {
+        navigateToTab(isAuthenticated ? 'home' : 'landing');
+      }
     }
   };
 
@@ -121,8 +187,7 @@ const AppContent: React.FC = () => {
       return;
     }
     setAuthNotice(notice);
-    setActiveTab(tab);
-    updateUrl(tab);
+    pushNavState(tab);
   };
 
   // Browser history navigation sync
@@ -137,7 +202,6 @@ const AppContent: React.FC = () => {
 
   // Enforce route protection ONLY on protected/private routes after auth restoration finishes
   useEffect(() => {
-    // CRITICAL: NEVER redirect while authentication status is restoring!
     if (authLoading) return;
 
     if (!isAuthenticated && !isPublicRoute(activeTab)) {
@@ -147,6 +211,29 @@ const AppContent: React.FC = () => {
       }
     }
   }, [authLoading, isAuthenticated, activeTab]);
+
+  // Periodic polling for unread messages count when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadMessagesCount(0);
+      return;
+    }
+
+    const fetchUnread = async () => {
+      try {
+        const res = await api.get<{ success: boolean; unreadCount: number }>('/messages/unread-count');
+        if (res.success && typeof res.unreadCount === 'number') {
+          setUnreadMessagesCount(res.unreadCount);
+        }
+      } catch (err) {
+        // silently ignore transient network issues
+      }
+    };
+
+    fetchUnread();
+    const timer = setInterval(fetchUnread, 12000);
+    return () => clearInterval(timer);
+  }, [isAuthenticated, activeTab]);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,14 +260,13 @@ const AppContent: React.FC = () => {
     setIsCreateEventOpen(true);
   };
 
-  const handleViewEvent = (event: IEvent) => {
+  const handleViewEvent = (event: IEvent | string) => {
     if (!isAuthenticated) {
       navigateToTab('auth', 'Sign in to view event details.');
       return;
     }
-    setSelectedEventId(event._id);
-    setActiveTab('view-event');
-    updateUrl('view-event');
+    const eventId = typeof event === 'string' ? event : event._id;
+    pushNavState('view-event', { selectedEventId: eventId });
   };
 
   const handleViewCollege = (collegeId: string) => {
@@ -188,9 +274,23 @@ const AppContent: React.FC = () => {
       navigateToTab('auth', 'Sign in to explore collegiate profiles.');
       return;
     }
-    setSelectedCollegeId(collegeId);
-    setActiveTab('college-profile');
-    updateUrl('college-profile');
+    pushNavState('college-profile', { selectedCollegeId: collegeId });
+  };
+
+  const handleViewStudent = (studentId: string) => {
+    if (!isAuthenticated) {
+      navigateToTab('auth', 'Sign in to view student profiles.');
+      return;
+    }
+    pushNavState('profile', { selectedStudentId: studentId });
+  };
+
+  const handleOpenMessages = (conversationId?: string) => {
+    if (!isAuthenticated) {
+      navigateToTab('auth', 'Sign in to view messages.');
+      return;
+    }
+    pushNavState('messages', { selectedConversationId: conversationId || null });
   };
 
   // During auth restoration, show clean full-screen loader without redirecting
@@ -205,6 +305,10 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Determine if search and messages icons should be hidden (Requirement 3 & 9)
+  const shouldHideSearch = !isAuthenticated || isPublicAuthTab(activeTab) || activeTab === 'landing';
+  const shouldHideMessages = !isAuthenticated || isPublicAuthTab(activeTab) || activeTab === 'landing';
+
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col antialiased">
       {/* Top Navbar */}
@@ -212,23 +316,32 @@ const AppContent: React.FC = () => {
         searchQuery={searchQuery}
         onSearchChange={(q) => {
           setSearchQuery(q);
-          if (isAuthenticated && (activeTab === 'landing' || activeTab === 'view-event')) {
-            setActiveTab('home');
-            updateUrl('home');
+          if (isAuthenticated && (activeTab === 'landing')) {
+            pushNavState('home');
           }
         }}
+        hideSearch={shouldHideSearch}
+        hideMessages={shouldHideMessages}
         onOpenFilter={() => setIsFilterModalOpen(true)}
         unreadNotificationsCount={unreadCount}
-        onNotificationsClick={() => navigateToTab('notifications')}
-        onSettingsClick={() => navigateToTab('settings')}
+        unreadMessagesCount={unreadMessagesCount}
+        onNotificationsClick={() => pushNavState('notifications')}
+        onMessagesClick={() => handleOpenMessages()}
+        onSettingsClick={() => pushNavState('settings')}
         onProfileClick={() => {
           if (!isAuthenticated) {
-            navigateToTab('auth');
+            pushNavState('auth');
           } else {
-            navigateToTab(isCollege ? 'college-profile' : 'profile');
+            pushNavState(isCollege ? 'college-profile' : 'profile', {
+              selectedCollegeId: null,
+              selectedStudentId: null,
+            });
           }
         }}
         onBrandClick={() => navigateToTab(isAuthenticated ? 'home' : 'landing')}
+        onSelectStudent={(sId) => handleViewStudent(sId)}
+        onSelectCollege={(cId) => handleViewCollege(cId)}
+        onSelectEvent={(ev) => handleViewEvent(ev)}
       />
 
       {/* Main Body with Sidebar */}
@@ -240,14 +353,20 @@ const AppContent: React.FC = () => {
               <Sidebar
                 activeTab={activeTab}
                 onSelectTab={(tab) => {
-                  if (tab === 'profile') {
-                    navigateToTab(isCollege ? 'college-profile' : 'profile');
+                  if (tab === 'messages') {
+                    handleOpenMessages();
+                  } else if (tab === 'profile') {
+                    pushNavState(isCollege ? 'college-profile' : 'profile', {
+                      selectedCollegeId: null,
+                      selectedStudentId: null,
+                    });
                   } else {
-                    navigateToTab(tab);
+                    pushNavState(tab);
                   }
                 }}
                 isCollege={isCollege}
                 unreadNotifications={unreadCount}
+                unreadMessages={unreadMessagesCount}
                 onCreateEventClick={() => handleOpenCreateEvent(isStudent)}
               />
             </div>
@@ -333,20 +452,36 @@ const AppContent: React.FC = () => {
             <CollegesListPage onSelectCollege={handleViewCollege} />
           )}
 
-          {/* STUDENT PROFILE */}
+          {/* STUDENT PROFILE (Self or Viewed Student) */}
           {isAuthenticated && activeTab === 'profile' && (
             <StudentProfilePage
+              studentId={selectedStudentId || undefined}
               onViewEvent={handleViewEvent}
               onSelectCollege={handleViewCollege}
+              onNavigateToMessages={handleOpenMessages}
+              onBack={goBack}
             />
           )}
 
-          {/* COLLEGE PROFILE */}
+          {/* COLLEGE PROFILE (Self or Viewed College) */}
           {isAuthenticated && activeTab === 'college-profile' && (
             <CollegeProfilePage
               collegeId={selectedCollegeId || undefined}
               onViewEvent={handleViewEvent}
               onRegisterEvent={(ev) => setEventToRegister(ev)}
+              onNavigateToMessages={handleOpenMessages}
+              onBack={goBack}
+            />
+          )}
+
+          {/* MESSAGES & CHATS (Requirement 8-15) */}
+          {isAuthenticated && activeTab === 'messages' && (
+            <MessagesPage
+              initialConversationId={selectedConversationId}
+              onViewEvent={(eventId) => handleViewEvent(eventId)}
+              onViewStudent={(studentId) => handleViewStudent(studentId)}
+              onViewCollege={(collegeId) => handleViewCollege(collegeId)}
+              onBack={goBack}
             />
           )}
 
@@ -355,8 +490,9 @@ const AppContent: React.FC = () => {
             selectedEventId ? (
               <ViewEventPage
                 eventId={selectedEventId}
-                onBack={() => navigateToTab(isCollege ? 'home' : 'home')}
+                onBack={goBack}
                 onSelectCollege={handleViewCollege}
+                onNavigateToMessages={handleOpenMessages}
               />
             ) : (
               <StudentHomePage
@@ -374,9 +510,7 @@ const AppContent: React.FC = () => {
           {isAuthenticated && activeTab === 'notifications' && (
             <NotificationsPage
               onSelectEvent={(eventId) => {
-                setSelectedEventId(eventId);
-                setActiveTab('view-event');
-                updateUrl('view-event');
+                handleViewEvent(eventId);
               }}
             />
           )}
@@ -391,14 +525,20 @@ const AppContent: React.FC = () => {
         <BottomNav
           activeTab={activeTab}
           onSelectTab={(tab) => {
-            if (tab === 'profile') {
-              navigateToTab(isCollege ? 'college-profile' : 'profile');
+            if (tab === 'messages') {
+              handleOpenMessages();
+            } else if (tab === 'profile') {
+              pushNavState(isCollege ? 'college-profile' : 'profile', {
+                selectedCollegeId: null,
+                selectedStudentId: null,
+              });
             } else {
-              navigateToTab(tab);
+              pushNavState(tab);
             }
           }}
           isCollege={isCollege}
           unreadNotifications={unreadCount}
+          unreadMessages={unreadMessagesCount}
         />
       )}
 
@@ -412,7 +552,7 @@ const AppContent: React.FC = () => {
             if (newEvent && newEvent._id) {
               handleViewEvent(newEvent);
             } else {
-              navigateToTab(isCollege ? 'home' : 'events');
+              pushNavState(isCollege ? 'home' : 'events');
             }
           }}
           isStudentProposal={isStudentProposal}

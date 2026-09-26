@@ -16,6 +16,7 @@ export async function requestStudentOtp(req: Request, res: Response) {
   try {
     const {
       fullName,
+      username,
       email,
       collegeName,
       phoneNumber,
@@ -27,6 +28,25 @@ export async function requestStudentOtp(req: Request, res: Response) {
 
     if (!fullName || !email || !collegeName || !phoneNumber || !department || !yearOfStudy || !password) {
       return res.status(400).json({ success: false, message: 'All registration fields are required.' });
+    }
+
+    let cleanUsername: string | undefined = undefined;
+    if (username) {
+      const rawUser = String(username).trim().replace(/^@/, '').toLowerCase();
+      if (!/^[a-zA-Z0-9_.]{3,30}$/.test(rawUser)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username must be 3-30 characters long (letters, numbers, underscore, period).',
+        });
+      }
+      const existingUser = await StudentProfile.findOne({ username: rawUser });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: `Username @${rawUser} is already taken. Please pick another.`,
+        });
+      }
+      cleanUsername = rawUser;
     }
 
     if (password !== confirmPassword) {
@@ -65,6 +85,7 @@ export async function requestStudentOtp(req: Request, res: Response) {
 
     const payload = {
       fullName: fullName.trim(),
+      username: cleanUsername,
       email: cleanEmail,
       collegeName: collegeName.trim(),
       phoneNumber: phoneNumber.trim(),
@@ -339,9 +360,21 @@ export async function verifyOtp(req: Request, res: Response) {
         isEmailVerified: true,
       });
 
+      let finalUsername = record.payload.username;
+      if (!finalUsername) {
+        const base = (record.payload.fullName.toLowerCase().replace(/[^a-z0-9_]/g, '') || cleanEmail.split('@')[0].replace(/[^a-z0-9_]/g, '')).slice(0, 15);
+        let candidate = base;
+        let counter = 1;
+        while (await StudentProfile.findOne({ username: candidate })) {
+          candidate = `${base}${counter++}`;
+        }
+        finalUsername = candidate;
+      }
+
       await StudentProfile.create({
         userId: user._id,
         fullName: record.payload.fullName,
+        username: finalUsername,
         email: cleanEmail,
         collegeName: record.payload.collegeName,
         phoneNumber: record.payload.phoneNumber,
@@ -349,6 +382,8 @@ export async function verifyOtp(req: Request, res: Response) {
         yearOfStudy: record.payload.yearOfStudy,
         skills: [],
         achievements: [],
+        profileVisibility: 'Public',
+        messagePrivacy: 'Everyone',
         followersCount: 0,
         followingCount: 0,
         connectionsCount: 0,
@@ -368,9 +403,17 @@ export async function verifyOtp(req: Request, res: Response) {
         isEmailVerified: true,
       });
 
+      const colBase = record.payload.collegeName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
+      let colCandidate = colBase;
+      let colCounter = 1;
+      while (await College.findOne({ username: colCandidate })) {
+        colCandidate = `${colBase}${colCounter++}`;
+      }
+
       // Crucial: verificationStatus is 'Pending' until institutional verification is confirmed
       const college = await College.create({
         name: record.payload.collegeName,
+        username: colCandidate,
         officialEmail: cleanEmail,
         officialDomain: record.payload.officialDomain,
         contactNumber: record.payload.contactNumber,
@@ -380,6 +423,7 @@ export async function verifyOtp(req: Request, res: Response) {
         coverPhoto: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1200&auto=format&fit=crop&q=80',
         verificationStatus: 'Pending',
         superAdminId: user._id,
+        messagePrivacy: 'Everyone',
         connectionsCount: 0,
       });
 

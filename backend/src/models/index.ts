@@ -19,6 +19,7 @@ export interface IStudentProfile {
   id?: string;
   userId: string;
   fullName: string;
+  username: string; // Globally unique identifier e.g. @sureshm2006
   email: string;
   collegeName: string;
   targetCollegeId?: string;
@@ -31,6 +32,8 @@ export interface IStudentProfile {
   coverPhoto?: string;
   skills: string[];
   achievements: string[];
+  profileVisibility?: 'Public' | 'Private';
+  messagePrivacy?: 'Everyone' | 'Following' | 'Connections' | 'Nobody';
   followersCount: number;
   followingCount: number;
   connectionsCount: number;
@@ -42,6 +45,7 @@ export interface ICollege {
   _id: string;
   id?: string;
   name: string;
+  username?: string; // e.g. @apextech
   officialEmail: string;
   officialDomain: string;
   contactNumber: string;
@@ -53,6 +57,7 @@ export interface ICollege {
   verificationStatus: 'Pending' | 'Verified' | 'Rejected';
   rejectionReason?: string;
   superAdminId: string;
+  messagePrivacy?: 'Everyone' | 'Connected' | 'Nobody';
   connectionsCount: number;
   createdAt: string;
   updatedAt: string;
@@ -66,8 +71,31 @@ export interface ICollegeAdminMembership {
   role: 'College Super Admin' | 'College Admin';
   name: string;
   email: string;
+  username?: string;
   permissions: string[];
-  addedBy: string;
+  status?: 'Active' | 'Invited' | 'Rejected';
+  invitedBy?: string;
+  invitedAt?: string;
+  acceptedAt?: string;
+  rejectedAt?: string;
+  addedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IAdminActivityLog {
+  _id: string;
+  id?: string;
+  collegeId: string;
+  adminUserId: string;
+  adminName: string;
+  adminUsername?: string;
+  actionType: string;
+  details: string;
+  targetType?: string;
+  targetId?: string;
+  targetTitle?: string;
+  timestamp: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -455,6 +483,60 @@ export interface IOtpVerification {
   updatedAt: string;
 }
 
+export interface IConversationParticipant {
+  userId: string;
+  role: 'Student' | 'College Super Admin' | 'College Admin';
+  name: string;
+  username?: string;
+  avatar?: string;
+  collegeId?: string;
+}
+
+export interface IConversation {
+  _id: string;
+  id?: string;
+  participants: string[]; // user IDs
+  participantDetails: IConversationParticipant[];
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IMessage {
+  _id: string;
+  id?: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  text: string;
+  attachmentUrl?: string;
+  attachmentType?: 'image' | 'file';
+  sharedEventId?: string;
+  sharedStudentId?: string;
+  sharedCollegeId?: string;
+  readBy: string[]; // user IDs
+  deletedFor: string[]; // user IDs
+  deletedForEveryone?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IConversationPreference {
+  _id: string;
+  id?: string;
+  userId: string;
+  conversationId: string;
+  muted: boolean;
+  hidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Instantiate Models connected to our persistent database collections
 export const User = new CollectionModel<IUser>('users');
 export const StudentProfile = new CollectionModel<IStudentProfile>('studentProfiles');
@@ -473,3 +555,7 @@ export const Follow = new CollectionModel<IFollow>('follows');
 export const Notification = new CollectionModel<INotification>('notifications');
 export const Reminder = new CollectionModel<IReminder>('reminders');
 export const OtpVerification = new CollectionModel<IOtpVerification>('otpVerifications');
+export const Conversation = new CollectionModel<IConversation>('conversations');
+export const Message = new CollectionModel<IMessage>('messages');
+export const ConversationPreference = new CollectionModel<IConversationPreference>('conversationPreferences');
+export const AdminActivityLog = new CollectionModel<IAdminActivityLog>('adminActivityLogs');

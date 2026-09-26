@@ -79,6 +79,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   // Student Registration Fields (Start completely empty)
   const [studentFullName, setStudentFullName] = useState('');
+  const [studentUsername, setStudentUsername] = useState('');
   const [studentCollegeName, setStudentCollegeName] = useState('');
   const [studentDepartment, setStudentDepartment] = useState('');
   const [studentYearOfStudy, setStudentYearOfStudy] = useState('');
@@ -231,10 +232,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       return;
     }
 
+    const cleanUsername = studentUsername.trim().toLowerCase().replace(/^@/, '');
+    if (cleanUsername && !/^[a-zA-Z0-9_.]{3,30}$/.test(cleanUsername)) {
+      setError('Username must be 3-30 characters long (letters, numbers, underscore, period. No spaces).');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await requestStudentOtp({
         fullName: studentFullName,
+        username: cleanUsername || undefined,
         collegeName: studentCollegeName,
         department: studentDepartment,
         yearOfStudy: studentYearOfStudy,
@@ -253,6 +261,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           status: 'pending',
           registrationData: {
             fullName: studentFullName,
+            username: cleanUsername || undefined,
             collegeName: studentCollegeName,
             department: studentDepartment,
             yearOfStudy: studentYearOfStudy,
@@ -375,6 +384,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     if (pending?.registrationData) {
       if (pending.role === 'student') {
         if (pending.registrationData.fullName) setStudentFullName(pending.registrationData.fullName);
+        if (pending.registrationData.username) setStudentUsername(pending.registrationData.username);
         if (pending.registrationData.collegeName) setStudentCollegeName(pending.registrationData.collegeName);
         if (pending.registrationData.department) setStudentDepartment(pending.registrationData.department);
         if (pending.registrationData.yearOfStudy) setStudentYearOfStudy(pending.registrationData.yearOfStudy);
@@ -596,6 +606,28 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     placeholder="Enter your full name"
                     className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
                   />
+                </div>
+
+                {/* Unique Username Handle */}
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                    Username (Unique Handle)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">
+                      @
+                    </span>
+                    <input
+                      type="text"
+                      value={studentUsername}
+                      onChange={(e) => setStudentUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
+                      placeholder="e.g. sureshm2006"
+                      className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                    Letters, numbers, underscore, period. No spaces. (Optional — will auto-generate if empty)
+                  </p>
                 </div>
 
                 {/* College / University Name */}

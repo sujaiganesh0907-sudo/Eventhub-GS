@@ -8,6 +8,7 @@ export interface PendingVerificationState {
   status: 'pending';
   registrationData?: {
     fullName?: string;
+    username?: string;
     collegeName?: string;
     department?: string;
     yearOfStudy?: string;

@@ -5,6 +5,7 @@ import { api } from '../../services/api';
 import { IEvent, IEventRegistration } from '../../types';
 import { AlertCircle, Award, CheckCircle2, Loader2, Send } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { DEFAULT_CERTIFICATE_TEMPLATE } from '../../services/imageDefaults';
 
 interface IssueCertificateModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
   const [selectedRegistrationId, setSelectedRegistrationId] = useState('');
   const [title, setTitle] = useState(`Certificate of Excellence: ${event.title}`);
   const [achievementType, setAchievementType] = useState('Participation');
-  const [fileUrl, setFileUrl] = useState('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80');
+  const [fileUrl, setFileUrl] = useState(DEFAULT_CERTIFICATE_TEMPLATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

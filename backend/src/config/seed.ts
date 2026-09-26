@@ -11,9 +11,92 @@ import {
   Follow,
   Notification
 } from '../models/index';
-import { syncPersistDBNow } from './db';
+import { syncPersistDBNow, dbState } from './db';
+
+/**
+ * Migration helper to ensure all existing records have unique usernames, privacy defaults, and initialized collections
+ */
+async function ensureUsernamesAndCollections() {
+  if (!dbState.conversations) dbState.conversations = [];
+  if (!dbState.messages) dbState.messages = [];
+  if (!dbState.conversationPreferences) dbState.conversationPreferences = [];
+
+  // 1. Ensure student usernames & privacy
+  const students = await StudentProfile.find().exec();
+  const takenUsernames = new Set<string>();
+
+  for (const s of students) {
+    let username = s.username ? s.username.toLowerCase().replace(/^@/, '') : '';
+    if (username && !takenUsernames.has(username)) {
+      takenUsernames.add(username);
+    }
+  }
+
+  for (const s of students) {
+    let changed = false;
+    let username = s.username ? s.username.toLowerCase().replace(/^@/, '') : '';
+
+    if (!username || takenUsernames.has(username) && s.username !== username) {
+      // Auto-generate safe clean unique username
+      let base = (s.fullName || s.email.split('@')[0])
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '')
+        .slice(0, 15);
+      if (!base || base.length < 3) base = 'student';
+
+      let candidate = base;
+      let counter = 1;
+      while (takenUsernames.has(candidate)) {
+        candidate = `${base}${counter++}`;
+      }
+
+      username = candidate;
+      takenUsernames.add(username);
+      changed = true;
+    }
+
+    const profileVisibility = s.profileVisibility || 'Public';
+    const messagePrivacy = s.messagePrivacy || 'Everyone';
+
+    if (changed || !s.profileVisibility || !s.messagePrivacy || s.username !== username) {
+      await StudentProfile.findByIdAndUpdate(s._id, {
+        username,
+        profileVisibility,
+        messagePrivacy,
+      });
+    }
+  }
+
+  // 2. Ensure college usernames & privacy
+  const colleges = await College.find().exec();
+  const collegeUsernameMap: Record<string, string> = {
+    col_apex_tech_01: 'apextech',
+    col_horizon_univ_02: 'horizonuniv',
+    col_nexus_eng_03: 'nexuseng',
+  };
+
+  for (const col of colleges) {
+    let colUser = col.username ? col.username.toLowerCase().replace(/^@/, '') : '';
+    if (!colUser) {
+      colUser = collegeUsernameMap[col._id] || col.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
+    }
+    const messagePrivacy = col.messagePrivacy || 'Everyone';
+
+    if (col.username !== colUser || !col.messagePrivacy) {
+      await College.findByIdAndUpdate(col._id, {
+        username: colUser,
+        messagePrivacy,
+      });
+    }
+  }
+
+  syncPersistDBNow();
+}
 
 export async function seedDatabaseIfEmpty() {
+  // Always ensure existing data has usernames, privacy settings, and collections initialized
+  await ensureUsernamesAndCollections();
+
   const userCount = await User.countDocuments();
   if (userCount > 0) {
     return;

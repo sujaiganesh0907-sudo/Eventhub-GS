@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IEvent, ICollege, IEventRegistration } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { DEFAULT_COLLEGE_LOGO } from '../services/imageDefaults';
 import {
   Calendar,
   Users,
@@ -90,12 +91,12 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
         <div className="flex items-center gap-4">
           <img
-            src={
-              college?.logo ||
-              'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=100&auto=format&fit=crop&q=80'
-            }
+            src={college?.logo || DEFAULT_COLLEGE_LOGO}
             alt={college?.name || 'College'}
             className="w-16 h-16 rounded-xl object-cover border border-[var(--border-color)]"
+            onError={(e) => {
+              (e.target as any).src = DEFAULT_COLLEGE_LOGO;
+            }}
           />
           <div>
             <div className="flex items-center gap-2">

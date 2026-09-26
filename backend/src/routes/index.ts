@@ -80,9 +80,16 @@ import {
 } from '../controllers/postController';
 import {
   getCollegeAdmins,
-  addCollegeAdmin,
+  inviteCollegeAdmin,
+  searchUsersForAdmin,
   updateCollegeAdmin,
   removeCollegeAdmin,
+  getMyAdminInvitations,
+  acceptAdminInvite,
+  rejectAdminInvite,
+  getMyAdminRoles,
+  getAdminActivity,
+  createAdminActivity,
 } from '../controllers/adminController';
 import {
   getUserNotifications,
@@ -94,6 +101,17 @@ import {
   deleteReminder,
   getStudentReminders,
 } from '../controllers/reminderController';
+import { globalSearch } from '../controllers/searchController';
+import {
+  getConversations,
+  startOrGetConversation,
+  getConversationMessages,
+  sendMessage,
+  deleteMessage,
+  deleteConversation,
+  toggleMuteConversation,
+  getUnreadMessagesCount,
+} from '../controllers/messageController';
 import uploadRouter from './uploadRoutes';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -176,6 +194,11 @@ apiRouter.put('/students/profile', authenticate, updateStudentProfile);
 apiRouter.get('/colleges', getColleges);
 apiRouter.get('/colleges/:id', getCollegeById);
 apiRouter.put('/colleges/profile', authenticate, updateCollegeProfile);
+apiRouter.post('/colleges/:collegeId/follow', authenticate, (req, res) => {
+  req.body = { ...req.body, collegeId: req.params.collegeId };
+  return toggleCollegeConnection(req, res);
+});
+apiRouter.get('/colleges/:collegeId/connection', authenticate, checkCollegeConnection);
 
 // 9. Social routes (Connections & Follows)
 apiRouter.post('/social/college/connection', authenticate, toggleCollegeConnection);
@@ -195,11 +218,19 @@ apiRouter.get('/infrastructure', getInfrastructurePosts);
 apiRouter.post('/infrastructure', authenticate, createInfrastructurePost);
 apiRouter.delete('/infrastructure/:id', authenticate, deleteInfrastructurePost);
 
-// 11. Admin Management
+// 11. Admin Management, Invitations & Activity
 apiRouter.get('/admins', authenticate, getCollegeAdmins);
-apiRouter.post('/admins', authenticate, addCollegeAdmin);
+apiRouter.get('/admins/search-users', authenticate, searchUsersForAdmin);
+apiRouter.post('/admins/invite', authenticate, inviteCollegeAdmin);
+apiRouter.post('/admins', authenticate, inviteCollegeAdmin); // backwards compat
 apiRouter.put('/admins/:membershipId', authenticate, updateCollegeAdmin);
 apiRouter.delete('/admins/:membershipId', authenticate, removeCollegeAdmin);
+apiRouter.get('/admins/my-invitations', authenticate, getMyAdminInvitations);
+apiRouter.post('/admins/invitations/:membershipId/accept', authenticate, acceptAdminInvite);
+apiRouter.post('/admins/invitations/:membershipId/reject', authenticate, rejectAdminInvite);
+apiRouter.get('/admins/my-roles', authenticate, getMyAdminRoles);
+apiRouter.get('/admins/activity', authenticate, getAdminActivity);
+apiRouter.post('/admins/activity', authenticate, createAdminActivity);
 
 // 12. Notifications & Reminders
 apiRouter.get('/notifications', authenticate, getUserNotifications);
@@ -209,7 +240,20 @@ apiRouter.put('/reminders/:id', authenticate, updateReminder);
 apiRouter.delete('/reminders/:id', authenticate, deleteReminder);
 apiRouter.get('/reminders', authenticate, getStudentReminders);
 
-// 13. File Uploads
+// 13. Global Search (Students, Colleges, Events)
+apiRouter.get('/search/global', authenticate, globalSearch);
+
+// 14. Messaging System (Student <-> Student, Student <-> College, College <-> Student)
+apiRouter.get('/messages/conversations', authenticate, getConversations);
+apiRouter.get('/messages/unread-count', authenticate, getUnreadMessagesCount);
+apiRouter.post('/messages/conversations', authenticate, startOrGetConversation);
+apiRouter.get('/messages/conversations/:id', authenticate, getConversationMessages);
+apiRouter.post('/messages/conversations/:id', authenticate, sendMessage);
+apiRouter.delete('/messages/:id', authenticate, deleteMessage);
+apiRouter.delete('/messages/conversations/:id', authenticate, deleteConversation);
+apiRouter.post('/messages/conversations/:id/mute', authenticate, toggleMuteConversation);
+
+// 15. File Uploads
 apiRouter.use('/upload', uploadRouter);
 
 export default apiRouter;

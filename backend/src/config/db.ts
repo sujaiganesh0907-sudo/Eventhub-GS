@@ -42,6 +42,9 @@ interface DBState {
   notifications: any[];
   reminders: any[];
   otpVerifications: any[];
+  conversations: any[];
+  messages: any[];
+  conversationPreferences: any[];
 }
 
 let dbState: DBState = {
@@ -63,6 +66,9 @@ let dbState: DBState = {
   notifications: [],
   reminders: [],
   otpVerifications: [],
+  conversations: [],
+  messages: [],
+  conversationPreferences: [],
 };
 
 // Load initial database state
@@ -71,6 +77,84 @@ if (fs.existsSync(DB_FILE)) {
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
     dbState = { ...dbState, ...parsed };
+
+    // Safe migration: Ensure every student profile has a unique username, profileVisibility, and messagePrivacy
+    let migrated = false;
+    const takenUsernames = new Set<string>();
+    
+    // First pass: register existing valid usernames
+    if (Array.isArray(dbState.studentProfiles)) {
+      for (const p of dbState.studentProfiles) {
+        if (p.username && typeof p.username === 'string') {
+          const clean = p.username.trim().replace(/^@/, '').toLowerCase();
+          p.username = clean;
+          takenUsernames.add(clean);
+        }
+      }
+
+      // Second pass: assign clean unique username for any student profile lacking one
+      for (const p of dbState.studentProfiles) {
+        if (!p.username) {
+          const rawBase = (p.fullName || p.email || 'student')
+            .toLowerCase()
+            .replace(/[^a-z0-9_.]/g, '')
+            .slice(0, 15) || 'student';
+          let candidate = rawBase.length >= 3 ? rawBase : `${rawBase}123`;
+          let counter = 1;
+          while (takenUsernames.has(candidate)) {
+            candidate = `${rawBase}${counter++}`;
+          }
+          p.username = candidate;
+          takenUsernames.add(candidate);
+          migrated = true;
+        }
+
+        if (!p.profileVisibility) {
+          p.profileVisibility = 'Public';
+          migrated = true;
+        }
+
+        if (!p.messagePrivacy) {
+          p.messagePrivacy = 'Everyone';
+          migrated = true;
+        }
+      }
+    }
+
+    // Ensure colleges have clean usernames and messagePrivacy
+    if (Array.isArray(dbState.colleges)) {
+      const collegeUsernames = new Set<string>();
+      for (const c of dbState.colleges) {
+        if (c.username) {
+          collegeUsernames.add(c.username.toLowerCase());
+        }
+      }
+      for (const c of dbState.colleges) {
+        if (!c.username) {
+          const base = (c.name || 'college')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '')
+            .slice(0, 15) || 'college';
+          let candidate = base;
+          let counter = 1;
+          while (collegeUsernames.has(candidate)) {
+            candidate = `${base}${counter++}`;
+          }
+          c.username = candidate;
+          collegeUsernames.add(candidate);
+          migrated = true;
+        }
+        if (!c.messagePrivacy) {
+          c.messagePrivacy = 'Everyone';
+          migrated = true;
+        }
+      }
+    }
+
+    if (migrated) {
+      fs.writeFileSync(DB_FILE, JSON.stringify(dbState, null, 2), 'utf-8');
+      console.log('Database successfully migrated: usernames and privacy settings initialized.');
+    }
   } catch (err) {
     console.error('Error loading db file, starting fresh', err);
   }

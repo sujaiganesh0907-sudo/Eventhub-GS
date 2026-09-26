@@ -28,16 +28,22 @@ import {
   Eye,
   Bell,
   BellRing,
+  Share2,
+  MoreVertical,
 } from 'lucide-react';
+import { ActionMenu } from '../components/common/ActionMenu';
+import { ShareToChatModal } from '../components/common/ShareToChatModal';
 
 interface EventsManagementPageProps {
   onOpenCreateEvent: (isProposal?: boolean) => void;
   onViewEvent: (event: IEvent) => void;
+  onNavigateToMessages?: (conversationId?: string) => void;
 }
 
 export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   onOpenCreateEvent,
   onViewEvent,
+  onNavigateToMessages,
 }) => {
   const { user, isCollege, isStudent } = useAuth();
 
@@ -54,6 +60,10 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   const [studentProposals, setStudentProposals] = useState<IEvent[]>([]);
   const [pendingRequests, setPendingRequests] = useState<IEvent[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Sharing
+  const [eventToShare, setEventToShare] = useState<IEvent | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Modals
   const [selectedReg, setSelectedReg] = useState<IEventRegistration | null>(null);
@@ -298,15 +308,62 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
                               {reg.registrationId}
                             </span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                                reg.attended
-                                  ? 'bg-emerald-500/10 text-emerald-600'
-                                  : 'bg-blue-500/10 text-blue-600'
-                              }`}
-                            >
-                              {reg.attended ? 'Attended (Present)' : 'Confirmed Pass'}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                  reg.attended
+                                    ? 'bg-emerald-500/10 text-emerald-600'
+                                    : 'bg-blue-500/10 text-blue-600'
+                                }`}
+                              >
+                                {reg.attended ? 'Attended (Present)' : 'Confirmed Pass'}
+                              </span>
+
+                              <ActionMenu
+                                items={[
+                                  {
+                                    id: 'view',
+                                    label: 'View Event',
+                                    icon: Eye,
+                                    onClick: async () => {
+                                      if (reg.event) onViewEvent(reg.event);
+                                      else {
+                                        try {
+                                          const res = await api.get<any>(`/events/${reg.eventId}`);
+                                          if (res.success && res.event) onViewEvent(res.event);
+                                        } catch (e) {}
+                                      }
+                                    },
+                                  },
+                                  {
+                                    id: 'pass',
+                                    label: 'View Entry Pass',
+                                    icon: Ticket,
+                                    onClick: () => setSelectedReg(reg),
+                                  },
+                                  {
+                                    id: 'share',
+                                    label: 'Share Event',
+                                    icon: Share2,
+                                    onClick: async () => {
+                                      if (reg.event) {
+                                        setEventToShare(reg.event);
+                                        setShowShareModal(true);
+                                      } else {
+                                        try {
+                                          const res = await api.get<any>(`/events/${reg.eventId}`);
+                                          if (res.success && res.event) {
+                                            setEventToShare(res.event);
+                                            setShowShareModal(true);
+                                          }
+                                        } catch (e) {}
+                                      }
+                                    },
+                                  },
+                                ]}
+                                ariaLabel={`Actions for pass ${reg.registrationId}`}
+                              />
+                            </div>
                           </div>
 
                           <h3 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">
@@ -423,6 +480,10 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                       onDeleteEvent={handleDeleteProposal}
                       onViewInsights={(ev) => setSelectedEventForInsights(ev)}
                       onOpenCheckInDesk={(ev) => setSelectedEventForAttendance(ev)}
+                      onShareEvent={(ev) => {
+                        setEventToShare(ev);
+                        setShowShareModal(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -459,9 +520,55 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                             <span className="text-[10px] uppercase font-bold text-[var(--text-muted)]">
                               {ev.category} · {ev.eventMode}
                             </span>
-                            <span className="text-xs font-bold text-[var(--primary-color)]">
-                              {ev.registeredCount || 0} / {ev.capacity} Registered
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-[var(--primary-color)]">
+                                {ev.registeredCount || 0} / {ev.capacity} Registered
+                              </span>
+                              <ActionMenu
+                                items={[
+                                  {
+                                    id: 'view',
+                                    label: 'View Event',
+                                    icon: Eye,
+                                    onClick: () => onViewEvent(ev),
+                                  },
+                                  {
+                                    id: 'checkin',
+                                    label: 'Check-in Desk',
+                                    icon: Scan,
+                                    onClick: () => setSelectedEventForAttendance(ev),
+                                  },
+                                  {
+                                    id: 'insights',
+                                    label: 'Analytics & Insights',
+                                    icon: BarChart3,
+                                    onClick: () => setSelectedEventForInsights(ev),
+                                  },
+                                  {
+                                    id: 'share',
+                                    label: 'Share Event',
+                                    icon: Share2,
+                                    onClick: () => {
+                                      setEventToShare(ev);
+                                      setShowShareModal(true);
+                                    },
+                                  },
+                                  {
+                                    id: 'delete',
+                                    label: 'Delete Event',
+                                    icon: Trash2,
+                                    danger: true,
+                                    onClick: async () => {
+                                      if (confirm(`Are you sure you want to delete "${ev.title}"?`)) {
+                                        await api.delete(`/events/${ev._id}`);
+                                        fetchData();
+                                      }
+                                    },
+                                  },
+                                ]}
+                                ariaLabel={`Options for ${ev.title}`}
+                              />
+                            </div>
                           </div>
 
                           <h3
@@ -665,6 +772,23 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
             setIsEditProposalOpen(false);
             setEditingProposal(null);
             fetchData();
+          }}
+        />
+      )}
+
+      {/* SHARE EVENT MODAL */}
+      {showShareModal && eventToShare && (
+        <ShareToChatModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setEventToShare(null);
+          }}
+          event={eventToShare}
+          onShareSuccess={(convId) => {
+            setShowShareModal(false);
+            setEventToShare(null);
+            if (onNavigateToMessages) onNavigateToMessages(convId);
           }}
         />
       )}

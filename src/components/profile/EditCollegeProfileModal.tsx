@@ -74,19 +74,53 @@ export const EditCollegeProfileModal: React.FC<EditCollegeProfileModalProps> = (
           </div>
         )}
 
-        <FileUpload
-          label="Campus Cover / Banner Photo"
-          helperText="Upload campus panorama / banner"
-          value={coverPhoto}
-          onChange={(url) => setCoverPhoto(url)}
-        />
+        <div className="space-y-1.5">
+          <FileUpload
+            label="Campus Cover / Banner Photo"
+            helperText="Upload campus panorama / banner"
+            value={coverPhoto}
+            onChange={(url) => setCoverPhoto(url)}
+          />
+          {coverPhoto ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setCoverPhoto('')}
+                className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Remove Custom Cover (Return to Default)
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px] text-[var(--text-muted)] italic text-right">
+              Default campus cover banner is active
+            </p>
+          )}
+        </div>
 
-        <FileUpload
-          label="Official College Logo"
-          helperText="Upload square university emblem / logo"
-          value={logo}
-          onChange={(url) => setLogo(url)}
-        />
+        <div className="space-y-1.5">
+          <FileUpload
+            label="Official College Logo"
+            helperText="Upload square university emblem / logo"
+            value={logo}
+            onChange={(url) => setLogo(url)}
+          />
+          {logo ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setLogo('')}
+                className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Remove Custom Logo (Return to Default)
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px] text-[var(--text-muted)] italic text-right">
+              Default institution emblem placeholder is active
+            </p>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>

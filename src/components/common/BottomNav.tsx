@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Building2, Calendar, User, Bell } from 'lucide-react';
+import { Home, Building2, Calendar, User, Bell, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 
@@ -9,6 +9,7 @@ interface BottomNavProps {
   onSelectTab: (tab: string) => void;
   isCollege?: boolean;
   unreadNotifications?: number;
+  unreadMessages?: number;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -17,6 +18,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onSelectTab,
   isCollege: propIsCollege,
   unreadNotifications,
+  unreadMessages = 0,
 }) => {
   const effectiveTab = activeTab || currentTab || 'home';
   const { user } = useAuth();
@@ -27,7 +29,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'colleges', label: 'Colleges', icon: Building2 },
+    { id: 'messages', label: 'Chat', icon: MessageSquare, badge: unreadMessages },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: isCollege ? 'college-profile' : 'profile', label: isCollege ? 'College ID' : 'Student ID', icon: isCollege ? Building2 : User },
     { id: 'notifications', label: 'Alerts', icon: Bell, badge: effectiveUnread },

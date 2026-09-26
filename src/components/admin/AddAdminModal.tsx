@@ -1,117 +1,203 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { api } from '../../services/api';
-import { AlertCircle, Check, UserPlus, Shield, Edit3 } from 'lucide-react';
+import { DEFAULT_STUDENT_AVATAR } from '../../services/imageDefaults';
+import {
+  Search,
+  ShieldCheck,
+  Check,
+  UserPlus,
+  Loader2,
+  AlertCircle,
+  Clock,
+  ArrowRight,
+  Shield,
+  MessageSquare,
+  FileCheck,
+  Calendar,
+  Users,
+  Scan,
+  Award,
+  BarChart3,
+  Briefcase,
+  Building2,
+  FileText,
+} from 'lucide-react';
 
 interface AddAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (admin: any) => void;
+  onSuccess: (membership: any) => void;
   currentAdminCount: number;
-  adminToEdit?: any | null;
 }
+
+export const ADMIN_PERMISSIONS = [
+  {
+    id: 'manageMessages',
+    label: 'College Messages',
+    description: 'View incoming messages, reply as institution, and manage chats',
+    icon: MessageSquare,
+  },
+  {
+    id: 'manageEventRequests',
+    label: 'Event Proposals',
+    description: 'Review student event proposals, request changes, verify & approve',
+    icon: FileCheck,
+  },
+  {
+    id: 'manageEvents',
+    label: 'College Events',
+    description: 'Create and edit college events, symposiums, and hackathons',
+    icon: Calendar,
+  },
+  {
+    id: 'manageRegistrations',
+    label: 'Registrations',
+    description: 'View registered attendees and participant rosters',
+    icon: Users,
+  },
+  {
+    id: 'manageAttendance',
+    label: 'Attendance & Check-In Desk',
+    description: 'Operate QR scanner desk, enter pass codes, mark attendance',
+    icon: Scan,
+  },
+  {
+    id: 'manageCertificates',
+    label: 'Certificates',
+    description: 'Design templates, issue certificates, and retry delivery',
+    icon: Award,
+  },
+  {
+    id: 'viewAnalytics',
+    label: 'Analytics & Insights',
+    description: 'View registration numbers, attendance metrics, and event stats',
+    icon: BarChart3,
+  },
+  {
+    id: 'managePlacements',
+    label: 'Placement Posts',
+    description: 'Create and edit campus recruitment drives & job records',
+    icon: Briefcase,
+  },
+  {
+    id: 'manageInfrastructure',
+    label: 'Infrastructure Posts',
+    description: 'Showcase campus facilities, labs, libraries, and hostels',
+    icon: Building2,
+  },
+  {
+    id: 'manageCollegeProfileContent',
+    label: 'Profile Content',
+    description: 'Edit public profile bio, announcement notices, and information',
+    icon: FileText,
+  },
+];
 
 export const AddAdminModal: React.FC<AddAdminModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
   currentAdminCount,
-  adminToEdit,
 }) => {
-  const [name, setName] = useState(adminToEdit?.name || '');
-  const [email, setEmail] = useState(adminToEdit?.email || '');
-  const [password, setPassword] = useState('AdminSecurePass123!');
-  const [permissions, setPermissions] = useState<string[]>(
-    adminToEdit?.permissions || [
-      'EVENTS_MANAGE',
-      'ATTENDANCE_MANAGE',
-      'CERTIFICATES_MANAGE',
-      'ANALYTICS_VIEW',
-    ]
-  );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+
+  // Selected Permissions
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
+    'manageEvents',
+    'manageAttendance',
+    'manageCertificates',
+    'viewAnalytics',
+  ]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invitationSent, setInvitationSent] = useState(false);
 
   useEffect(() => {
-    if (adminToEdit) {
-      setName(adminToEdit.name || '');
-      setEmail(adminToEdit.email || '');
-      setPermissions(adminToEdit.permissions || []);
-    } else {
-      setName('');
-      setEmail('');
-      setPassword('AdminSecurePass123!');
-      setPermissions([
-        'EVENTS_MANAGE',
-        'ATTENDANCE_MANAGE',
-        'CERTIFICATES_MANAGE',
-        'ANALYTICS_VIEW',
+    if (isOpen) {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSelectedUser(null);
+      setError(null);
+      setInvitationSent(false);
+      setSelectedPermissions([
+        'manageEvents',
+        'manageAttendance',
+        'manageCertificates',
+        'viewAnalytics',
       ]);
     }
-  }, [adminToEdit, isOpen]);
+  }, [isOpen]);
 
-  const availablePermissions = [
-    { id: 'EVENTS_MANAGE', label: 'Create & Manage Events' },
-    { id: 'ATTENDANCE_MANAGE', label: 'Check-In Desk, Scan QR & Mark Attendance' },
-    { id: 'CERTIFICATES_MANAGE', label: 'Issue & Manage Verified Certificates' },
-    { id: 'ANALYTICS_VIEW', label: 'View Analytics & Registered Students Roster' },
-    { id: 'REGISTRATIONS_MANAGE', label: 'Manage Participant Registrations & Passes' },
-    { id: 'PROPOSALS_REVIEW', label: 'Review & Approve Student Event Proposals' },
-    { id: 'PLACEMENTS_MANAGE', label: 'Manage Placement Drives & Statistics' },
-    { id: 'INFRASTRUCTURE_MANAGE', label: 'Manage Campus Facilities & Infrastructure' },
-  ];
+  // Debounced search for existing EVENTHUB students
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setSearching(true);
+        const res = await api.get<any>('/admins/search-users', { query: q });
+        if (res.success) {
+          setSearchResults(res.users || []);
+        }
+      } catch (err: any) {
+        console.error('Search users error', err);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleTogglePermission = (id: string) => {
-    if (permissions.includes(id)) {
-      setPermissions(permissions.filter((p) => p !== id));
+    if (selectedPermissions.includes(id)) {
+      setSelectedPermissions(selectedPermissions.filter((p) => p !== id));
     } else {
-      setPermissions([...permissions, id]);
+      setSelectedPermissions([...selectedPermissions, id]);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Administrator name is required.');
+    if (!selectedUser) {
+      setError('Please search and select an EVENTHUB user first.');
       return;
     }
-    if (!adminToEdit && !email.trim()) {
-      setError('Official email address is required.');
+    if (selectedPermissions.length === 0) {
+      setError('Please grant at least one administrative permission.');
       return;
     }
-
-    if (!adminToEdit && currentAdminCount >= 10) {
+    if (currentAdminCount >= 10) {
       setError('Maximum limit of 10 authorized college administrators reached.');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      let res: any;
-      if (adminToEdit?._id) {
-        res = await api.put<any>(`/admins/${adminToEdit._id}`, {
-          name,
-          permissions,
-        });
-      } else {
-        res = await api.post<any>('/admins', {
-          name,
-          email,
-          password,
-          permissions,
-        });
-      }
+      setLoading(true);
+      setError(null);
 
-      if (res.success && res.membership) {
+      const res = await api.post<any>('/admins/invite', {
+        targetUserId: selectedUser.userId,
+        permissions: selectedPermissions,
+      });
+
+      if (res.success) {
+        setInvitationSent(true);
         onSuccess(res.membership);
-        onClose();
       } else {
-        setError(res.message || 'Failed to save administrator.');
+        setError(res.message || 'Failed to send admin invitation.');
       }
     } catch (err: any) {
-      setError(err.message || 'Error processing administrator update.');
+      setError(err.message || 'An error occurred while sending the invite.');
     } finally {
       setLoading(false);
     }
@@ -121,110 +207,253 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={adminToEdit ? 'Edit Administrator Permissions' : 'Add Authorized College Administrator'}
-      subtitle={
-        adminToEdit
-          ? `${adminToEdit.name} (${adminToEdit.email})`
-          : `Staff & Event Coordinator Delegation (${currentAdminCount}/10 slots used)`
-      }
-      maxWidth="md"
+      title="Add College Administrator"
+      subtitle="Link an existing EVENTHUB student account & grant role permissions"
+      maxWidth="xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4 py-2">
-        {error && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-medium flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+      {invitationSent ? (
+        <div className="py-8 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center justify-center mx-auto">
+            <Check className="w-7 h-7" />
           </div>
-        )}
-
-        <div>
-          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-            Staff / Coordinator Full Name *
-          </label>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Prof. David Miller"
-            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-            Official Institution Email *
-          </label>
-          <input
-            type="email"
-            required
-            disabled={Boolean(adminToEdit)}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="e.g. dmiller@apextech.edu"
-            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden disabled:opacity-60"
-          />
-          {!adminToEdit && (
-            <p className="text-[11px] text-[var(--text-muted)] mt-1">
-              The administrator will use this email to log in and manage your institution's events.
-            </p>
-          )}
-        </div>
-
-        {!adminToEdit && (
           <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Initial Login Password
-            </label>
-            <input
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs font-mono text-[var(--text-primary)] focus:outline-hidden"
-            />
+            <h3 className="text-base font-bold text-[var(--text-primary)]">
+              Admin Invitation Sent!
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto mt-1">
+              We notified{' '}
+              <span className="font-bold text-[var(--text-primary)]">
+                @{selectedUser?.username || selectedUser?.fullName}
+              </span>
+              . Once they accept the invitation in their EVENTHUB account, their College Admin
+              Workspace will activate.
+            </p>
           </div>
-        )}
-
-        <div>
-          <label className="block text-xs font-bold text-[var(--text-primary)] mb-2">
-            Assigned Permissions & Modules
-          </label>
-          <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-            {availablePermissions.map((perm) => (
-              <label
-                key={perm.id}
-                className="flex items-center gap-2 p-2.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs text-[var(--text-primary)] cursor-pointer transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={permissions.includes(perm.id)}
-                  onChange={() => handleTogglePermission(perm.id)}
-                  className="w-4 h-4 rounded-sm accent-[var(--primary-color)]"
-                />
-                <span className="font-medium">{perm.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--border-color)]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-[var(--primary-color)] text-[var(--primary-text)] text-xs font-bold cursor-pointer"
           >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading || (!adminToEdit && currentAdminCount >= 10)}
-            className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
-          >
-            {adminToEdit ? <Edit3 className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-            {loading ? 'Saving...' : adminToEdit ? 'Save Changes' : 'Add Administrator'}
+            Done
           </button>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={handleSendInvite} className="space-y-5 py-2">
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* STEP 1: Search Existing EVENTHUB User */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-[var(--text-primary)]">
+              Step 1: Search EVENTHUB Student by @Username or Name
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Type username (e.g. sureshm2006) or student name..."
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--primary-color)]"
+              />
+              {searching && (
+                <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[var(--primary-color)]" />
+              )}
+            </div>
+
+            {/* User Search Results */}
+            {searchQuery.trim().length > 0 && !selectedUser && (
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface)] max-h-48 overflow-y-auto divide-y divide-[var(--border-color)] shadow-lg">
+                {searching ? (
+                  <div className="p-4 text-center text-xs text-[var(--text-muted)]">
+                    Searching registered students...
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-[var(--text-muted)]">
+                    No EVENTHUB student found matching "{searchQuery}".
+                  </div>
+                ) : (
+                  searchResults.map((st) => (
+                    <div
+                      key={st.userId}
+                      onClick={() => {
+                        setSelectedUser(st);
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                      className="p-2.5 flex items-center justify-between gap-3 hover:bg-[var(--surface-hover)] cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={st.profilePhoto || DEFAULT_STUDENT_AVATAR}
+                          alt={st.fullName}
+                          className="w-9 h-9 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                          onError={(e) => {
+                            (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-[var(--text-primary)] truncate">
+                              {st.fullName}
+                            </span>
+                            {st.username && (
+                              <span className="text-[11px] font-semibold text-[var(--primary-color)]">
+                                @{st.username}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">
+                            {st.collegeName} {st.department ? `· ${st.department}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      {st.currentStatus === 'Active' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600">
+                          Already Admin
+                        </span>
+                      ) : st.currentStatus === 'Invited' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600">
+                          Invite Pending
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="px-2.5 py-1 rounded-lg bg-[var(--primary-color)] text-[var(--primary-text)] text-[11px] font-bold"
+                        >
+                          Select
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Selected User Display Card */}
+            {selectedUser && (
+              <div className="p-3 rounded-xl border border-[var(--primary-color)] bg-[var(--primary-color)]/5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={selectedUser.profilePhoto || DEFAULT_STUDENT_AVATAR}
+                    alt={selectedUser.fullName}
+                    className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                    onError={(e) => {
+                      (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                    }}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-[var(--text-primary)] truncate">
+                        {selectedUser.fullName}
+                      </p>
+                      {selectedUser.username && (
+                        <span className="text-xs font-bold text-[var(--primary-color)]">
+                          @{selectedUser.username}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[var(--text-muted)] truncate">
+                      {selectedUser.collegeName} · {selectedUser.email}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedUser(null)}
+                  className="text-xs font-semibold text-red-500 hover:underline shrink-0"
+                >
+                  Change
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* STEP 2: Choose Permissions */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-[var(--text-primary)]">
+                Step 2: Assign Permissions
+              </label>
+              <span className="text-[11px] text-[var(--text-muted)]">
+                {selectedPermissions.length} of {ADMIN_PERMISSIONS.length} selected
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto p-1">
+              {ADMIN_PERMISSIONS.map((perm) => {
+                const isSelected = selectedPermissions.includes(perm.id);
+                const Icon = perm.icon;
+                return (
+                  <div
+                    key={perm.id}
+                    onClick={() => handleTogglePermission(perm.id)}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                      isSelected
+                        ? 'border-[var(--primary-color)] bg-[var(--primary-color)]/5'
+                        : 'border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)]'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-md border mt-0.5 flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected
+                          ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-white'
+                          : 'border-[var(--border-color)] bg-[var(--surface)]'
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                        <Icon className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                        {perm.label}
+                      </p>
+                      <p className="text-[10px] text-[var(--text-muted)] leading-tight mt-0.5">
+                        {perm.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom Actions */}
+          <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Admins: {currentAdminCount}/10 max
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading || !selectedUser || selectedPermissions.length === 0}
+                className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" /> Send Admin Invite
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
     </Modal>
   );
 };

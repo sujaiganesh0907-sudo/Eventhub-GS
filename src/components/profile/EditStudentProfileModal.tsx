@@ -19,12 +19,17 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
   onSuccess,
 }) => {
   const [fullName, setFullName] = useState(profile.fullName || '');
+  const [username, setUsername] = useState(profile.username ? profile.username.replace(/^@/, '') : '');
   const [collegeName, setCollegeName] = useState(profile.collegeName || '');
   const [phoneNumber, setPhoneNumber] = useState(profile.phoneNumber || '');
   const [department, setDepartment] = useState(profile.department || '');
   const [yearOfStudy, setYearOfStudy] = useState(profile.yearOfStudy || '');
   const [bio, setBio] = useState(profile.bio || '');
   const [location, setLocation] = useState(profile.location || '');
+  const [profileVisibility, setProfileVisibility] = useState<'Public' | 'Private'>(profile.profileVisibility || 'Public');
+  const [messagePrivacy, setMessagePrivacy] = useState<'Everyone' | 'Following' | 'Connections' | 'Nobody'>(
+    profile.messagePrivacy || 'Everyone'
+  );
   const [profilePhoto, setProfilePhoto] = useState(profile.profilePhoto || '');
   const [coverPhoto, setCoverPhoto] = useState(profile.coverPhoto || '');
   const [skills, setSkills] = useState<string[]>(profile.skills || []);
@@ -49,15 +54,25 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
     setSaving(true);
     setError(null);
 
+    const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
+    if (!/^[a-zA-Z0-9_.]{3,30}$/.test(cleanUser)) {
+      setError('Username must be 3-30 characters long (letters, numbers, underscore, period).');
+      setSaving(false);
+      return;
+    }
+
     try {
       const res = await api.put<any>('/students/profile', {
         fullName,
+        username: cleanUser,
         collegeName,
         phoneNumber,
         department,
         yearOfStudy,
         bio,
         location,
+        profileVisibility,
+        messagePrivacy,
         profilePhoto,
         coverPhoto,
         skills,
@@ -81,7 +96,7 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
       isOpen={isOpen}
       onClose={onClose}
       title="Edit Student Profile"
-      subtitle="Update your personal details, campus identity, and media"
+      subtitle="Update your personal details, unique @username, and privacy"
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-2">
@@ -92,21 +107,55 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
           </div>
         )}
 
-        {/* Cover Photo Upload */}
-        <FileUpload
-          label="Profile Banner / Cover Photo"
-          helperText="Upload landscape banner for your profile card"
-          value={coverPhoto}
-          onChange={(url) => setCoverPhoto(url)}
-        />
+        {/* Cover Photo Upload & Reset to Default */}
+        <div className="space-y-1.5">
+          <FileUpload
+            label="Profile Banner / Cover Photo"
+            helperText="Upload landscape banner for your profile card"
+            value={coverPhoto}
+            onChange={(url) => setCoverPhoto(url)}
+          />
+          {coverPhoto ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setCoverPhoto('')}
+                className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" /> Remove Custom Cover (Return to Default)
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px] text-[var(--text-muted)] italic text-right">
+              Default neutral banner is active
+            </p>
+          )}
+        </div>
 
-        {/* Avatar Upload */}
-        <FileUpload
-          label="Profile Avatar Photo"
-          helperText="Upload headshot / photo"
-          value={profilePhoto}
-          onChange={(url) => setProfilePhoto(url)}
-        />
+        {/* Avatar Upload & Reset to Default */}
+        <div className="space-y-1.5">
+          <FileUpload
+            label="Profile Avatar Photo"
+            helperText="Upload headshot / photo"
+            value={profilePhoto}
+            onChange={(url) => setProfilePhoto(url)}
+          />
+          {profilePhoto ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setProfilePhoto('')}
+                className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" /> Remove Custom Photo (Return to Default)
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px] text-[var(--text-muted)] italic text-right">
+              Default neutral silhouette avatar is active
+            </p>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -124,17 +173,72 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
 
           <div>
             <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              College / Institution *
+              Unique Username *
             </label>
-            <input
-              type="text"
-              required
-              value={collegeName}
-              onChange={(e) => setCollegeName(e.target.value)}
-              placeholder="e.g. Apex Institute of Technology"
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--primary-color)]">
+                @
+              </span>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
+                placeholder="sureshm2006"
+                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs font-semibold text-[var(--text-primary)] focus:outline-hidden"
+              />
+            </div>
+            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+              Unique student tag for search, profile URL, and mentions.
+            </p>
           </div>
+        </div>
+
+        {/* Privacy & Messaging Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/60">
+          <div>
+            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+              Profile Visibility
+            </label>
+            <select
+              value={profileVisibility}
+              onChange={(e) => setProfileVisibility(e.target.value as any)}
+              className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+            >
+              <option value="Public">Public (Anyone can view profile)</option>
+              <option value="Private">Private (Followers only)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+              Who Can Message Me
+            </label>
+            <select
+              value={messagePrivacy}
+              onChange={(e) => setMessagePrivacy(e.target.value as any)}
+              className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+            >
+              <option value="Everyone">Everyone</option>
+              <option value="Following">People I Follow</option>
+              <option value="Connections">Mutual Connections</option>
+              <option value="Nobody">Nobody</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+            College / Institution *
+          </label>
+          <input
+            type="text"
+            required
+            value={collegeName}
+            onChange={(e) => setCollegeName(e.target.value)}
+            placeholder="e.g. Apex Institute of Technology"
+            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

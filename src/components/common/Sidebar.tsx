@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   ChevronRight,
   UserCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -22,6 +23,7 @@ interface SidebarProps {
   onSelectTab: (tab: string) => void;
   isCollege?: boolean;
   unreadNotifications?: number;
+  unreadMessages?: number;
   onCreateEventClick?: () => void;
 }
 
@@ -31,6 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   isCollege: propIsCollege,
   unreadNotifications,
+  unreadMessages = 0,
   onCreateEventClick,
 }) => {
   const effectiveTab = activeTab || currentTab || 'home';
@@ -43,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const studentNavItems = [
     { id: 'home', label: 'Home', icon: Home },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
     { id: 'colleges', label: 'Colleges', icon: Building2 },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'profile', label: 'Student ID', icon: User },
@@ -52,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const collegeNavItems = [
     { id: 'home', label: 'Home', icon: Home },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
     { id: 'colleges', label: 'Colleges', icon: Building2 },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'college-profile', label: 'College ID', icon: Building2 },

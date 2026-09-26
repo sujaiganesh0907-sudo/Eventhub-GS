@@ -145,29 +145,32 @@ export const api = {
     return request<T>(endpoint, { method: 'GET' });
   },
 
-  post: <T>(url: string, body?: any) => {
+  post: <T>(url: string, body?: any, options?: RequestInit) => {
     return request<T>(url, {
+      ...options,
       method: 'POST',
       body: body instanceof FormData ? body : JSON.stringify(body || {}),
     });
   },
 
-  put: <T>(url: string, body?: any) => {
+  put: <T>(url: string, body?: any, options?: RequestInit) => {
     return request<T>(url, {
+      ...options,
       method: 'PUT',
       body: body instanceof FormData ? body : JSON.stringify(body || {}),
     });
   },
 
-  patch: <T>(url: string, body?: any) => {
+  patch: <T>(url: string, body?: any, options?: RequestInit) => {
     return request<T>(url, {
+      ...options,
       method: 'PATCH',
       body: body instanceof FormData ? body : JSON.stringify(body || {}),
     });
   },
 
-  delete: <T>(url: string) => {
-    return request<T>(url, { method: 'DELETE' });
+  delete: <T>(url: string, options?: RequestInit) => {
+    return request<T>(url, { ...options, method: 'DELETE' });
   },
 
   uploadFile: async (file: File) => {

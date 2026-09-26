@@ -6,7 +6,10 @@ import { EditCollegeProfileModal } from '../components/profile/EditCollegeProfil
 import { AddPlacementPostModal } from '../components/profile/AddPlacementPostModal';
 import { AddInfrastructureModal } from '../components/profile/AddInfrastructureModal';
 import { AddAdminModal } from '../components/admin/AddAdminModal';
+import { ManageAdminsModal } from '../components/admin/ManageAdminsModal';
 import { EventCard } from '../components/event/EventCard';
+import { ShareToChatModal } from '../components/common/ShareToChatModal';
+import { DEFAULT_COLLEGE_LOGO, DEFAULT_COLLEGE_COVER } from '../services/imageDefaults';
 import {
   Building2,
   ShieldCheck,
@@ -25,18 +28,25 @@ import {
   ExternalLink,
   Loader2,
   Map,
+  MessageSquare,
+  Share2,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface CollegeProfilePageProps {
   collegeId?: string;
   onViewEvent: (event: IEvent) => void;
   onRegisterEvent: (event: IEvent) => void;
+  onNavigateToMessages?: (conversationId?: string) => void;
+  onBack?: () => void;
 }
 
 export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
   collegeId,
   onViewEvent,
   onRegisterEvent,
+  onNavigateToMessages,
+  onBack,
 }) => {
   const { user, college: authCollege } = useAuth();
 
@@ -53,12 +63,15 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [messagingLoading, setMessagingLoading] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Modals
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAddPlacementModal, setShowAddPlacementModal] = useState(false);
   const [showAddInfraModal, setShowAddInfraModal] = useState(false);
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [showManageAdminsModal, setShowManageAdminsModal] = useState(false);
   const [adminToEdit, setAdminToEdit] = useState<any | null>(null);
 
   const fetchCollegeData = async () => {
@@ -74,10 +87,16 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
 
       if (colRes.success && colRes.college) {
         setCollege(colRes.college);
-        if (colRes.college.followers && user?._id) {
-          setIsFollowing(colRes.college.followers.includes(user._id));
+      }
+
+      // Check real connection status
+      if (user?._id && targetCollegeId) {
+        const connRes = await api.get<any>(`/social/college/${targetCollegeId}/connection`);
+        if (connRes.success) {
+          setIsFollowing(!!connRes.connected);
         }
       }
+
       if (evRes.success) setEvents(evRes.events || []);
       if (plRes.success) setPlacements(plRes.posts || []);
       if (inRes.success) setInfrastructures(inRes.posts || []);
@@ -100,13 +119,13 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
   const handleToggleFollow = async () => {
     if (!targetCollegeId) return;
     try {
-      const res = await api.post<any>(`/colleges/${targetCollegeId}/follow`, {});
+      const res = await api.post<any>('/social/college/connection', { collegeId: targetCollegeId });
       if (res.success) {
-        setIsFollowing(res.following);
+        setIsFollowing(res.connected);
         if (college) {
           setCollege({
             ...college,
-            connectionsCount: res.following
+            connectionsCount: res.connected
               ? (college.connectionsCount || 0) + 1
               : Math.max(0, (college.connectionsCount || 0) - 1),
           });
@@ -114,6 +133,27 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleStartMessage = async () => {
+    if (!targetCollegeId) return;
+    try {
+      setMessagingLoading(true);
+      const res = await api.post<any>('/messages/conversations', {
+        targetCollegeId,
+      });
+      if (res.success && res.conversation) {
+        if (onNavigateToMessages) {
+          onNavigateToMessages(res.conversation._id);
+        }
+      } else {
+        alert(res.message || 'Cannot message this college due to institutional messaging privacy settings.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to start message conversation');
+    } finally {
+      setMessagingLoading(false);
     }
   };
 
@@ -152,20 +192,40 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
         {/* Cover Photo */}
         <div className="h-44 sm:h-64 w-full bg-slate-900 relative">
           <img
-            src={
-              college.coverPhoto ||
-              'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1200&auto=format&fit=crop&q=80'
-            }
+            src={college.coverPhoto || DEFAULT_COLLEGE_COVER}
             alt="Campus Cover"
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as any).src = DEFAULT_COLLEGE_COVER;
+            }}
           />
-          {isSelf && (
+          {onBack && (
             <button
-              onClick={() => setShowEditProfileModal(true)}
-              className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-black/60 text-white hover:bg-black/80 backdrop-blur-xs text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              onClick={onBack}
+              className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-black/60 text-white hover:bg-black/80 backdrop-blur-xs text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
             >
-              <Edit className="w-3.5 h-3.5" /> Edit Profile
+              <ArrowLeft className="w-3.5 h-3.5" /> Back
             </button>
+          )}
+          {isSelf && (
+            <div className="absolute top-4 right-4 flex items-center gap-2">
+              {user?.role === 'College Super Admin' && (
+                <button
+                  type="button"
+                  onClick={() => setShowManageAdminsModal(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600/90 hover:bg-blue-600 text-white backdrop-blur-xs text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" /> Manage Admins
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowEditProfileModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-black/60 text-white hover:bg-black/80 backdrop-blur-xs text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" /> Edit Profile
+              </button>
+            </div>
           )}
         </div>
 
@@ -174,12 +234,12 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-4">
             <div className="flex items-end gap-4">
               <img
-                src={
-                  college.logo ||
-                  'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=120&auto=format&fit=crop&q=80'
-                }
+                src={college.logo || DEFAULT_COLLEGE_LOGO}
                 alt={college.name}
                 className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg"
+                onError={(e) => {
+                  (e.target as any).src = DEFAULT_COLLEGE_LOGO;
+                }}
               />
               <div className="mb-2">
                 <div className="flex items-center gap-2">
@@ -201,7 +261,7 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {college.website && (
                 <a
                   href={college.website}
@@ -214,25 +274,50 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
               )}
 
               {!isSelf && (
-                <button
-                  onClick={handleToggleFollow}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                    isFollowing
-                      ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
-                      : 'bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] shadow-xs'
-                  }`}
-                >
-                  {isFollowing ? (
-                    <>
-                      <Check className="w-4 h-4" /> Connected
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" /> Connect College
-                    </>
-                  )}
-                </button>
+                <>
+                  <button
+                    onClick={handleStartMessage}
+                    disabled={messagingLoading}
+                    className="px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    {messagingLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <MessageSquare className="w-3.5 h-3.5 text-[var(--primary-color)]" /> Message
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleToggleFollow}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                      isFollowing
+                        ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
+                        : 'bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] shadow-xs'
+                    }`}
+                  >
+                    {isFollowing ? (
+                      <>
+                        <Check className="w-4 h-4" /> Connected
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" /> Connect College
+                      </>
+                    )}
+                  </button>
+                </>
               )}
+
+              {/* Share College Profile */}
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                title="Share College Profile"
+              >
+                <Share2 className="w-4 h-4" /> Share
+              </button>
             </div>
           </div>
 
@@ -530,6 +615,15 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
         />
       )}
 
+      {showManageAdminsModal && college && (
+        <ManageAdminsModal
+          isOpen={showManageAdminsModal}
+          onClose={() => setShowManageAdminsModal(false)}
+          collegeId={college._id}
+          onOpenAddAdmin={() => setShowAddAdminModal(true)}
+        />
+      )}
+
       {showAddAdminModal && (
         <AddAdminModal
           isOpen={showAddAdminModal}
@@ -538,18 +632,23 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
             setAdminToEdit(null);
           }}
           onSuccess={(savedAdmin) => {
-            if (adminToEdit) {
-              setAdmins((prev) =>
-                prev.map((a) => (a._id === savedAdmin._id ? savedAdmin : a))
-              );
-            } else {
-              setAdmins([...admins, savedAdmin]);
-            }
+            fetchCollegeData();
             setShowAddAdminModal(false);
-            setAdminToEdit(null);
           }}
           currentAdminCount={admins.length}
-          adminToEdit={adminToEdit}
+        />
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && college && (
+        <ShareToChatModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          college={college}
+          onShareSuccess={(convId) => {
+            setShowShareModal(false);
+            if (onNavigateToMessages) onNavigateToMessages(convId);
+          }}
         />
       )}
     </div>

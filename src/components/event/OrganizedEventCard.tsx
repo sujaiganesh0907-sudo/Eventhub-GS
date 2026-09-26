@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
-  MoreVertical,
   Eye,
   Edit3,
   Trash2,
@@ -12,8 +11,14 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Share2,
+  Scan,
+  UserCheck,
+  Award,
 } from 'lucide-react';
 import { IEvent } from '../../types';
+import { ActionMenu, ActionMenuItem } from '../common/ActionMenu';
+import { DEFAULT_EVENT_POSTER } from '../../services/imageDefaults';
 
 interface OrganizedEventCardProps {
   event: IEvent;
@@ -23,6 +28,10 @@ interface OrganizedEventCardProps {
   onDeleteEvent?: (eventId: string) => void;
   onViewInsights?: (event: IEvent) => void;
   onOpenCheckInDesk?: (event: IEvent) => void;
+  onViewRegistrations?: (event: IEvent) => void;
+  onManageAttendance?: (event: IEvent) => void;
+  onManageCertificates?: (event: IEvent) => void;
+  onShareEvent?: (event: IEvent) => void;
 }
 
 export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
@@ -33,27 +42,12 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
   onDeleteEvent,
   onViewInsights,
   onOpenCheckInDesk,
+  onViewRegistrations,
+  onManageAttendance,
+  onManageCertificates,
+  onShareEvent,
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    if (menuOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [menuOpen]);
-
-  // Clean fallback poster
-  const fallbackPoster =
-    'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=80';
-  const posterSrc = event.poster || event.hostCollegeLogo || fallbackPoster;
+  const posterSrc = event.poster || event.hostCollegeLogo || DEFAULT_EVENT_POSTER;
 
   // Status checks
   const isApproved = event.status === 'Published' || event.status === 'Approved';
@@ -116,27 +110,129 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
   };
 
   const handleDelete = () => {
-    setMenuOpen(false);
     if (!onDeleteEvent) return;
     if (window.confirm(`Are you sure you want to delete "${event.title}"? This cannot be undone.`)) {
       onDeleteEvent(event._id);
     }
   };
 
+  // Build full authorized options set (Requirement 1)
+  const menuItems: ActionMenuItem[] = [
+    {
+      id: 'view',
+      label: 'View Event',
+      icon: Eye,
+      onClick: () => onViewEvent(event),
+    },
+  ];
+
+  if (onShareEvent) {
+    menuItems.push({
+      id: 'share',
+      label: 'Share Event',
+      icon: Share2,
+      onClick: () => onShareEvent(event),
+    });
+  }
+
+  // Pre-approval actions or draft actions
+  if (!isApproved && !isCompleted) {
+    if (onEditEvent) {
+      menuItems.push({
+        id: 'edit',
+        label: 'Edit Event',
+        icon: Edit3,
+        onClick: () => onEditEvent(event),
+      });
+    }
+    if (onDeleteEvent) {
+      menuItems.push({
+        id: 'delete',
+        label: 'Delete Event',
+        icon: Trash2,
+        danger: true,
+        onClick: handleDelete,
+      });
+    }
+  }
+
+  // Live / Approved / Completed event actions
+  if (isApproved || isCompleted) {
+    if (onViewInsights) {
+      menuItems.push({
+        id: 'insights',
+        label: 'Event Insights',
+        icon: BarChart3,
+        onClick: () => onViewInsights(event),
+      });
+    }
+    if (onOpenCheckInDesk) {
+      menuItems.push({
+        id: 'checkin',
+        label: 'Check-In Desk',
+        icon: Scan,
+        onClick: () => onOpenCheckInDesk(event),
+      });
+    }
+    if (onViewRegistrations) {
+      menuItems.push({
+        id: 'registrations',
+        label: 'Registrations',
+        icon: Users,
+        onClick: () => onViewRegistrations(event),
+      });
+    }
+    if (onManageAttendance) {
+      menuItems.push({
+        id: 'attendance',
+        label: 'Attendance',
+        icon: UserCheck,
+        onClick: () => onManageAttendance(event),
+      });
+    }
+    if (onManageCertificates) {
+      menuItems.push({
+        id: 'certificates',
+        label: 'Certificates',
+        icon: Award,
+        onClick: () => onManageCertificates(event),
+      });
+    }
+    // Allow edit or cancel if college management
+    if (!isStudent && onEditEvent) {
+      menuItems.push({
+        id: 'edit',
+        label: 'Edit Event',
+        icon: Edit3,
+        onClick: () => onEditEvent(event),
+      });
+    }
+    if (!isStudent && onDeleteEvent) {
+      menuItems.push({
+        id: 'delete',
+        label: 'Delete Event',
+        icon: Trash2,
+        danger: true,
+        onClick: handleDelete,
+      });
+    }
+  }
+
   return (
-    <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all duration-200 overflow-hidden shadow-xs hover:shadow-md flex flex-col justify-between group">
+    // Outer card does NOT have overflow-hidden so that 3-dot dropdown is never clipped!
+    <div className="relative rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between group">
       <div>
-        {/* Cover / Poster Container */}
+        {/* Cover / Poster Container - Top of Card, 16:9, rounded-t-2xl overflow-hidden */}
         <div
           onClick={() => onViewEvent(event)}
-          className="relative aspect-video w-full bg-slate-950 overflow-hidden cursor-pointer"
+          className="relative aspect-video w-full bg-slate-950 rounded-t-2xl overflow-hidden cursor-pointer"
         >
           <img
             src={posterSrc}
             alt={event.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
             onError={(e) => {
-              (e.target as any).src = fallbackPoster;
+              (e.target as any).src = DEFAULT_EVENT_POSTER;
             }}
           />
 
@@ -179,102 +275,12 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
               {event.title}
             </h3>
 
-            {/* 3-Dot Dropdown Action Menu */}
-            <div className="relative shrink-0" ref={menuRef}>
-              <button
-                type="button"
-                aria-label="Event Options"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen((prev) => !prev);
-                }}
-                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border-color)]"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xl py-1.5 z-30 animate-in fade-in-50 zoom-in-95">
-                  {/* View Event (Always available) */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpen(false);
-                      onViewEvent(event);
-                    }}
-                    className="w-full px-3 py-2 text-xs font-semibold text-left text-[var(--text-primary)] hover:bg-[var(--surface-hover)] flex items-center gap-2 cursor-pointer transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-blue-500" /> View Event
-                  </button>
-
-                  {/* Before Approval: Student can Edit and Delete */}
-                  {!isApproved && !isCompleted && (
-                    <>
-                      {onEditEvent && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpen(false);
-                            onEditEvent(event);
-                          }}
-                          className="w-full px-3 py-2 text-xs font-semibold text-left text-[var(--text-primary)] hover:bg-[var(--surface-hover)] flex items-center gap-2 cursor-pointer transition-colors"
-                        >
-                          <Edit3 className="w-3.5 h-3.5 text-amber-500" /> Edit Event
-                        </button>
-                      )}
-
-                      {onDeleteEvent && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete();
-                          }}
-                          className="w-full px-3 py-2 text-xs font-semibold text-left text-red-600 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer transition-colors border-t border-[var(--border-color)] mt-1 pt-1.5"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete Event
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {/* After Approval: Student can View, Open Check-In Desk, and See Insights */}
-                  {(isApproved || isCompleted) && (
-                    <>
-                      {onOpenCheckInDesk && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpen(false);
-                            onOpenCheckInDesk(event);
-                          }}
-                          className="w-full px-3 py-2 text-xs font-semibold text-left text-[var(--text-primary)] hover:bg-[var(--surface-hover)] flex items-center gap-2 cursor-pointer transition-colors"
-                        >
-                          <Users className="w-3.5 h-3.5 text-purple-500" /> Check-In Desk
-                        </button>
-                      )}
-
-                      {onViewInsights && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpen(false);
-                            onViewInsights(event);
-                          }}
-                          className="w-full px-3 py-2 text-xs font-semibold text-left text-[var(--text-primary)] hover:bg-[var(--surface-hover)] flex items-center gap-2 cursor-pointer transition-colors"
-                        >
-                          <BarChart3 className="w-3.5 h-3.5 text-emerald-500" /> Event Insights
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* Clean Professional 3-Dot Action Menu (Requirement 1) */}
+            <ActionMenu
+              items={menuItems}
+              ariaLabel={`Options for ${event.title}`}
+              align="right"
+            />
           </div>
 
           <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
@@ -293,8 +299,8 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="px-4 py-3 border-t border-[var(--border-color)] bg-[var(--surface-subtle)] flex items-center justify-between text-xs text-[var(--text-muted)]">
+      {/* Footer Info with rounded-b-2xl */}
+      <div className="px-4 py-3 border-t border-[var(--border-color)] bg-[var(--surface-subtle)] rounded-b-2xl flex items-center justify-between text-xs text-[var(--text-muted)]">
         <span className="flex items-center gap-1 font-medium">
           <Calendar className="w-3.5 h-3.5 text-[var(--text-muted)]" />
           {event.eventDate}

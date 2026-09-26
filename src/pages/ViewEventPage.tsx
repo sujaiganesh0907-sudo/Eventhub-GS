@@ -38,17 +38,20 @@ import { ReminderModal } from '../components/event/ReminderModal';
 import { AttendanceModal } from '../components/attendance/AttendanceModal';
 import { IssueCertificateModal } from '../components/certificate/IssueCertificateModal';
 import { EventInsightsModal } from '../components/event/EventInsightsModal';
+import { ShareToChatModal } from '../components/common/ShareToChatModal';
 
 interface ViewEventPageProps {
   eventId: string;
   onBack: () => void;
   onSelectCollege?: (collegeId: string) => void;
+  onNavigateToMessages?: (conversationId?: string) => void;
 }
 
 export const ViewEventPage: React.FC<ViewEventPageProps> = ({
   eventId,
   onBack,
   onSelectCollege,
+  onNavigateToMessages,
 }) => {
   const { user } = useAuth();
 
@@ -69,6 +72,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showIssueCertModal, setShowIssueCertModal] = useState(false);
   const [showInsightsModal, setShowInsightsModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const fetchEventData = async () => {
     try {
@@ -372,7 +376,16 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Share Event Button */}
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+            title="Share event with friends or collegiate groups"
+          >
+            <Share2 className="w-4 h-4 text-[var(--primary-color)]" /> Share Event
+          </button>
+
           {isRegistered ? (
             <>
               <button
@@ -732,6 +745,19 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
           isOpen={showInsightsModal}
           onClose={() => setShowInsightsModal(false)}
           event={event}
+        />
+      )}
+
+      {/* SHARE EVENT MODAL (Requirement 12) */}
+      {showShareModal && event && (
+        <ShareToChatModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          event={event}
+          onShareSuccess={(convId) => {
+            setShowShareModal(false);
+            if (onNavigateToMessages) onNavigateToMessages(convId);
+          }}
         />
       )}
     </div>

@@ -81,8 +81,8 @@ export async function updateCollegeProfile(req: AuthenticatedRequest, res: Respo
         ...(location !== undefined && { location }),
         ...(bio !== undefined && { bio }),
         ...(website !== undefined && { website }),
-        ...(logo && { logo }),
-        ...(coverPhoto && { coverPhoto }),
+        ...(logo !== undefined && { logo }),
+        ...(coverPhoto !== undefined && { coverPhoto }),
       },
     });
 

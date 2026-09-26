@@ -25,10 +25,11 @@ export interface IStudentProfile {
   id?: string;
   userId: string;
   fullName: string;
-  email: string;
+  username?: string;
+  email?: string;
   collegeName: string;
   targetCollegeId?: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   department: string;
   yearOfStudy: string;
   bio?: string;
@@ -37,6 +38,10 @@ export interface IStudentProfile {
   coverPhoto?: string;
   skills: string[];
   achievements: string[];
+  profileVisibility?: 'Public' | 'Private';
+  messagePrivacy?: 'Everyone' | 'Following' | 'Connections' | 'Nobody';
+  isPrivateRestricted?: boolean;
+  isFollowing?: boolean;
   followersCount: number;
   followingCount: number;
   connectionsCount: number;
@@ -50,6 +55,7 @@ export interface ICollege {
   _id: string;
   id?: string;
   name: string;
+  username?: string;
   officialEmail: string;
   officialDomain: string;
   contactNumber: string;
@@ -62,6 +68,7 @@ export interface ICollege {
   isVerified?: boolean;
   rejectionReason?: string;
   superAdminId: string;
+  messagePrivacy?: 'Everyone' | 'Connected' | 'Nobody';
   connectionsCount: number;
   activeEventsCount?: number;
   placementsCount?: number;
@@ -346,3 +353,110 @@ export interface ICollegeAdmin {
   addedBy: string;
   createdAt: string;
 }
+
+export interface IConversationParticipant {
+  userId: string;
+  role: string;
+  name: string;
+  username?: string;
+  avatar?: string;
+  collegeId?: string;
+}
+
+export interface IConversation {
+  _id: string;
+  id?: string;
+  participants: string[];
+  participantDetails: IConversationParticipant[];
+  otherParticipant?: IConversationParticipant;
+  unreadCount?: number;
+  isMuted?: boolean;
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IMessage {
+  _id: string;
+  id?: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  text: string;
+  attachmentUrl?: string;
+  attachmentType?: 'image' | 'file';
+  sharedEventId?: string;
+  sharedStudentId?: string;
+  sharedCollegeId?: string;
+  sharedEvent?: {
+    _id: string;
+    title: string;
+    poster?: string;
+    hostCollegeName: string;
+    eventDate: string;
+    isFree: boolean;
+    registrationFee?: number;
+    category: string;
+  } | null;
+  sharedStudent?: {
+    _id: string;
+    userId: string;
+    fullName: string;
+    username?: string;
+    profilePhoto?: string;
+    collegeName: string;
+  } | null;
+  sharedCollege?: {
+    _id: string;
+    name: string;
+    username?: string;
+    logo?: string;
+    location?: string;
+    verificationStatus?: string;
+  } | null;
+  readBy: string[];
+  deletedFor?: string[];
+  deletedForEveryone?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IGlobalSearchStudent {
+  _id: string;
+  userId: string;
+  fullName: string;
+  username?: string;
+  collegeName: string;
+  department: string;
+  profilePhoto?: string;
+  profileVisibility?: string;
+}
+
+export interface IGlobalSearchCollege {
+  _id: string;
+  name: string;
+  username?: string;
+  location?: string;
+  logo?: string;
+  verificationStatus?: string;
+  isVerified?: boolean;
+}
+
+export interface IGlobalSearchEvent {
+  _id: string;
+  title: string;
+  poster?: string;
+  hostCollegeId: string;
+  hostCollegeName: string;
+  category: string;
+  eventDate: string;
+  eventMode: string;
+  isFree: boolean;
+  registrationFee?: number;
+}
+

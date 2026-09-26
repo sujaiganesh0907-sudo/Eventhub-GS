@@ -16,6 +16,7 @@ import { OrganizedEventCard } from '../components/event/OrganizedEventCard';
 import { EventInsightsModal } from '../components/event/EventInsightsModal';
 import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { Modal } from '../components/common/Modal';
+import { ShareToChatModal } from '../components/common/ShareToChatModal';
 import {
   Building2,
   Calendar,
@@ -34,21 +35,27 @@ import {
   ExternalLink,
   Flame,
   ArrowRight,
+  ArrowLeft,
   Clock,
   AlertCircle,
   Eye,
+  MessageSquare,
 } from 'lucide-react';
 
 interface StudentProfilePageProps {
   onViewEvent?: (event: IEvent) => void;
   onSelectCollege?: (collegeId: string) => void;
   studentId?: string; // Optional: view another student's profile
+  onNavigateToMessages?: (conversationId?: string) => void;
+  onBack?: () => void;
 }
 
 export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   onViewEvent,
   onSelectCollege,
   studentId,
+  onNavigateToMessages,
+  onBack,
 }) => {
   const { user, studentProfile, updateStudentProfileLocal } = useAuth();
 
@@ -56,6 +63,11 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
     !studentId && studentProfile ? studentProfile : null
   );
   const isOwnProfile = !studentId || (profile && profile._id === studentProfile?._id) || (user && profile && profile.userId === user._id);
+
+  const [isFollowingTarget, setIsFollowingTarget] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [messagingLoading, setMessagingLoading] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const [certificates, setCertificates] = useState<ICertificate[]>([]);
   const [registrations, setRegistrations] = useState<IEventRegistration[]>([]);
@@ -101,6 +113,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
       if (profRes.success && (profRes.student || profRes.profile)) {
         const p = profRes.student || profRes.profile;
         setProfile(p);
+        setIsFollowingTarget(!!p.isFollowing);
         if (!studentId && updateStudentProfileLocal) {
           updateStudentProfileLocal(p);
         }
@@ -119,6 +132,54 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   useEffect(() => {
     fetchProfileData();
   }, [studentId]);
+
+  // Follow/unfollow currently viewed student
+  const handleToggleFollowCurrent = async () => {
+    if (!profile) return;
+    try {
+      setFollowLoading(true);
+      const res = await api.post<any>('/social/student/follow', { targetStudentId: profile._id });
+      if (res.success) {
+        setIsFollowingTarget(res.following);
+        setProfile((prev) => {
+          if (!prev) return prev;
+          const currentFollowers = prev.followersCount || 0;
+          return {
+            ...prev,
+            followersCount: res.following ? currentFollowers + 1 : Math.max(0, currentFollowers - 1),
+            isFollowing: res.following,
+            isPrivateRestricted: prev.profileVisibility === 'Private' && !res.following,
+          };
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update follow');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  // Direct Message currently viewed student
+  const handleStartMessage = async () => {
+    if (!profile) return;
+    try {
+      setMessagingLoading(true);
+      const res = await api.post<any>('/messages/conversations', {
+        targetStudentId: profile._id,
+      });
+      if (res.success && res.conversation) {
+        if (onNavigateToMessages) {
+          onNavigateToMessages(res.conversation._id);
+        }
+      } else {
+        alert(res.message || 'Cannot message this user due to their messaging privacy settings.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to open message conversation');
+    } finally {
+      setMessagingLoading(false);
+    }
+  };
 
   // Load Social Modals data on click
   const openSocialModal = async (type: 'connections' | 'following' | 'followers') => {
@@ -238,6 +299,16 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
               className="w-full h-full object-cover"
             />
           )}
+          {/* Back button when viewing other student */}
+          {!isOwnProfile && onBack && (
+            <button
+              onClick={onBack}
+              className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-black/60 text-white hover:bg-black/80 backdrop-blur-xs text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back
+            </button>
+          )}
+
           {isOwnProfile && (
             <button
               onClick={() => setShowEditModal(true)}
@@ -261,10 +332,15 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                 className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg shrink-0"
               />
               <div className="mb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)]">
                     {profile?.fullName || user?.fullName}
                   </h1>
+                  {profile?.username && (
+                    <span className="text-xs font-bold text-[var(--primary-color)] bg-[var(--primary-color)]/10 px-2 py-0.5 rounded-lg border border-[var(--primary-color)]/20">
+                      @{profile.username.replace(/^@/, '')}
+                    </span>
+                  )}
                   <span title="Verified Collegiate ID">
                     <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" />
                   </span>
@@ -276,17 +352,57 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+              {/* If viewing another student: Follow & Message buttons */}
+              {!isOwnProfile && (
+                <>
+                  <button
+                    onClick={handleToggleFollowCurrent}
+                    disabled={followLoading}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                      isFollowingTarget
+                        ? 'border border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-red-500'
+                        : 'bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] shadow-xs'
+                    }`}
+                  >
+                    {followLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : isFollowingTarget ? (
+                      <>
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-500" /> Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-3.5 h-3.5" /> Follow
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleStartMessage}
+                    disabled={messagingLoading}
+                    className="px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    {messagingLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <MessageSquare className="w-3.5 h-3.5 text-[var(--primary-color)]" /> Message
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* Share Profile button */}
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  alert('Student portfolio link copied to clipboard!');
-                }}
+                onClick={() => setShowShareModal(true)}
                 className="p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
                 title="Share Student Profile"
               >
                 <Share2 className="w-4 h-4" /> Share
               </button>
+
               {isOwnProfile && (
                 <button
                   onClick={() => {

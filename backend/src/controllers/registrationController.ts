@@ -199,12 +199,28 @@ export async function getStudentRegistrations(req: AuthenticatedRequest, res: Re
 export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
-    if (!user || !user.collegeId) return res.status(403).json({ success: false, message: 'College account required' });
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
     const { eventId, search, paymentStatus, attended } = req.query;
 
-    const filter: any = { collegeId: user.collegeId };
-    if (eventId) filter.eventId = eventId;
+    const filter: any = {};
+
+    // Allow student organizers to access registrations for events they created
+    if (user.role === 'Student') {
+      if (!eventId) {
+        return res.status(400).json({ success: false, message: 'Event ID is required' });
+      }
+      const event = await Event.findById(eventId);
+      if (!event || event.creatorUserId !== user._id) {
+        return res.status(403).json({ success: false, message: 'You are not the organizer of this event' });
+      }
+      filter.eventId = eventId;
+    } else {
+      if (!user.collegeId) return res.status(403).json({ success: false, message: 'College account required' });
+      filter.collegeId = user.collegeId;
+      if (eventId) filter.eventId = eventId;
+    }
+
     if (paymentStatus) filter.paymentStatus = paymentStatus;
     if (attended !== undefined && attended !== '') filter.attended = attended === 'true';
 

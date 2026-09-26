@@ -126,7 +126,10 @@
       "connectionsCount": 2,
       "id": "prof_student_alex",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-09-24T14:52:40.035Z"
+      "updatedAt": "2026-09-24T14:52:40.035Z",
+      "username": "alexanderchen",
+      "profileVisibility": "Public",
+      "messagePrivacy": "Everyone"
     },
     {
       "userId": "e9560105e93fa99a682097a6",
@@ -148,7 +151,10 @@
       "bio": "I am a Computer Science Engineering student specializing in Cyber Security, with a strong interest in cybersecurity, cloud computing, and software development. I enjoy building practical projects, exploring new technologies, and continuously improving my technical and problem-solving skills. I am passionate about gaining real-world experience and developing secure, useful technology solutions.",
       "location": "Erode",
       "profilePhoto": "/uploads/upload-1790327118175-443534204.jpg",
-      "coverPhoto": "/uploads/upload-1790327111242-107939334.jpeg"
+      "coverPhoto": "/uploads/upload-1790327111242-107939334.jpeg",
+      "username": "suresh",
+      "profileVisibility": "Public",
+      "messagePrivacy": "Everyone"
     },
     {
       "userId": "0e324d4013afe7e579d45339",
@@ -166,7 +172,10 @@
       "_id": "ad99efcaa557ec5179fb7637",
       "id": "ad99efcaa557ec5179fb7637",
       "createdAt": "2026-09-25T01:31:11.968Z",
-      "updatedAt": "2026-09-25T01:31:11.968Z"
+      "updatedAt": "2026-09-25T01:31:11.968Z",
+      "username": "suresh1",
+      "profileVisibility": "Public",
+      "messagePrivacy": "Everyone"
     },
     {
       "userId": "8d254e7a0ffe4f12eae91060",
@@ -187,7 +196,10 @@
       "updatedAt": "2026-09-25T04:23:25.929Z",
       "bio": "",
       "location": "",
-      "profilePhoto": "/uploads/upload-1790310193133-528150284.jpeg"
+      "profilePhoto": "/uploads/upload-1790310193133-528150284.jpeg",
+      "username": "sujaiganeshk",
+      "profileVisibility": "Public",
+      "messagePrivacy": "Everyone"
     }
   ],
   "colleges": [
@@ -207,7 +219,9 @@
       "connectionsCount": 142,
       "id": "col_apex_tech_01",
       "createdAt": "2026-09-24T13:38:09.698Z",
-      "updatedAt": "2026-09-24T13:38:09.698Z"
+      "updatedAt": "2026-09-24T13:38:09.698Z",
+      "username": "apexinstituteof",
+      "messagePrivacy": "Everyone"
     },
     {
       "_id": "col_horizon_univ_02",
@@ -225,7 +239,9 @@
       "connectionsCount": 98,
       "id": "col_horizon_univ_02",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-09-24T13:38:09.699Z"
+      "updatedAt": "2026-09-24T13:38:09.699Z",
+      "username": "horizonstateuni",
+      "messagePrivacy": "Everyone"
     },
     {
       "_id": "col_nexus_eng_03",
@@ -243,7 +259,9 @@
       "connectionsCount": 64,
       "id": "col_nexus_eng_03",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-09-24T13:38:09.699Z"
+      "updatedAt": "2026-09-24T13:38:09.699Z",
+      "username": "nexusengineerin",
+      "messagePrivacy": "Everyone"
     }
   ],
   "collegeVerifications": [],

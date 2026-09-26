@@ -5,6 +5,7 @@ import { EventCardSkeleton } from '../components/common/Skeleton';
 import { EmptyState } from '../components/common/EmptyState';
 import { FilterState, CATEGORIES } from '../components/event/EventFilterModal';
 import { api } from '../services/api';
+import { DEFAULT_COLLEGE_LOGO } from '../services/imageDefaults';
 import {
   Sparkles,
   Calendar,
@@ -111,11 +112,38 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
       ) : displayedEvents.length === 0 ? (
         <EmptyState
           icon={Compass}
-          title="No Events Found"
-          description="No collegiate events match your current search terms or active filters."
-          actionLabel="Reset Filters"
+          title={searchQuery ? `No Events Found for "${searchQuery}"` : "No Events Found"}
+          description={
+            searchQuery
+              ? `We couldn't find any events matching "${searchQuery}". Try searching by category, host college, or another keyword.`
+              : "No collegiate events match your current active filters."
+          }
+          actionLabel="Reset Search & Filters"
           onAction={onOpenFilter}
         />
+      ) : searchQuery.trim().length > 0 ? (
+        /* Matching Results Only (Requirement 6) */
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-black tracking-tight text-[var(--text-primary)]">
+              Search Results ({displayedEvents.length} event{displayedEvents.length === 1 ? '' : 's'})
+            </h2>
+            <span className="text-xs text-[var(--text-muted)] font-medium">
+              Matching "{searchQuery}"
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {displayedEvents.map((ev) => (
+              <EventCard
+                key={ev._id}
+                event={ev}
+                onViewEvent={onViewEvent}
+                onRegister={onRegister}
+              />
+            ))}
+          </div>
+        </section>
       ) : (
         <>
           {/* SECTION 1: Trending & Popular Events */}
@@ -202,9 +230,12 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
                     className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer flex items-center gap-3"
                   >
                     <img
-                      src={col.logo}
+                      src={col.logo || DEFAULT_COLLEGE_LOGO}
                       alt={col.name}
                       className="w-10 h-10 rounded-lg object-cover border border-[var(--border-color)]"
+                      onError={(e) => {
+                        (e.target as any).src = DEFAULT_COLLEGE_LOGO;
+                      }}
                     />
                     <div className="min-w-0 grow">
                       <p className="text-xs font-bold text-[var(--text-primary)] truncate">

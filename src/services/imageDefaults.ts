@@ -1,0 +1,21 @@
+// Professional, neutral SVGs used as default placeholders for EVENTHUB
+// No dummy stock photos of real people or unrelated buildings
+
+export const DEFAULT_STUDENT_AVATAR =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' fill='none'%3E%3Crect width='128' height='128' rx='24' fill='%23f1f5f9'/%3E%3Ccircle cx='64' cy='48' r='24' fill='%2394a3b8'/%3E%3Cpath d='M28 108c0-19.882 16.118-36 36-36s36 16.118 36 36v4H28v-4z' fill='%2394a3b8'/%3E%3C/svg%3E";
+
+export const DEFAULT_STUDENT_COVER =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='350' viewBox='0 0 1200 350'%3E%3Cdefs%3E%3ClinearGradient id='bgGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%231e293b'/%3E%3Cstop offset='100%25' stop-color='%230f172a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='350' fill='url(%23bgGrad)'/%3E%3Ccircle cx='980' cy='180' r='260' fill='%23334155' fill-opacity='0.25'/%3E%3Ccircle cx='180' cy='280' r='180' fill='%23334155' fill-opacity='0.2'/%3E%3Cpath d='M0,350 L400,240 L800,290 L1200,200 L1200,350 Z' fill='%232563eb' fill-opacity='0.08'/%3E%3C/svg%3E";
+
+export const DEFAULT_COLLEGE_LOGO =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' fill='none'%3E%3Crect width='128' height='128' rx='24' fill='%23eff6ff'/%3E%3Cpath d='M64 26L20 48v8h88v-8L64 26zm-36 32v34h10V58H28zm24 0v34h10V58H52zm24 0v34h10V58H76zm24 0v34h10V58h-10zM16 98v8h96v-8H16z' fill='%232563eb'/%3E%3C/svg%3E";
+
+export const DEFAULT_COLLEGE_COVER =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='350' viewBox='0 0 1200 350'%3E%3Cdefs%3E%3ClinearGradient id='colGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23172554'/%3E%3Cstop offset='50%25' stop-color='%231e293b'/%3E%3Cstop offset='100%25' stop-color='%230f172a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='350' fill='url(%23colGrad)'/%3E%3Cpath d='M0,350 L350,220 L700,270 L1200,160 L1200,350 Z' fill='%233b82f6' fill-opacity='0.12'/%3E%3Ccircle cx='1050' cy='120' r='140' fill='%233b82f6' fill-opacity='0.1'/%3E%3C/svg%3E";
+
+export const DEFAULT_EVENT_POSTER =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450' viewBox='0 0 800 450'%3E%3Cdefs%3E%3ClinearGradient id='evtGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230f172a'/%3E%3Cstop offset='100%25' stop-color='%231e293b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='450' fill='url(%23evtGrad)'/%3E%3Crect x='340' y='165' width='120' height='120' rx='24' fill='%232563eb' fill-opacity='0.15' stroke='%233b82f6' stroke-width='2' stroke-opacity='0.3'/%3E%3Cpath d='M376 200v50h48v-50h-48zm40 42h-32v-34h32v34z' fill='%2338bdf8'/%3E%3Ccircle cx='388' cy='214' r='4' fill='%2338bdf8'/%3E%3Ccircle cx='412' cy='214' r='4' fill='%2338bdf8'/%3E%3Ctext x='400' y='320' font-family='system-ui, sans-serif' font-size='14' font-weight='600' fill='%2394a3b8' text-anchor='middle'%3EEVENT POSTER%3C/text%3E%3C/svg%3E";
+
+export const DEFAULT_CERTIFICATE_TEMPLATE =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='560' viewBox='0 0 800 560'%3E%3Cdefs%3E%3ClinearGradient id='certGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230f172a'/%3E%3Cstop offset='100%25' stop-color='%231e293b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='560' fill='url(%23certGrad)'/%3E%3Crect x='30' y='30' width='740' height='500' rx='12' fill='none' stroke='%233b82f6' stroke-width='3' stroke-dasharray='10 6'/%3E%3Ccircle cx='400' cy='180' r='40' fill='%232563eb' fill-opacity='0.2' stroke='%2360a5fa' stroke-width='2'/%3E%3Cpath d='M388 178l8 8 16-16' fill='none' stroke='%2360a5fa' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='400' y='270' font-family='system-ui, sans-serif' font-size='22' font-weight='bold' fill='%23f8fafc' text-anchor='middle'%3ECERTIFICATE OF COMPLETION%3C/text%3E%3Ctext x='400' y='310' font-family='system-ui, sans-serif' font-size='14' fill='%2394a3b8' text-anchor='middle'%3EOfficial EVENTHUB Verified Credential%3C/text%3E%3C/svg%3E";
+
