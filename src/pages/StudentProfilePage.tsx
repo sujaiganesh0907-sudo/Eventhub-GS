@@ -17,6 +17,9 @@ import { EventInsightsModal } from '../components/event/EventInsightsModal';
 import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { Modal } from '../components/common/Modal';
 import { ShareToChatModal } from '../components/common/ShareToChatModal';
+import { AttendanceModal } from '../components/attendance/AttendanceModal';
+import { IssueCertificateModal } from '../components/certificate/IssueCertificateModal';
+import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
 import {
   Building2,
   Calendar,
@@ -97,6 +100,10 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const [selectedEventForInsights, setSelectedEventForInsights] = useState<IEvent | null>(null);
   const [editingEventProposal, setEditingEventProposal] = useState<IEvent | null>(null);
   const [isEditingProposalOpen, setIsEditingProposalOpen] = useState(false);
+  const [selectedEventForAttendance, setSelectedEventForAttendance] = useState<IEvent | null>(null);
+  const [selectedEventForCertificates, setSelectedEventForCertificates] = useState<IEvent | null>(null);
+  const [selectedEventForRegistrations, setSelectedEventForRegistrations] = useState<IEvent | null>(null);
+  const [selectedEventForShare, setSelectedEventForShare] = useState<IEvent | null>(null);
 
   const fetchProfileData = async () => {
     try {
