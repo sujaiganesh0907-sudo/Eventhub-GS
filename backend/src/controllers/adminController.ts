@@ -294,7 +294,7 @@ export async function updateCollegeAdmin(req: AuthenticatedRequest, res: Respons
     }
 
     const { membershipId } = req.params;
-    const { name, permissions } = req.body;
+    const { name, permissions, status } = req.body;
 
     const membership = await CollegeAdminMembership.findById(membershipId);
     if (!membership) return res.status(404).json({ success: false, message: 'Membership not found.' });
@@ -304,16 +304,59 @@ export async function updateCollegeAdmin(req: AuthenticatedRequest, res: Respons
     }
 
     if (membership.role === 'College Super Admin') {
-      return res.status(400).json({ success: false, message: 'Cannot modify primary Super Admin permissions.' });
+      return res.status(400).json({ success: false, message: 'Cannot modify primary Super Admin permissions or status.' });
     }
+
+    const college = await College.findById(user.collegeId);
 
     const updated = await CollegeAdminMembership.findByIdAndUpdate(
       membershipId,
       {
         ...(name && { name }),
         ...(permissions && { permissions }),
+        ...(status && { status }),
       }
     );
+
+    if (status && status !== membership.status) {
+      const isDisabling = status === 'Disabled';
+      const actionType = isDisabling ? 'DISABLE_ADMIN' : 'ENABLE_ADMIN';
+      const details = isDisabling
+        ? `@${user.fullName} disabled Admin access for ${membership.name}.`
+        : `@${user.fullName} re-enabled Admin access for ${membership.name}.`;
+
+      await logAdminActivityHelper({
+        collegeId: user.collegeId,
+        adminUserId: user._id,
+        adminName: user.fullName,
+        actionType,
+        details,
+        targetType: 'AdminMembership',
+        targetId: membershipId,
+        targetTitle: membership.name,
+      });
+
+      // Notify the target user
+      await Notification.create({
+        recipientUserId: membership.userId,
+        type: 'ADMIN_ACTION',
+        title: isDisabling ? 'Admin Access Disabled' : 'Admin Access Restored',
+        message: isDisabling
+          ? `Your Admin access for ${college?.name || 'the college'} has been disabled.`
+          : `Your Admin access for ${college?.name || 'the college'} has been re-enabled.`,
+        metadata: {
+          collegeId: user.collegeId,
+          membershipId,
+        },
+        read: false,
+      });
+
+      return res.json({
+        success: true,
+        message: isDisabling ? 'Administrator access has been disabled.' : 'Administrator access has been re-enabled.',
+        membership: updated,
+      });
+    }
 
     await logAdminActivityHelper({
       collegeId: user.collegeId,
@@ -545,10 +588,10 @@ export async function getMyAdminRoles(req: AuthenticatedRequest, res: Response) 
     const user = req.user;
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    // Find all active memberships for this user
+    // Find all active & disabled memberships for this user (Requirement 8)
     const memberships = await CollegeAdminMembership.find({
       userId: user._id,
-      status: 'Active',
+      status: { $in: ['Active', 'Disabled'] },
     }).exec();
 
     // Populate college details
@@ -559,6 +602,7 @@ export async function getMyAdminRoles(req: AuthenticatedRequest, res: Response) 
           membershipId: m._id,
           collegeId: m.collegeId,
           role: m.role,
+          status: m.status,
           permissions: m.permissions || [],
           acceptedAt: m.acceptedAt || m.createdAt,
           college: col ? {
@@ -648,7 +692,7 @@ export async function createAdminActivity(req: AuthenticatedRequest, res: Respon
       collegeId,
       adminUserId: user._id,
       adminName: user.fullName,
-      adminUsername: user.username || user.email?.split('@')[0],
+      adminUsername: (user as any).username || user.email?.split('@')[0],
       actionType,
       details,
       targetType,

@@ -116,6 +116,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
   };
 
   const handleSelectWorkspace = (role: any) => {
+    localStorage.setItem('eventhub_active_college', role.collegeId);
     setSelectedWorkspace(role);
     const perms = role.permissions || [];
     // Set default active tab based on allowed permissions
@@ -129,6 +130,11 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
     else setActiveModule('activity');
 
     fetchWorkspaceData(role.collegeId);
+  };
+
+  const handleExitWorkspace = () => {
+    localStorage.removeItem('eventhub_active_college');
+    setSelectedWorkspace(null);
   };
 
   // Invitation Actions
@@ -175,7 +181,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setSelectedWorkspace(null)}
+                onClick={handleExitWorkspace}
                 className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -771,9 +777,15 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
                             </div>
                           </div>
 
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0">
-                            Active Admin
-                          </span>
+                          {role.status === 'Disabled' ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-500/10 text-zinc-500 border border-zinc-500/20 shrink-0">
+                              Access Disabled
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0">
+                              Active Admin
+                            </span>
+                          )}
                         </div>
 
                         {/* Granted Permissions summary */}
@@ -799,14 +811,20 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleSelectWorkspace(role)}
-                        className="w-full py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-95"
-                      >
-                        <span>Open Admin Workspace</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                      {role.status === 'Disabled' ? (
+                        <div className="w-full py-2.5 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] text-xs text-[var(--text-muted)] font-semibold text-center">
+                          Admin access has been disabled by the college
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectWorkspace(role)}
+                          className="w-full py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-95"
+                        >
+                          <span>Open Admin Workspace</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   );
                 })}

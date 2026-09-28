@@ -52,6 +52,19 @@ import {
   retryCertificateEmail,
 } from '../controllers/certificateController';
 import {
+  uploadCertificateTemplate,
+  getCertificateTemplate,
+  savePlaceholderMappings,
+  previewSampleCertificate,
+  bulkGenerateAndSendCertificates,
+  verifyPublicCertificate,
+  revokeCertificate,
+  reshareCertificate,
+  getPublicCredentialPosts,
+  toggleLikeCredentialPost,
+} from '../controllers/certificateTemplateController';
+import { docxUploadMiddleware } from '../middleware/upload';
+import {
   getStudentProfile,
   updateStudentProfile,
   searchStudents,
@@ -113,7 +126,7 @@ import {
   getUnreadMessagesCount,
 } from '../controllers/messageController';
 import uploadRouter from './uploadRoutes';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, optionalAuthenticate, requireAdminPermission } from '../middleware/auth';
 
 const apiRouter = Router();
 
@@ -136,14 +149,14 @@ apiRouter.get('/stats', getPublicStats);
 
 // 2. Events routes
 apiRouter.get('/events', getEvents);
-apiRouter.get('/events/:id', getEventById);
+apiRouter.get('/events/:id', optionalAuthenticate, getEventById);
 apiRouter.post('/events', authenticate, createEvent);
 apiRouter.put('/events/:id', authenticate, updateEvent);
 apiRouter.delete('/events/:id', authenticate, deleteEvent);
 apiRouter.get('/events/:id/insights', authenticate, getEventInsights);
-apiRouter.post('/events/:id/approve', authenticate, requireRole(['College Super Admin', 'College Admin']), approveStudentEvent);
-apiRouter.post('/events/:id/reject', authenticate, requireRole(['College Super Admin', 'College Admin']), rejectStudentEvent);
-apiRouter.put('/events/:id/review', authenticate, requireRole(['College Super Admin', 'College Admin']), (req, res) => {
+apiRouter.post('/events/:id/approve', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), approveStudentEvent);
+apiRouter.post('/events/:id/reject', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), rejectStudentEvent);
+apiRouter.put('/events/:id/review', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), (req, res) => {
   if (req.body && req.body.action === 'reject') {
     return rejectStudentEvent(req, res);
   }
@@ -184,6 +197,25 @@ apiRouter.post('/certificates/:id/retry-email', authenticate, retryCertificateEm
 apiRouter.delete('/certificates/:id', authenticate, deleteCertificate);
 apiRouter.delete('/certificates/student/:id', authenticate, deleteCertificate);
 
+// DOCX Certificate Template & Verification routes (Requirement 1)
+apiRouter.post(
+  '/events/:eventId/certificate-template',
+  authenticate as any,
+  docxUploadMiddleware.single('file') as any,
+  uploadCertificateTemplate
+);
+apiRouter.get('/events/:eventId/certificate-template', authenticate, getCertificateTemplate);
+apiRouter.put('/events/:eventId/certificate-template/mappings', authenticate, savePlaceholderMappings);
+apiRouter.post('/events/:eventId/certificate-template/preview', authenticate, previewSampleCertificate);
+apiRouter.post('/events/:eventId/certificate-template/generate-and-send', authenticate, bulkGenerateAndSendCertificates);
+
+// Public verification & Credential Resharing
+apiRouter.get('/certificates/verify/:certificateId', verifyPublicCertificate);
+apiRouter.post('/certificates/:certificateId/revoke', authenticate, revokeCertificate);
+apiRouter.post('/certificates/:id/reshare', authenticate, reshareCertificate);
+apiRouter.get('/certificates/feed', getPublicCredentialPosts);
+apiRouter.post('/certificates/feed/:id/like', authenticate, toggleLikeCredentialPost);
+
 // 7. Students profile routes
 apiRouter.get('/students/me', authenticate, getStudentProfile);
 apiRouter.get('/students/search', searchStudents);
@@ -211,12 +243,12 @@ apiRouter.get('/social/student/:studentId/connected-colleges', getStudentConnect
 
 // 10. Placement & Infrastructure Posts
 apiRouter.get('/placements', getPlacementPosts);
-apiRouter.post('/placements', authenticate, createPlacementPost);
-apiRouter.delete('/placements/:id', authenticate, deletePlacementPost);
+apiRouter.post('/placements', authenticate, requireAdminPermission('managePlacements'), createPlacementPost);
+apiRouter.delete('/placements/:id', authenticate, requireAdminPermission('managePlacements'), deletePlacementPost);
 
 apiRouter.get('/infrastructure', getInfrastructurePosts);
-apiRouter.post('/infrastructure', authenticate, createInfrastructurePost);
-apiRouter.delete('/infrastructure/:id', authenticate, deleteInfrastructurePost);
+apiRouter.post('/infrastructure', authenticate, requireAdminPermission('manageInfrastructure'), createInfrastructurePost);
+apiRouter.delete('/infrastructure/:id', authenticate, requireAdminPermission('manageInfrastructure'), deleteInfrastructurePost);
 
 // 11. Admin Management, Invitations & Activity
 apiRouter.get('/admins', authenticate, getCollegeAdmins);
@@ -241,7 +273,7 @@ apiRouter.delete('/reminders/:id', authenticate, deleteReminder);
 apiRouter.get('/reminders', authenticate, getStudentReminders);
 
 // 13. Global Search (Students, Colleges, Events)
-apiRouter.get('/search/global', authenticate, globalSearch);
+apiRouter.get('/search/global', optionalAuthenticate, globalSearch);
 
 // 14. Messaging System (Student <-> Student, Student <-> College, College <-> Student)
 apiRouter.get('/messages/conversations', authenticate, getConversations);

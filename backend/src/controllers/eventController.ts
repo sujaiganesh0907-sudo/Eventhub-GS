@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Event, College, StudentProfile, Notification, IEvent, User, EventRegistration } from '../models/index';
+import { Event, College, StudentProfile, Notification, IEvent, User, EventRegistration, Certificate } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 function calculateDeadlineStatus(deadlineStr: string): 'Open' | 'Closing Soon' | 'Closed' {
@@ -104,7 +104,7 @@ export async function getEvents(req: Request, res: Response) {
   }
 }
 
-export async function getEventById(req: Request, res: Response) {
+export async function getEventById(req: AuthenticatedRequest, res: Response) {
   try {
     const { id } = req.params;
     const event = await Event.findById(id);
@@ -116,9 +116,41 @@ export async function getEventById(req: Request, res: Response) {
     await Event.updateOne({ _id: id }, { $inc: { viewsCount: 1 } });
     event.viewsCount = (event.viewsCount || 0) + 1;
 
+    let isRegistered = false;
+    let userRegistration = null;
+    let userCertificate = null;
+
+    const user = req.user;
+    if (user && user.role === 'Student') {
+      const reg = await EventRegistration.findOne({
+        eventId: event._id,
+        $or: [
+          { studentUserId: user._id },
+          { studentEmail: user.email },
+        ],
+      });
+      if (reg && reg.status !== 'Cancelled') {
+        isRegistered = true;
+        userRegistration = reg;
+        if (reg.certificateIssued) {
+          const cert = await Certificate.findOne({
+            eventId: event._id,
+            $or: [
+              { registrationId: reg.registrationId },
+              { studentUserId: user._id },
+            ],
+          });
+          userCertificate = cert || null;
+        }
+      }
+    }
+
     return res.json({
       success: true,
       event: enrichEvent(event),
+      isRegistered,
+      registration: userRegistration,
+      certificate: userCertificate,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

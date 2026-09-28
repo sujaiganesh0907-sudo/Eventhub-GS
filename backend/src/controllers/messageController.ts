@@ -10,6 +10,7 @@ import {
   Follow,
   Connection,
   Notification,
+  CollegeAdminMembership,
   IConversationParticipant,
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
@@ -17,9 +18,32 @@ import { AuthenticatedRequest } from '../middleware/auth';
 /**
  * Helper to get clean participant display details
  */
-async function getParticipantDetails(userId: string): Promise<IConversationParticipant | null> {
+async function getParticipantDetails(userId: string, activeCollegeId?: string): Promise<IConversationParticipant | null> {
   const user = await User.findById(userId);
   if (!user) return null;
+
+  const collegeIdToUse = activeCollegeId || user.collegeId;
+
+  if (collegeIdToUse) {
+    const college = await College.findById(collegeIdToUse);
+    if (college) {
+      const membership = await CollegeAdminMembership.findOne({
+        collegeId: collegeIdToUse,
+        userId,
+        status: 'Active',
+      });
+      if (membership || user.role === 'College Super Admin' || user.collegeId === collegeIdToUse) {
+        return {
+          userId,
+          role: (membership?.role || user.role) as any,
+          name: college.name,
+          username: college.username || undefined,
+          avatar: college.logo || '',
+          collegeId: college._id,
+        };
+      }
+    }
+  }
 
   if (user.role === 'Student') {
     const profile = await StudentProfile.findOne({ userId });
@@ -28,7 +52,7 @@ async function getParticipantDetails(userId: string): Promise<IConversationParti
       role: user.role,
       name: profile?.fullName || user.fullName,
       username: profile?.username || undefined,
-      avatar: profile?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+      avatar: profile?.profilePhoto || '',
     };
   } else {
     const college = user.collegeId ? await College.findById(user.collegeId) : null;
@@ -37,7 +61,7 @@ async function getParticipantDetails(userId: string): Promise<IConversationParti
       role: user.role,
       name: college?.name || user.fullName,
       username: college?.username || undefined,
-      avatar: college?.logo || 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=120&auto=format&fit=crop&q=80',
+      avatar: college?.logo || '',
       collegeId: college?._id,
     };
   }
@@ -285,10 +309,12 @@ export async function getConversationMessages(req: AuthenticatedRequest, res: Re
     );
 
     // Mark unread messages as read by current user
+    const nowIso = new Date().toISOString();
     for (const msg of visibleMessages) {
       if (msg.senderId !== user._id && (!msg.readBy || !msg.readBy.includes(user._id))) {
-        const readBy = [...(msg.readBy || []), user._id];
-        await Message.findByIdAndUpdate(msg._id, { readBy });
+        msg.readBy = [...(msg.readBy || []), user._id];
+        msg.seenAt = nowIso;
+        await Message.findByIdAndUpdate(msg._id, { readBy: msg.readBy, seenAt: msg.seenAt });
       }
     }
 
@@ -407,15 +433,21 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
       }
     }
 
-    // Determine sender name
-    const senderDetails = await getParticipantDetails(user._id);
+    // Determine sender name & role (College identity if messaging in college workspace/context)
+    const activeCollegeId =
+      (req.headers['x-college-id'] as string) ||
+      req.body?.asCollegeId ||
+      undefined;
+
+    const senderDetails = await getParticipantDetails(user._id, activeCollegeId);
     const senderName = senderDetails?.name || user.fullName;
+    const senderRole = senderDetails?.role || user.role;
 
     const message = await Message.create({
       conversationId: id,
       senderId: user._id,
       senderName,
-      senderRole: user.role,
+      senderRole,
       text: text.trim(),
       attachmentUrl: attachmentUrl || undefined,
       attachmentType: attachmentType || (attachmentUrl ? 'image' : undefined),

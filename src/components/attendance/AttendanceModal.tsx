@@ -25,6 +25,7 @@ import {
 import { IEvent } from '../../types';
 import { api } from '../../services/api';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { DocxCertificateManagerModal } from '../certificate/DocxCertificateManagerModal';
 
 interface AttendanceModalProps {
   isOpen: boolean;
@@ -68,6 +69,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   const [viewingResponsesParticipant, setViewingResponsesParticipant] = useState<any | null>(null);
   const [retryingEmailId, setRetryingEmailId] = useState<string | null>(null);
   const [exportingReport, setExportingReport] = useState(false);
+  const [showDocxCertModal, setShowDocxCertModal] = useState(false);
 
   // Fetch Attendance List
   const fetchAttendanceList = async () => {
@@ -418,6 +420,14 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
                 <Download className="w-4 h-4" />
               )}
               Download CSV
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDocxCertModal(true)}
+              className="px-3.5 py-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileText className="w-4 h-4 text-indigo-600" /> Participation Certificates (DOCX)
             </button>
 
             {!isFinalized ? (
@@ -965,6 +975,19 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
             Close Desk
           </button>
         </div>
+
+        {/* DOCX CERTIFICATE MANAGER MODAL */}
+        {showDocxCertModal && (
+          <DocxCertificateManagerModal
+            isOpen={showDocxCertModal}
+            onClose={() => setShowDocxCertModal(false)}
+            event={event}
+            onUpdated={() => {
+              fetchAttendanceList();
+              onEventUpdated?.();
+            }}
+          />
+        )}
       </div>
     </Modal>
   );

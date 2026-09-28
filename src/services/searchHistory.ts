@@ -8,12 +8,6 @@ const STORAGE_KEYS: Record<SearchHistoryContext, string> = {
   colleges: 'eventhub_search_history_colleges',
 };
 
-const DEFAULT_SEEDS: Record<SearchHistoryContext, string[]> = {
-  home: ['Nexora Hackathon', 'AI Workshop', 'Inter-College Symposium'],
-  messages: ['@sureshm2006', 'Erode Sengunthar Engineering College'],
-  colleges: ['Kongu Engineering College', 'Erode Sengunthar Engineering College'],
-};
-
 export const getSearchHistory = (context: SearchHistoryContext): string[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS[context]);
@@ -21,10 +15,9 @@ export const getSearchHistory = (context: SearchHistoryContext): string[] => {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
     }
-    // Return initial clean defaults if not yet modified
-    return DEFAULT_SEEDS[context] || [];
+    return [];
   } catch (e) {
-    return DEFAULT_SEEDS[context] || [];
+    return [];
   }
 };
 

@@ -79,6 +79,14 @@ export async function verifyAndScanQR(req: AuthenticatedRequest, res: Response) 
       });
     }
 
+    if (event.attendanceFinalized && user.role !== 'College Super Admin') {
+      return res.status(400).json({
+        success: false,
+        errorType: 'FINALIZED_LOCKED',
+        message: 'Attendance for this event has been finalized and locked. Only a College Super Admin can make modifications.',
+      });
+    }
+
     let parsedPayload: any = null;
     let token = rawToken || qrToken;
 
@@ -469,8 +477,9 @@ export async function finishAttendance(req: AuthenticatedRequest, res: Response)
 
     for (const reg of registrations) {
       if (!reg.attended) {
-        // Absent participants are marked Not Eligible
+        // Absent participants are marked Absent and Not Eligible
         await EventRegistration.findByIdAndUpdate(reg._id, {
+          status: 'Absent',
           certificateStatus: 'Not Eligible',
         });
         continue;
@@ -572,6 +581,24 @@ export async function finishAttendance(req: AuthenticatedRequest, res: Response)
       { _id: event._id },
       { $inc: { certificatesIssuedCount: certificatesGenerated } }
     );
+
+    // Notify College Super Admin of Attendance finalization
+    const superAdmin = await CollegeAdminMembership.findOne({
+      collegeId: event.hostCollegeId,
+      role: 'College Super Admin',
+      status: 'Active',
+    });
+    if (superAdmin && String(superAdmin.userId) !== String(user._id)) {
+      await Notification.create({
+        recipientUserId: superAdmin.userId,
+        type: 'ADMIN_ACTION',
+        title: 'Event Attendance Finalized',
+        message: `${user.fullName || 'Admin'} finalized attendance for "${event.title}". Eligible Present: ${certificatesGenerated}, Excluded Absent: ${registrations.length - certificatesGenerated}.`,
+        link: `/events`,
+        read: false,
+        metadata: { eventId: event._id },
+      });
+    }
 
     return res.json({
       success: true,

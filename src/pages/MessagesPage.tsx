@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Send,
   Image,
-  Smile,
   MoreVertical,
   Bell,
   BellOff,
@@ -15,7 +14,6 @@ import {
   Calendar,
   User,
   ShieldCheck,
-  Plus,
   Loader2,
   MessageSquare,
   ExternalLink,
@@ -46,8 +44,6 @@ interface MessagesPageProps {
   onBack?: () => void;
 }
 
-const COMMON_EMOJIS = ['👍', '🎉', '🔥', '👏', '❤️', '🚀', '🙌', '💯', '✨', '🤝', '🎓', '📅'];
-
 export const MessagesPage: React.FC<MessagesPageProps> = ({
   initialConversationId,
   onViewEvent,
@@ -62,19 +58,20 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [activeConversation, setActiveConversation] = useState<IConversation | null>(null);
   const [messages, setMessages] = useState<IMessage[]>([]);
 
-  // Search & filter conversations
+  // Search in conversation list (Requirements 7, 9, 10)
   const [convSearch, setConvSearch] = useState('');
   const [loadingList, setLoadingList] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
 
-  // New Chat Modal / Search
-  const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
-  const [searchingUsers, setSearchingUsers] = useState(false);
+  // Remote Search for Students & Colleges (Messages Search: Requirements 7 & 10)
+  const [remoteSearchResults, setRemoteSearchResults] = useState<{ students: any[]; colleges: any[] }>({
+    students: [],
+    colleges: [],
+  });
+  const [searchingRemote, setSearchingRemote] = useState(false);
 
-  // Instagram-like Messages Search History (Requirement 7)
+  // Instagram-like Messages Search History (Requirement 9)
   const [msgHistory, setMsgHistory] = useState<string[]>([]);
   const [showMsgHistory, setShowMsgHistory] = useState(false);
   const msgSearchRef = useRef<HTMLDivElement>(null);
@@ -93,9 +90,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
 
-  // Message input state
+  // Message input state (clean composer, no dedicated emoji button per Requirement 11)
   const [inputText, setInputText] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -167,7 +163,58 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  // 3. Send Message
+  // 3. Remote Search Students and Colleges when convSearch has text (Requirements 7 & 10)
+  useEffect(() => {
+    const trimmed = convSearch.trim();
+    if (!trimmed) {
+      setRemoteSearchResults({ students: [], colleges: [] });
+      setSearchingRemote(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setSearchingRemote(true);
+        const res = await api.get<any>('/search/global', { q: trimmed, type: 'messages' });
+        if (res.success) {
+          setRemoteSearchResults({
+            students: res.students || [],
+            colleges: res.colleges || [],
+          });
+        }
+      } catch (err) {
+        console.error('Remote search in messages error:', err);
+      } finally {
+        setSearchingRemote(false);
+      }
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [convSearch]);
+
+  // Start or open conversation with a target user/college (Requirement 10: messages works through search)
+  const handleStartChatWithUser = async (targetId: string, itemType: 'student' | 'college') => {
+    try {
+      const payload = itemType === 'student' ? { targetStudentId: targetId } : { targetCollegeId: targetId };
+      const res = await api.post<any>('/messages/conversations', payload);
+      if (res.success && res.conversation) {
+        setConvSearch('');
+        setRemoteSearchResults({ students: [], colleges: [] });
+        // Add to list if new
+        setConversations((prev) => {
+          const exists = prev.some((c) => c._id === res.conversation._id);
+          return exists ? prev : [res.conversation, ...prev];
+        });
+        setSelectedConvId(res.conversation._id);
+      } else {
+        alert(res.message || 'Cannot start conversation due to messaging privacy settings.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to start conversation');
+    }
+  };
+
+  // 4. Send Message
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedConvId) return;
@@ -204,16 +251,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         setInputText('');
         setAttachmentPreview(null);
         setAttachmentFile(null);
-        setShowEmojiPicker(false);
 
-        // Update last message in conversation list
+        // Update last message in list
         setConversations((prev) =>
           prev.map((c) =>
             c._id === selectedConvId
               ? {
                   ...c,
                   lastMessage: {
-                    text: trimmed || 'Sent an attachment',
+                    text: trimmed || 'Shared an attachment',
                     senderId: user?._id || '',
                     timestamp: new Date().toISOString(),
                   },
@@ -226,50 +272,40 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       alert(err.message || 'Failed to send message');
     } finally {
       setSending(false);
+      setUploadingAttachment(false);
     }
   };
 
-  // 4. File Attachment Handler
+  // Handle local image file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Only image attachments are currently supported.');
-      return;
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Only image attachments are supported in direct messages.');
+        return;
+      }
+      setAttachmentFile(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachmentPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Image size exceeds 10MB limit.');
-      return;
-    }
-
-    setAttachmentFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAttachmentPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
-  // 5. Delete Message
-  const handleDeleteMessage = async (messageId: string, forEveryone: boolean) => {
+  // 5. Delete Message (Own message = for everyone or for me; other = for me)
+  const handleDeleteMessage = async (messageId: string, isMine: boolean) => {
+    const forEveryone = isMine && window.confirm('Delete for everyone? Click Cancel to delete only for you.');
     try {
-      const res = await api.delete<any>(`/messages/${messageId}?forEveryone=${forEveryone}`);
+      const res = await api.delete<any>(
+        `/messages/${messageId}?forEveryone=${forEveryone ? 'true' : 'false'}`
+      );
       if (res.success) {
         if (forEveryone) {
           setMessages((prev) =>
             prev.map((m) =>
               m._id === messageId
-                ? {
-                    ...m,
-                    text: 'This message was deleted.',
-                    deletedForEveryone: true,
-                    attachmentUrl: undefined,
-                    sharedEvent: null,
-                    sharedStudent: null,
-                    sharedCollege: null,
-                  }
+                ? { ...m, deletedForEveryone: true, text: 'This message was deleted' }
                 : m
             )
           );
@@ -282,9 +318,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   };
 
-  // 6. Delete / Hide Conversation
+  // 6. Delete/Hide Conversation
   const handleDeleteConversation = async (convId: string) => {
-    if (!confirm('Are you sure you want to remove this conversation from your inbox?')) return;
+    if (!window.confirm('Delete conversation for you?')) return;
     try {
       const res = await api.delete<any>(`/messages/conversations/${convId}`);
       if (res.success) {
@@ -296,7 +332,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         }
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to remove conversation');
+      alert(err.message || 'Failed to delete conversation');
     }
   };
 
@@ -315,56 +351,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   };
 
-  // 8. Search Users to Start New Chat
-  useEffect(() => {
-    if (!userSearchQuery.trim()) {
-      setUserSearchResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      try {
-        setSearchingUsers(true);
-        const res = await api.get<any>('/search/global', { q: userSearchQuery.trim() });
-        if (res.success) {
-          const combined = [
-            ...(res.students || []).map((s: any) => ({ ...s, itemType: 'student' })),
-            ...(res.colleges || []).map((c: any) => ({ ...c, itemType: 'college' })),
-          ];
-          setUserSearchResults(combined);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setSearchingUsers(false);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [userSearchQuery]);
-
-  const handleStartChatWithUser = async (targetId: string, itemType: 'student' | 'college') => {
-    try {
-      const payload = itemType === 'student' ? { targetStudentId: targetId } : { targetCollegeId: targetId };
-      const res = await api.post<any>('/messages/conversations', payload);
-      if (res.success && res.conversation) {
-        setShowNewChatModal(false);
-        setUserSearchQuery('');
-        setUserSearchResults([]);
-        // Add to list if new
-        setConversations((prev) => {
-          const exists = prev.some((c) => c._id === res.conversation._id);
-          return exists ? prev : [res.conversation, ...prev];
-        });
-        setSelectedConvId(res.conversation._id);
-      } else {
-        alert(res.message || 'Cannot start conversation due to messaging privacy settings.');
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to start conversation');
-    }
-  };
-
   const filteredConversations = conversations.filter((c) => {
     if (!convSearch.trim()) return true;
     const name = c.otherParticipant?.name?.toLowerCase() || '';
@@ -373,22 +359,25 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return name.includes(q) || username.includes(q);
   });
 
+  const hasRemoteMatches =
+    remoteSearchResults.students.length > 0 || remoteSearchResults.colleges.length > 0;
+
   return (
-    <div className="h-[calc(100vh-120px)] min-h-[550px] max-w-6xl mx-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs flex flex-col md:flex-row">
-      {/* LEFT COLUMN: Conversation List */}
+    <div className="h-[calc(100vh-120px)] min-h-[550px] max-w-7xl mx-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs flex flex-col md:flex-row">
+      {/* LEFT COLUMN: Conversation List & Search */}
       <div
-        className={`w-full md:w-80 lg:w-96 border-r border-[var(--border-color)] flex flex-col shrink-0 ${
+        className={`w-full md:w-80 lg:w-88 border-r border-[var(--border-color)] flex flex-col shrink-0 ${
           selectedConvId ? 'hidden md:flex' : 'flex'
         }`}
       >
-        {/* Inbox Header */}
-        <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between gap-3">
+        {/* Inbox Header - NO "+ New Chat" button per Requirement 10 */}
+        <div className="p-3.5 border-b border-[var(--border-color)] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {onBack && (
               <button
                 type="button"
                 onClick={onBack}
-                className="p-1.5 rounded-lg hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] cursor-pointer md:hidden"
                 title="Back"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -398,45 +387,240 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               Messages
             </h2>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowNewChatModal(true)}
-            className="p-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Start New Chat"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">New Chat</span>
-          </button>
         </div>
 
-        {/* Search Conversations Input */}
-        <div className="p-3 border-b border-[var(--border-color)] bg-[var(--surface-subtle)]">
+        {/* Search Students & Colleges Input (Requirements 7, 9, 10) */}
+        <div className="p-3 border-b border-[var(--border-color)] bg-[var(--surface-subtle)] relative" ref={msgSearchRef}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
             <input
               type="text"
               value={convSearch}
-              onChange={(e) => setConvSearch(e.target.value)}
-              placeholder="Search conversations..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--primary-color)]"
+              onFocus={() => {
+                if (!convSearch.trim()) setShowMsgHistory(true);
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                setConvSearch(val);
+                if (!val.trim()) {
+                  setShowMsgHistory(true);
+                } else {
+                  setShowMsgHistory(false);
+                }
+              }}
+              placeholder="Search students or colleges..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--primary-color)] transition-colors"
             />
+            {convSearch && (
+              <button
+                type="button"
+                onClick={() => {
+                  setConvSearch('');
+                  setShowMsgHistory(false);
+                  setRemoteSearchResults({ students: [], colleges: [] });
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] p-0.5 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
+
+          {/* Instagram-like Search History Dropdown when input is focused with no query */}
+          {showMsgHistory && !convSearch.trim() && msgHistory.length > 0 && (
+            <SearchHistoryDropdown
+              context="messages"
+              history={msgHistory}
+              onSelectTerm={(term) => {
+                setConvSearch(term);
+                setShowMsgHistory(false);
+              }}
+              onRemoveTerm={(term, e) => {
+                e.stopPropagation();
+                const updated = removeSearchTerm('messages', term);
+                setMsgHistory(updated);
+              }}
+              onClearAll={(e) => {
+                e.stopPropagation();
+                clearSearchHistory('messages');
+                setMsgHistory([]);
+              }}
+              onClose={() => setShowMsgHistory(false)}
+            />
+          )}
         </div>
 
-        {/* Conversation Items */}
+        {/* Conversation & Search Results Items */}
         <div className="flex-1 overflow-y-auto divide-y divide-[var(--border-color)]">
           {loadingList ? (
             <div className="py-16 flex flex-col items-center justify-center space-y-2">
               <Loader2 className="w-6 h-6 animate-spin text-[var(--primary-color)]" />
               <p className="text-xs text-[var(--text-muted)]">Loading messages...</p>
             </div>
-          ) : filteredConversations.length === 0 ? (
+          ) : convSearch.trim().length > 0 ? (
+            /* Live Search Results (Requirement 7: Student + College only, no events) */
+            <div className="divide-y divide-[var(--border-color)]">
+              {searchingRemote && (
+                <div className="p-3 text-center text-xs text-[var(--text-muted)] flex items-center justify-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary-color)]" />
+                  <span>Searching students & colleges...</span>
+                </div>
+              )}
+
+              {/* Matching Students */}
+              {remoteSearchResults.students.length > 0 && (
+                <div className="p-2 space-y-1">
+                  <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <User className="w-3 h-3 text-[var(--primary-color)]" />
+                    <span>Students ({remoteSearchResults.students.length})</span>
+                  </div>
+                  {remoteSearchResults.students.map((student) => (
+                    <div
+                      key={student._id || student.userId}
+                      onClick={() => {
+                        saveSearchTerm('messages', student.fullName);
+                        setMsgHistory(getSearchHistory('messages'));
+                        handleStartChatWithUser(student.userId || student._id, 'student');
+                      }}
+                      className="p-2 rounded-xl hover:bg-[var(--surface-hover)] cursor-pointer transition-colors flex items-center justify-between gap-2.5 group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={student.profilePhoto || DEFAULT_STUDENT_AVATAR}
+                          alt={student.fullName}
+                          className="w-9 h-9 rounded-full object-cover shrink-0 border border-[var(--border-color)]"
+                          onError={(e) => {
+                            (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] truncate">
+                            {student.fullName}
+                          </p>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">
+                            {student.username || student.collegeName}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-[var(--primary-color)] shrink-0 px-2 py-0.5 rounded-md bg-[var(--primary-light)]">
+                        Chat
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Matching Colleges */}
+              {remoteSearchResults.colleges.length > 0 && (
+                <div className="p-2 space-y-1">
+                  <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <Building2 className="w-3 h-3 text-blue-500" />
+                    <span>Colleges ({remoteSearchResults.colleges.length})</span>
+                  </div>
+                  {remoteSearchResults.colleges.map((col) => (
+                    <div
+                      key={col._id}
+                      onClick={() => {
+                        saveSearchTerm('messages', col.name);
+                        setMsgHistory(getSearchHistory('messages'));
+                        handleStartChatWithUser(col._id, 'college');
+                      }}
+                      className="p-2 rounded-xl hover:bg-[var(--surface-hover)] cursor-pointer transition-colors flex items-center justify-between gap-2.5 group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={col.logo || DEFAULT_COLLEGE_LOGO}
+                          alt={col.name}
+                          className="w-9 h-9 rounded-xl object-cover shrink-0 border border-[var(--border-color)]"
+                          onError={(e) => {
+                            (e.target as any).src = DEFAULT_COLLEGE_LOGO;
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1">
+                            <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] truncate">
+                              {col.name}
+                            </p>
+                            {col.isVerified && (
+                              <span title="Verified College">
+                                <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">
+                            {col.username || col.location || 'College'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-[var(--primary-color)] shrink-0 px-2 py-0.5 rounded-md bg-[var(--primary-light)]">
+                        Chat
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Matching Existing Conversations */}
+              {filteredConversations.length > 0 && (
+                <div className="p-2 space-y-1">
+                  <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <MessageSquare className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span>Existing Chats ({filteredConversations.length})</span>
+                  </div>
+                  {filteredConversations.map((c) => {
+                    const other = c.otherParticipant;
+                    const isSelected = selectedConvId === c._id;
+                    const unread = c.unreadCount || 0;
+
+                    return (
+                      <div
+                        key={c._id}
+                        onClick={() => setSelectedConvId(c._id)}
+                        className={`p-2.5 rounded-xl flex items-center gap-3 cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'bg-[var(--primary-light)] border-l-4 border-[var(--primary-color)]'
+                            : 'hover:bg-[var(--surface-hover)]'
+                        }`}
+                      >
+                        <img
+                          src={other?.avatar || DEFAULT_STUDENT_AVATAR}
+                          alt={other?.name || 'Chat User'}
+                          className="w-9 h-9 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                          onError={(e) => {
+                            (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                          }}
+                        />
+                        <div className="min-w-0 grow">
+                          <p className="text-xs font-bold truncate text-[var(--text-primary)]">
+                            {other?.name || 'User'}
+                          </p>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">
+                            {c.lastMessage?.text || 'Conversation started'}
+                          </p>
+                        </div>
+                        {unread > 0 && (
+                          <span className="shrink-0 w-4 h-4 rounded-full bg-[var(--primary-color)] text-[var(--primary-text)] text-[10px] font-bold flex items-center justify-center">
+                            {unread}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!searchingRemote && !hasRemoteMatches && filteredConversations.length === 0 && (
+                <div className="p-6 text-center text-xs text-[var(--text-muted)]">
+                  No students, colleges, or conversations found for "{convSearch}".
+                </div>
+              )}
+            </div>
+          ) : conversations.length === 0 ? (
             <div className="p-8 text-center space-y-2">
               <MessageSquare className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
               <h4 className="text-xs font-bold text-[var(--text-primary)]">No messages yet</h4>
               <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                Connect with collegiate organizers and student innovators. Click "New Chat" to start messaging.
+                Connect with collegiate organizers and student innovators. Search students or colleges above to start messaging.
               </p>
             </div>
           ) : (
@@ -457,12 +641,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 >
                   <div className="relative shrink-0">
                     <img
-                      src={
-                        other?.avatar ||
-                        DEFAULT_STUDENT_AVATAR
-                      }
+                      src={other?.avatar || DEFAULT_STUDENT_AVATAR}
                       alt={other?.name || 'Chat User'}
-                      className="w-11 h-11 rounded-xl object-cover border border-[var(--border-color)]"
+                      className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)]"
                       onError={(e) => {
                         (e.target as any).src = DEFAULT_STUDENT_AVATAR;
                       }}
@@ -517,14 +698,17 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Active Chat Panel */}
-      <div className={`flex-1 flex flex-col bg-[var(--surface)] ${!selectedConvId ? 'hidden md:flex' : 'flex'}`}>
-        {selectedConvId && activeConversation ? (
+      {/* RIGHT COLUMN: Active Chat Panel (Instagram-Like compact DM layout per Requirement 12) */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 bg-[var(--surface)] ${
+          selectedConvId ? 'flex' : 'hidden md:flex'
+        }`}
+      >
+        {activeConversation && selectedConvId ? (
           <>
-            {/* Chat Top Header */}
-            <div className="p-3.5 px-4 border-b border-[var(--border-color)] flex items-center justify-between gap-3 bg-[var(--surface)]">
-              <div className="flex items-center gap-3 min-w-0">
-                {/* Mobile Back to List Button */}
+            {/* Conversation Header */}
+            <div className="p-3.5 border-b border-[var(--border-color)] flex items-center justify-between gap-3 bg-[var(--surface)]">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   type="button"
                   onClick={() => setSelectedConvId(null)}
@@ -575,112 +759,100 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 </div>
               </div>
 
-              {/* Action Menu & Controls */}
+              {/* Action Menu (No voice or video call per Requirement 12) */}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => handleToggleMute(activeConversation._id)}
-                  className={`p-2 rounded-xl border border-transparent hover:border-[var(--border-color)] transition-colors cursor-pointer ${
-                    activeConversation.isMuted
-                      ? 'text-amber-500 bg-amber-500/10'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]'
-                  }`}
-                  title={activeConversation.isMuted ? 'Unmute conversation' : 'Mute conversation'}
+                  onClick={() => handleToggleMute(selectedConvId)}
+                  className="p-2 rounded-xl hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                  title={activeConversation.isMuted ? 'Unmute' : 'Mute'}
                 >
-                  {activeConversation.isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                  {activeConversation.isMuted ? (
+                    <BellOff className="w-4 h-4 text-amber-500" />
+                  ) : (
+                    <Bell className="w-4 h-4" />
+                  )}
                 </button>
 
                 <ActionMenu
                   items={[
                     {
-                      id: 'view_profile',
-                      label: activeConversation.otherParticipant?.role === 'Student' ? 'View Student ID' : 'View College ID',
-                      icon: activeConversation.otherParticipant?.role === 'Student' ? User : Building2,
-                      onClick: () => {
-                        const other = activeConversation.otherParticipant;
-                        if (other?.role === 'Student' && onViewStudent) {
-                          onViewStudent(other.userId);
-                        } else if (other?.collegeId && onViewCollege) {
-                          onViewCollege(other.collegeId);
-                        }
-                      },
-                    },
-                    {
-                      id: 'mute_toggle',
-                      label: activeConversation.isMuted ? 'Unmute Notifications' : 'Mute Notifications',
+                      id: 'mute',
+                      label: activeConversation.isMuted ? 'Unmute notifications' : 'Mute notifications',
                       icon: activeConversation.isMuted ? Bell : BellOff,
-                      onClick: () => handleToggleMute(activeConversation._id),
+                      onClick: () => handleToggleMute(selectedConvId),
                     },
                     {
-                      id: 'delete_conv',
-                      label: 'Delete Conversation',
+                      id: 'delete',
+                      label: 'Delete conversation',
                       icon: Trash2,
                       danger: true,
-                      onClick: () => handleDeleteConversation(activeConversation._id),
+                      onClick: () => handleDeleteConversation(selectedConvId),
                     },
                   ]}
                 />
               </div>
             </div>
 
-            {/* Chat Message History */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[var(--surface-subtle)]/40">
+            {/* Messages Feed */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[var(--surface-subtle)]/40">
               {loadingMessages ? (
-                <div className="py-20 flex justify-center">
+                <div className="py-20 flex flex-col items-center justify-center space-y-2">
                   <Loader2 className="w-6 h-6 animate-spin text-[var(--primary-color)]" />
+                  <p className="text-xs text-[var(--text-muted)]">Loading conversation...</p>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="py-16 text-center space-y-2">
-                  <MessageSquare className="w-8 h-8 mx-auto text-[var(--text-muted)] opacity-50" />
-                  <p className="text-xs font-bold text-[var(--text-primary)]">
-                    No messages yet with {activeConversation.otherParticipant?.name}
-                  </p>
-                  <p className="text-[11px] text-[var(--text-muted)]">
-                    Say hello or share an upcoming collegiate event!
+                <div className="py-20 text-center space-y-2">
+                  <MessageSquare className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">
+                    No messages yet. Say hello!
                   </p>
                 </div>
               ) : (
                 messages.map((m) => {
                   const isMine = m.senderId === user?._id;
                   const isDeleted = m.deletedForEveryone;
+                  const isSeen = !isDeleted && (
+                    (m.readBy && m.readBy.some((id) => id !== user?._id)) ||
+                    Boolean(m.seenAt)
+                  );
 
                   return (
                     <div
                       key={m._id}
-                      className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} group`}
+                      className={`flex flex-col group ${isMine ? 'items-end' : 'items-start'}`}
                     >
                       <div
-                        className={`relative max-w-[85%] sm:max-w-md rounded-2xl p-3 shadow-xs space-y-2 ${
+                        className={`max-w-[85%] sm:max-w-md rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-2 ${
                           isMine
                             ? 'bg-[var(--primary-color)] text-[var(--primary-text)] rounded-br-xs'
                             : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-bl-xs'
                         }`}
                       >
-                        {/* Deleted Message Notice */}
                         {isDeleted ? (
-                          <p className="text-xs italic opacity-75">{m.text}</p>
+                          <p className="text-xs italic opacity-75">This message was deleted</p>
                         ) : (
                           <>
-                            {/* Text Message */}
+                            {/* Message text */}
                             {m.text && (
-                              <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
+                              <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
                                 {m.text}
                               </p>
                             )}
 
-                            {/* Image Attachment */}
+                            {/* Image attachment */}
                             {m.attachmentUrl && (
-                              <div className="rounded-xl overflow-hidden border border-black/10 max-h-60 bg-black/10">
+                              <div className="rounded-xl overflow-hidden border border-black/10 mt-1 max-h-60 bg-black/5">
                                 <img
                                   src={m.attachmentUrl}
-                                  alt="Attachment"
+                                  alt="attachment"
                                   className="w-full h-full object-cover cursor-pointer hover:scale-102 transition-transform"
                                   onClick={() => window.open(m.attachmentUrl, '_blank')}
                                 />
                               </div>
                             )}
 
-                            {/* SHARED EVENT CARD */}
+                            {/* SHARED EVENT CARD (Requirement 15: Share Event Through Message) */}
                             {m.sharedEvent && (
                               <div
                                 onClick={() => onViewEvent && onViewEvent(m.sharedEvent!._id)}
@@ -692,10 +864,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                               >
                                 <div className="flex items-center gap-2.5">
                                   <img
-                                    src={
-                                      m.sharedEvent.poster ||
-                                      DEFAULT_EVENT_POSTER
-                                    }
+                                    src={m.sharedEvent.poster || DEFAULT_EVENT_POSTER}
                                     alt={m.sharedEvent.title}
                                     className="w-12 h-12 rounded-lg object-cover shrink-0 border border-black/10"
                                     onError={(e) => {
@@ -703,9 +872,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                                     }}
                                   />
                                   <div className="min-w-0 flex-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider block opacity-75">
-                                      {m.sharedEvent.category} · Event Card
-                                    </span>
+                                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                                      <span className="text-[10px] font-black uppercase tracking-wider block opacity-75 truncate">
+                                        {m.sharedEvent.category} · Event
+                                      </span>
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-black/20 shrink-0">
+                                        {m.sharedEvent.isFree ? 'Free' : `$${m.sharedEvent.registrationFee || 0}`}
+                                      </span>
+                                    </div>
                                     <p className="text-xs font-bold truncate">{m.sharedEvent.title}</p>
                                     <p className="text-[10px] opacity-75 truncate">
                                       {m.sharedEvent.hostCollegeName} · {m.sharedEvent.eventDate}
@@ -727,10 +901,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                               >
                                 <div className="flex items-center gap-2.5">
                                   <img
-                                    src={
-                                      m.sharedStudent.profilePhoto ||
-                                      DEFAULT_STUDENT_AVATAR
-                                    }
+                                    src={m.sharedStudent.profilePhoto || DEFAULT_STUDENT_AVATAR}
                                     alt={m.sharedStudent.fullName}
                                     className="w-10 h-10 rounded-full object-cover shrink-0 border border-black/10"
                                     onError={(e) => {
@@ -762,10 +933,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                               >
                                 <div className="flex items-center gap-2.5">
                                   <img
-                                    src={
-                                      m.sharedCollege.logo ||
-                                      DEFAULT_COLLEGE_LOGO
-                                    }
+                                    src={m.sharedCollege.logo || DEFAULT_COLLEGE_LOGO}
                                     alt={m.sharedCollege.name}
                                     className="w-10 h-10 rounded-xl object-cover shrink-0 border border-black/10"
                                     onError={(e) => {
@@ -787,9 +955,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           </>
                         )}
 
-                        {/* Timestamp & Read Receipts */}
+                        {/* Timestamp & Real Sent / Seen Receipts (Requirement 13) */}
                         <div
-                          className={`flex items-center justify-end gap-1 text-[10px] ${
+                          className={`flex items-center justify-end gap-1.5 text-[10px] mt-1 ${
                             isMine ? 'text-white/80' : 'text-[var(--text-muted)]'
                           }`}
                         >
@@ -800,7 +968,20 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                             })}
                           </span>
                           {isMine && !isDeleted && (
-                            <CheckCheck className="w-3.5 h-3.5 text-white" />
+                            isSeen ? (
+                              <span
+                                title={m.seenAt ? `Seen at ${new Date(m.seenAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Seen'}
+                                className="flex items-center gap-0.5 text-sky-300 font-bold"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5 text-sky-300" />
+                                <span className="text-[9px]">Seen</span>
+                              </span>
+                            ) : (
+                              <span title="Sent" className="flex items-center gap-0.5 text-white/70">
+                                <Check className="w-3.5 h-3.5 text-white/70" />
+                                <span className="text-[9px]">Sent</span>
+                              </span>
+                            )
                           )}
                         </div>
                       </div>
@@ -825,7 +1006,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input & Action Footer */}
+            {/* Clean Input & Action Composer (Requirement 11: Remove dedicated emoji button) */}
             <div className="p-3 border-t border-[var(--border-color)] bg-[var(--surface)] space-y-2">
               {/* Attachment Preview Box */}
               {attachmentPreview && (
@@ -848,22 +1029,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 </div>
               )}
 
-              {/* Emoji bar popup */}
-              {showEmojiPicker && (
-                <div className="flex items-center gap-2 p-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] overflow-x-auto">
-                  {COMMON_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setInputText((prev) => prev + emoji)}
-                      className="text-lg p-1 hover:scale-125 transition-transform cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                 {/* Hidden File Input */}
                 <input
@@ -878,24 +1043,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                  className="p-2.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer shrink-0"
                   title="Attach Image"
                 >
                   <Image className="w-4 h-4" />
-                </button>
-
-                {/* Emoji Picker Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker((prev) => !prev)}
-                  className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
-                    showEmojiPicker
-                      ? 'border-[var(--primary-color)] text-[var(--primary-color)] bg-[var(--primary-light)]'
-                      : 'border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                  }`}
-                  title="Emoji"
-                >
-                  <Smile className="w-4 h-4" />
                 </button>
 
                 {/* Main Text Input */}
@@ -912,6 +1063,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   type="submit"
                   disabled={sending || (!inputText.trim() && !attachmentPreview)}
                   className="p-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                  title="Send"
                 >
                   {sending || uploadingAttachment ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -929,119 +1081,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             </div>
             <h3 className="text-base font-bold text-[var(--text-primary)]">Your Messages</h3>
             <p className="text-xs text-[var(--text-muted)] max-w-sm">
-              Send private direct messages, share event passes, and collaborate with student clubs and universities.
+              Send private direct messages, share event passes, and collaborate. Search students or colleges in the sidebar to start a conversation.
             </p>
-            <button
-              onClick={() => setShowNewChatModal(true)}
-              className="px-4 py-2 rounded-xl bg-[var(--primary-color)] text-[var(--primary-text)] text-xs font-bold cursor-pointer"
-            >
-              Start a Conversation
-            </button>
           </div>
         )}
       </div>
-
-      {/* NEW CHAT MODAL */}
-      {showNewChatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-[var(--text-primary)]">New Message</h3>
-              <button
-                onClick={() => setShowNewChatModal(false)}
-                className="p-1 rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-subtle)]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="relative" ref={msgSearchRef}>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-              <input
-                type="text"
-                value={userSearchQuery}
-                onFocus={() => {
-                  if (!userSearchQuery.trim()) setShowMsgHistory(true);
-                }}
-                onChange={(e) => {
-                  setUserSearchQuery(e.target.value);
-                  if (e.target.value.trim().length === 0) {
-                    setShowMsgHistory(true);
-                  } else {
-                    setShowMsgHistory(false);
-                  }
-                }}
-                placeholder="Search students (@username) or colleges..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                autoFocus
-              />
-
-              {/* Instagram-like Search History for Messages (Requirement 7) */}
-              {showMsgHistory && !userSearchQuery.trim() && msgHistory.length > 0 && (
-                <SearchHistoryDropdown
-                  context="messages"
-                  history={msgHistory}
-                  onSelectTerm={(term) => {
-                    setUserSearchQuery(term);
-                    setShowMsgHistory(false);
-                    const updated = saveSearchTerm('messages', term);
-                    setMsgHistory(updated);
-                  }}
-                  onRemoveTerm={(term, e) => {
-                    e.stopPropagation();
-                    const updated = removeSearchTerm('messages', term);
-                    setMsgHistory(updated);
-                  }}
-                  onClearAll={(e) => {
-                    e.stopPropagation();
-                    clearSearchHistory('messages');
-                    setMsgHistory([]);
-                  }}
-                />
-              )}
-            </div>
-
-            <div className="max-h-64 overflow-y-auto space-y-1.5 divide-y divide-[var(--border-color)]">
-              {searchingUsers ? (
-                <div className="py-8 flex justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin text-[var(--primary-color)]" />
-                </div>
-              ) : userSearchResults.length === 0 ? (
-                <p className="text-center py-6 text-xs text-[var(--text-muted)]">
-                  {userSearchQuery.trim() ? 'No users or colleges found' : 'Type a name or username above to find someone to message'}
-                </p>
-              ) : (
-                userSearchResults.map((item) => (
-                  <div
-                    key={item._id}
-                    onClick={() => handleStartChatWithUser(item._id, item.itemType)}
-                    className="p-2.5 flex items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] rounded-xl cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={item.profilePhoto || item.logo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80'}
-                        alt="avatar"
-                        className="w-9 h-9 rounded-xl object-cover shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-[var(--text-primary)] truncate">
-                          {item.fullName || item.name}
-                        </p>
-                        <p className="text-[11px] text-[var(--text-muted)] truncate">
-                          {item.username ? `@${item.username.replace(/^@/, '')}` : item.collegeName || item.location}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-[var(--primary-color)] uppercase">
-                      Chat
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

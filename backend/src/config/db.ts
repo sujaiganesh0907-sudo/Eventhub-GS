@@ -45,6 +45,8 @@ interface DBState {
   conversations: any[];
   messages: any[];
   conversationPreferences: any[];
+  adminActivityLogs: any[];
+  credentialPosts: any[];
 }
 
 let dbState: DBState = {
@@ -69,6 +71,8 @@ let dbState: DBState = {
   conversations: [],
   messages: [],
   conversationPreferences: [],
+  adminActivityLogs: [],
+  credentialPosts: [],
 };
 
 // Load initial database state

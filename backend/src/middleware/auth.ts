@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { User, College, IUser, ICollege } from '../models/index';
+import { User, College, CollegeAdminMembership, IUser, ICollege } from '../models/index';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'eventhub-secure-jwt-access-key-2026';
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'eventhub-secure-jwt-refresh-key-2026';
@@ -8,6 +8,7 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET || 'eventhub-secure-jwt-refres
 export interface AuthenticatedRequest extends Request {
   user?: IUser;
   college?: ICollege;
+  activeCollegeId?: string;
 }
 
 export function generateTokens(user: IUser) {
@@ -56,6 +57,27 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
   }
 }
 
+export async function optionalAuthenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const user = await User.findById(decoded.userId);
+      if (user) {
+        req.user = user;
+        if (user.collegeId) {
+          const college = await College.findById(user.collegeId);
+          if (college) req.college = college;
+        }
+      }
+    }
+  } catch (error) {
+    // Non-fatal, proceed as unauthenticated visitor
+  }
+  next();
+}
+
 export function requireRole(allowedRoles: Array<'Student' | 'College Super Admin' | 'College Admin'>) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -65,6 +87,68 @@ export function requireRole(allowedRoles: Array<'Student' | 'College Super Admin
       return res.status(403).json({ success: false, message: `Access forbidden. Requires one of roles: ${allowedRoles.join(', ')}` });
     }
     next();
+  };
+}
+
+/**
+ * Checks that user has a specific admin permission.
+ * - College Super Admin always has full access.
+ * - College Admin must have the explicit permission or ALL_PERMISSIONS in their membership.
+ */
+export function requireAdminPermission(permission: string) {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const targetCollegeId =
+      (req.headers['x-college-id'] as string) ||
+      req.body?.collegeId ||
+      (req.query?.collegeId as string) ||
+      user.collegeId;
+
+    if (user.role === 'College Super Admin' && (!targetCollegeId || targetCollegeId === user.collegeId)) {
+      return next();
+    }
+
+    if (targetCollegeId) {
+      const membership = await CollegeAdminMembership.findOne({
+        collegeId: targetCollegeId,
+        userId: user._id,
+        status: 'Active',
+      });
+
+      if (!membership) {
+        return res.status(403).json({
+          success: false,
+          message: 'Active administrator membership not found for this institution.',
+        });
+      }
+
+      if (membership.role === 'College Super Admin') {
+        return next();
+      }
+
+      const permissions = membership.permissions || [];
+      const hasPerm =
+        permissions.includes('ALL_PERMISSIONS') ||
+        permissions.includes(permission) ||
+        (permission === 'manageCertificates' && permissions.includes('manageCert')) ||
+        (permission === 'manageCert' && permissions.includes('manageCertificates'));
+
+      if (!hasPerm) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. You lack the '${permission}' permission for this action.`,
+        });
+      }
+
+      req.activeCollegeId = targetCollegeId;
+      return next();
+    }
+
+    return res.status(403).json({ success: false, message: 'College administrator privileges required.' });
   };
 }
 

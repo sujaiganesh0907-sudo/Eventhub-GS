@@ -213,6 +213,19 @@ export interface IEvent {
   attendanceFinalizedBy?: string;
   certificateTemplateUrl?: string;
   certificateTemplateName?: string;
+  certificateTemplate?: {
+    fileUrl: string;
+    fileName: string;
+    uploadedAt: string;
+    uploadedBy: string;
+    detectedPlaceholders: string[];
+    mappings: Record<string, {
+      sourceType: 'student_field' | 'event_field' | 'registration_question' | 'fixed_text' | 'auto';
+      sourceField?: string;
+      fixedValue?: string;
+    }>;
+    isActivated: boolean;
+  };
   createdAt: string;
 }
 
@@ -280,18 +293,51 @@ export interface ICertificate {
   eventId?: string;
   registrationId?: string;
   studentId: string;
+  studentUserId?: string;
   collegeId?: string;
   issuingOrganization: string;
+  collegeLogo?: string;
+  isCollegeVerified?: boolean;
   achievementType: 'Winner' | 'Runner-up' | 'Participation' | 'Excellence' | 'Appreciation' | 'Completion';
   issueDate: string;
   location?: string;
   eventName?: string;
   description?: string;
   fileUrl: string;
+  docxFileUrl?: string;
   credentialUrl?: string;
   visibility: 'Public' | 'Connections Only' | 'Private';
   tags: string[];
   isDraft: boolean;
+  emailStatus?: 'Pending' | 'Sent' | 'Failed';
+  emailError?: string;
+  profilePublished?: boolean;
+  revoked?: boolean;
+  revokedAt?: string;
+  revokedReason?: string;
+  createdAt: string;
+}
+
+export interface ICredentialPost {
+  _id: string;
+  id?: string;
+  studentId: string;
+  studentUserId: string;
+  studentName: string;
+  studentUsername: string;
+  studentAvatar?: string;
+  certificateId: string;
+  certificateTitle: string;
+  eventTitle: string;
+  issuingOrganization: string;
+  collegeLogo?: string;
+  achievementType: string;
+  issueDate: string;
+  fileUrl: string;
+  credentialUrl: string;
+  caption?: string;
+  likesCount: number;
+  likedBy: string[];
   createdAt: string;
 }
 
@@ -420,6 +466,7 @@ export interface IMessage {
     verificationStatus?: string;
   } | null;
   readBy: string[];
+  seenAt?: string;
   deletedFor?: string[];
   deletedForEveryone?: boolean;
   createdAt: string;

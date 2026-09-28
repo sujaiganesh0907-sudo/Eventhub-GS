@@ -4,6 +4,7 @@ import { EventCard } from '../components/event/EventCard';
 import { EventCardSkeleton } from '../components/common/Skeleton';
 import { EmptyState } from '../components/common/EmptyState';
 import { FilterState, CATEGORIES } from '../components/event/EventFilterModal';
+import { CredentialFeedSection } from '../components/certificate/CredentialFeedSection';
 import { api } from '../services/api';
 import { DEFAULT_COLLEGE_LOGO } from '../services/imageDefaults';
 import {
@@ -14,6 +15,7 @@ import {
   Building2,
   Compass,
   ArrowRight,
+  Award,
 } from 'lucide-react';
 
 interface StudentHomePageProps {
@@ -33,6 +35,7 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
   onSelectTab,
   onOpenFilter,
 }) => {
+  const [mainView, setMainView] = useState<'events' | 'credentials'>('events');
   const [events, setEvents] = useState<IEvent[]>([]);
   const [colleges, setColleges] = useState<ICollege[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,8 +85,43 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
   );
 
   return (
-    <div className="space-y-8 pb-16 max-w-7xl mx-auto">
-      {/* Category Pills Slider */}
+    <div className="space-y-8 pb-16 w-full max-w-[1440px] mx-auto">
+      {/* Top Feed View Selector: Events Discovery vs Verified Credentials Community Feed */}
+      <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMainView('events')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              mainView === 'events'
+                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Discover Events</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMainView('credentials')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              mainView === 'credentials'
+                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-amber-500" />
+            <span>Verified Credentials Feed</span>
+          </button>
+        </div>
+      </div>
+
+      {mainView === 'credentials' ? (
+        <CredentialFeedSection />
+      ) : (
+        <>
+          {/* Category Pills Slider */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         {CATEGORIES.map((cat) => {
           const active = selectedCategoryChip === cat;
@@ -104,7 +142,8 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <EventCardSkeleton />
           <EventCardSkeleton />
           <EventCardSkeleton />
           <EventCardSkeleton />
@@ -133,7 +172,7 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {displayedEvents.map((ev) => (
               <EventCard
                 key={ev._id}
@@ -163,8 +202,8 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {popularEvents.slice(0, 3).map((ev) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {popularEvents.slice(0, 4).map((ev) => (
                 <EventCard
                   key={ev._id}
                   event={ev}
@@ -192,8 +231,8 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {upcomingEvents.slice(0, 3).map((ev) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {upcomingEvents.slice(0, 4).map((ev) => (
                 <EventCard
                   key={ev._id}
                   event={ev}
@@ -222,8 +261,8 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
-                {colleges.slice(0, 3).map((col) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                {colleges.slice(0, 4).map((col) => (
                   <div
                     key={col._id}
                     onClick={() => onSelectTab('colleges')}
@@ -262,8 +301,8 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {latestEvents.slice(0, 6).map((ev) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {latestEvents.slice(0, 8).map((ev) => (
                 <EventCard
                   key={ev._id}
                   event={ev}
@@ -273,6 +312,8 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
               ))}
             </div>
           </section>
+        </>
+      )}
         </>
       )}
     </div>

@@ -37,6 +37,7 @@ import { TicketModal } from '../components/registration/TicketModal';
 import { ReminderModal } from '../components/event/ReminderModal';
 import { AttendanceModal } from '../components/attendance/AttendanceModal';
 import { IssueCertificateModal } from '../components/certificate/IssueCertificateModal';
+import { CertificateModal } from '../components/certificate/CertificateModal';
 import { EventInsightsModal } from '../components/event/EventInsightsModal';
 import { ShareToChatModal } from '../components/common/ShareToChatModal';
 
@@ -60,6 +61,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [userRegistration, setUserRegistration] = useState<IEventRegistration | null>(null);
+  const [userCertificate, setUserCertificate] = useState<any>(null);
 
   // Accordion state for "More Details"
   const [showMoreDetails, setShowMoreDetails] = useState(false);
@@ -68,6 +70,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
   // Modals state
   const [showRegModal, setShowRegModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showIssueCertModal, setShowIssueCertModal] = useState(false);
@@ -82,6 +85,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
         setEvent(res.event);
         setIsRegistered(!!res.isRegistered);
         setUserRegistration(res.registration || null);
+        setUserCertificate(res.certificate || null);
       } else {
         setError(res.message || 'Event not found');
       }
@@ -123,7 +127,8 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
 
   const isHostCollege = user?.collegeId && user.collegeId === event.hostCollegeId;
   const isCollegeStaff = user?.role === 'College Super Admin' || user?.role === 'College Admin';
-  const canManage = isHostCollege && isCollegeStaff;
+  const isStudentCreator = user?.role === 'Student' && event.creatorUserId === user._id && ['Published', 'Approved', 'Completed'].includes(event.status);
+  const canManage = (isHostCollege && isCollegeStaff) || isStudentCreator;
 
   const seatsLeft = event.seatsLeft !== undefined ? event.seatsLeft : Math.max(0, event.capacity - (event.registeredCount || 0));
   const isFull = event.isFull || seatsLeft <= 0;
@@ -394,6 +399,15 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
               >
                 <Ticket className="w-4 h-4" /> View Entry Pass
               </button>
+              {userCertificate && (
+                <button
+                  onClick={() => setShowCertModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                  title="Download verified official certificate"
+                >
+                  <Award className="w-4 h-4" /> Download Certificate
+                </button>
+              )}
               <button
                 onClick={() => setShowReminderModal(true)}
                 className="px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer"
@@ -745,6 +759,16 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
           isOpen={showInsightsModal}
           onClose={() => setShowInsightsModal(false)}
           event={event}
+        />
+      )}
+
+      {/* USER CERTIFICATE MODAL (Only when user attended and certificate is issued to them) */}
+      {showCertModal && userCertificate && (
+        <CertificateModal
+          isOpen={showCertModal}
+          onClose={() => setShowCertModal(false)}
+          certificate={userCertificate}
+          canDownload={true}
         />
       )}
 

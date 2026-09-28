@@ -309,7 +309,11 @@ export const CollegesListPage: React.FC<CollegesListPageProps> = ({
                   <div className="px-4 py-3 border-t border-[var(--border-color)] bg-[var(--surface-subtle)] flex items-center justify-between gap-2">
                     <button
                       type="button"
-                      onClick={() => onSelectCollege(col._id)}
+                      onClick={() => {
+                        saveSearchTerm('colleges', col.name);
+                        setHistory(getSearchHistory('colleges'));
+                        onSelectCollege(col._id);
+                      }}
                       className="px-3.5 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] transition-colors cursor-pointer"
                     >
                       View College ID

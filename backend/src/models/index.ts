@@ -260,6 +260,30 @@ export interface IEvent {
   attendanceFinalizedBy?: string;
   certificateTemplateUrl?: string;
   certificateTemplateName?: string;
+    certificateTemplate?: {
+    fileUrl: string;
+    fileName: string;
+    version?: number;
+    status?: 'Draft' | 'Active' | 'Archived';
+    uploadedAt: string;
+    uploadedBy: string;
+    detectedPlaceholders: string[];
+    mappings: Record<string, {
+      sourceType: 'student_field' | 'event_field' | 'registration_question' | 'fixed_text' | 'auto';
+      sourceField?: string;
+      fixedValue?: string;
+    }>;
+    isActivated: boolean;
+    history?: Array<{
+      version: number;
+      fileUrl: string;
+      fileName: string;
+      uploadedAt: string;
+      uploadedBy: string;
+      detectedPlaceholders: string[];
+      mappings: any;
+    }>;
+  };
   
   createdAt: string;
   updatedAt: string;
@@ -369,12 +393,16 @@ export interface ICertificate {
   studentUserId?: string;
   collegeId?: string;
   issuingOrganization: string;
+  collegeLogo?: string;
+  isCollegeVerified?: boolean;
   achievementType: 'Winner' | 'Runner-up' | 'Participation' | 'Excellence' | 'Appreciation' | 'Completion';
   issueDate: string;
   location?: string;
   eventName?: string;
   description?: string;
-  fileUrl: string; // PDF or Image URL
+  fileUrl: string; // Cloudinary or local PDF/Image URL
+  docxFileUrl?: string; // DOCX personalized certificate URL
+  cloudinaryPublicId?: string;
   credentialUrl?: string;
   visibility: 'Public' | 'Connections Only' | 'Private';
   tags: string[];
@@ -382,6 +410,34 @@ export interface ICertificate {
   emailStatus?: 'Pending' | 'Sent' | 'Failed';
   emailError?: string;
   profilePublished?: boolean;
+  revoked?: boolean;
+  revokedAt?: string;
+  revokedReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ICredentialPost {
+  _id: string;
+  id?: string;
+  studentId: string;
+  studentUserId: string;
+  studentName: string;
+  studentUsername: string;
+  studentAvatar?: string;
+  certificateId: string;
+  certificateTitle: string;
+  eventTitle: string;
+  issuingOrganization: string;
+  collegeLogo?: string;
+  achievementType: string;
+  issueDate: string;
+  fileUrl: string;
+  credentialUrl: string;
+  caption?: string;
+  visibility?: 'Public' | 'Connections' | 'Private';
+  likesCount: number;
+  likedBy: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -442,7 +498,7 @@ export interface INotification {
   _id: string;
   id?: string;
   recipientUserId: string;
-  type: 'REGISTRATION' | 'PAYMENT' | 'REMINDER' | 'EVENT_APPROVAL' | 'EVENT_REJECTION' | 'EVENT_UPDATE' | 'CERTIFICATE' | 'ATTENDANCE';
+  type: 'REGISTRATION' | 'PAYMENT' | 'REMINDER' | 'EVENT_APPROVAL' | 'EVENT_REJECTION' | 'EVENT_UPDATE' | 'CERTIFICATE' | 'ATTENDANCE' | 'ADMIN_ACTION' | 'ADMIN_INVITE';
   title: string;
   message: string;
   link?: string;
@@ -513,6 +569,9 @@ export interface IMessage {
   senderId: string;
   senderName: string;
   senderRole: string;
+  senderAvatar?: string;
+  collegeId?: string;
+  sentByAdminId?: string;
   text: string;
   attachmentUrl?: string;
   attachmentType?: 'image' | 'file';
@@ -520,6 +579,7 @@ export interface IMessage {
   sharedStudentId?: string;
   sharedCollegeId?: string;
   readBy: string[]; // user IDs
+  seenAt?: string;
   deletedFor: string[]; // user IDs
   deletedForEveryone?: boolean;
   createdAt: string;
@@ -559,3 +619,4 @@ export const Conversation = new CollectionModel<IConversation>('conversations');
 export const Message = new CollectionModel<IMessage>('messages');
 export const ConversationPreference = new CollectionModel<IConversationPreference>('conversationPreferences');
 export const AdminActivityLog = new CollectionModel<IAdminActivityLog>('adminActivityLogs');
+export const CredentialPost = new CollectionModel<ICredentialPost>('credentialPosts');

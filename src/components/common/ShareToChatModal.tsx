@@ -13,6 +13,11 @@ import {
 import { Modal } from './Modal';
 import { api } from '../../services/api';
 import { IConversation, IEvent, IStudentProfile, ICollege } from '../../types';
+import {
+  DEFAULT_EVENT_POSTER,
+  DEFAULT_STUDENT_AVATAR,
+  DEFAULT_COLLEGE_LOGO,
+} from '../../services/imageDefaults';
 
 interface ShareToChatModalProps {
   isOpen: boolean;
@@ -163,7 +168,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
         {event && (
           <div className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] flex items-center gap-3">
             <img
-              src={event.poster || event.hostCollegeLogo || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=120&auto=format&fit=crop&q=80'}
+              src={event.poster || event.hostCollegeLogo || DEFAULT_EVENT_POSTER}
               alt={event.title}
               className="w-12 h-12 rounded-lg object-cover border border-[var(--border-color)] shrink-0"
             />
@@ -177,7 +182,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
         {student && (
           <div className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] flex items-center gap-3">
             <img
-              src={student.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'}
+              src={student.profilePhoto || DEFAULT_STUDENT_AVATAR}
               alt={student.fullName}
               className="w-12 h-12 rounded-full object-cover border border-[var(--border-color)] shrink-0"
             />
@@ -191,7 +196,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
         {college && (
           <div className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] flex items-center gap-3">
             <img
-              src={college.logo || 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=120&auto=format&fit=crop&q=80'}
+              src={college.logo || DEFAULT_COLLEGE_LOGO}
               alt={college.name}
               className="w-12 h-12 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
             />
@@ -227,7 +232,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
-                      src={item.profilePhoto || item.logo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80'}
+                      src={item.profilePhoto || item.logo || (item.itemType === 'college' ? DEFAULT_COLLEGE_LOGO : DEFAULT_STUDENT_AVATAR)}
                       alt="avatar"
                       className="w-8 h-8 rounded-lg object-cover"
                     />
@@ -280,7 +285,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
-                      src={other?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80'}
+                      src={other?.avatar || DEFAULT_STUDENT_AVATAR}
                       alt="avatar"
                       className="w-8 h-8 rounded-lg object-cover"
                     />

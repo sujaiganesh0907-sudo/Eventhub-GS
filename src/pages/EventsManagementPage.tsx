@@ -10,6 +10,10 @@ import { ReminderModal } from '../components/event/ReminderModal';
 import { OrganizedEventCard } from '../components/event/OrganizedEventCard';
 import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { Modal } from '../components/common/Modal';
+import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
+import { DocxCertificateManagerModal } from '../components/certificate/DocxCertificateManagerModal';
+import { IssueCertificateModal } from '../components/certificate/IssueCertificateModal';
+import { DEFAULT_EVENT_POSTER } from '../services/imageDefaults';
 import {
   Calendar,
   Ticket,
@@ -30,6 +34,8 @@ import {
   BellRing,
   Share2,
   MoreVertical,
+  Users,
+  UserCheck,
 } from 'lucide-react';
 import { ActionMenu } from '../components/common/ActionMenu';
 import { ShareToChatModal } from '../components/common/ShareToChatModal';
@@ -71,6 +77,9 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   const [selectedEventForInsights, setSelectedEventForInsights] = useState<IEvent | null>(null);
   const [selectedEventForReminder, setSelectedEventForReminder] = useState<IEvent | null>(null);
   const [selectedRegForReminder, setSelectedRegForReminder] = useState<IEventRegistration | null>(null);
+  const [selectedEventForRegistrations, setSelectedEventForRegistrations] = useState<IEvent | null>(null);
+  const [selectedEventForCertificates, setSelectedEventForCertificates] = useState<IEvent | null>(null);
+  const [editingCollegeEvent, setEditingCollegeEvent] = useState<IEvent | null>(null);
 
   // College proposal rejection modal
   const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
@@ -510,94 +519,180 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {collegeEvents
                     .filter((e) => (activeTab === 'published' ? e.status === 'Published' : e.status === 'Draft'))
-                    .map((ev) => (
-                      <div
-                        key={ev._id}
-                        className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-4 flex flex-col justify-between"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] uppercase font-bold text-[var(--text-muted)]">
-                              {ev.category} · {ev.eventMode}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-[var(--primary-color)]">
-                                {ev.registeredCount || 0} / {ev.capacity} Registered
-                              </span>
-                              <ActionMenu
-                                items={[
-                                  {
-                                    id: 'view',
-                                    label: 'View Event',
-                                    icon: Eye,
-                                    onClick: () => onViewEvent(ev),
-                                  },
-                                  {
-                                    id: 'checkin',
-                                    label: 'Check-in Desk',
-                                    icon: Scan,
-                                    onClick: () => setSelectedEventForAttendance(ev),
-                                  },
-                                  {
-                                    id: 'insights',
-                                    label: 'Analytics & Insights',
-                                    icon: BarChart3,
-                                    onClick: () => setSelectedEventForInsights(ev),
-                                  },
-                                  {
-                                    id: 'share',
-                                    label: 'Share Event',
-                                    icon: Share2,
-                                    onClick: () => {
-                                      setEventToShare(ev);
-                                      setShowShareModal(true);
-                                    },
-                                  },
-                                  {
-                                    id: 'delete',
-                                    label: 'Delete Event',
-                                    icon: Trash2,
-                                    danger: true,
-                                    onClick: async () => {
-                                      if (confirm(`Are you sure you want to delete "${ev.title}"?`)) {
-                                        await api.delete(`/events/${ev._id}`);
-                                        fetchData();
-                                      }
-                                    },
-                                  },
-                                ]}
-                                ariaLabel={`Options for ${ev.title}`}
+                    .map((ev) => {
+                      const posterSrc = ev.poster || ev.hostCollegeLogo || DEFAULT_EVENT_POSTER;
+                      return (
+                        <div
+                          key={ev._id}
+                          className="relative rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between group"
+                        >
+                          <div>
+                            {/* Poster container at top of card (Requirement 2) */}
+                            <div
+                              onClick={() => onViewEvent(ev)}
+                              className="relative aspect-video w-full bg-slate-950 rounded-t-2xl overflow-hidden cursor-pointer"
+                            >
+                              <img
+                                src={posterSrc}
+                                alt={ev.title}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                                onError={(e) => {
+                                  (e.target as any).src = DEFAULT_EVENT_POSTER;
+                                }}
                               />
+
+                              {/* Overlays */}
+                              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
+                                <span className="px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-wider">
+                                  {ev.category || 'EVENT'}
+                                </span>
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm border ${
+                                    ev.status === 'Published'
+                                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                      : 'bg-zinc-700/60 text-zinc-300 border-zinc-600'
+                                  }`}
+                                >
+                                  {ev.status}
+                                </span>
+                              </div>
+
+                              <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[11px] font-semibold">
+                                <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-white">
+                                  {ev.eventMode}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-md font-bold backdrop-blur-sm ${
+                                    ev.isFree ? 'bg-emerald-600/90 text-white' : 'bg-indigo-600/90 text-white'
+                                  }`}
+                                >
+                                  {ev.isFree ? 'Free' : `$${ev.registrationFee}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Card Content */}
+                            <div className="p-4 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <h3
+                                  onClick={() => onViewEvent(ev)}
+                                  className="text-base font-bold text-[var(--text-primary)] hover:text-[var(--primary-color)] transition-colors cursor-pointer line-clamp-1 flex-1"
+                                >
+                                  {ev.title}
+                                </h3>
+
+                                {/* Complete 3-Dot Action Menu (Requirement 1) */}
+                                <ActionMenu
+                                  items={[
+                                    {
+                                      id: 'view',
+                                      label: 'View Event',
+                                      icon: Eye,
+                                      onClick: () => onViewEvent(ev),
+                                    },
+                                    {
+                                      id: 'share',
+                                      label: 'Share Event',
+                                      icon: Share2,
+                                      onClick: () => {
+                                        setEventToShare(ev);
+                                        setShowShareModal(true);
+                                      },
+                                    },
+                                    {
+                                      id: 'edit',
+                                      label: 'Edit Event',
+                                      icon: Edit,
+                                      onClick: () => {
+                                        setEditingCollegeEvent(ev);
+                                      },
+                                    },
+                                    {
+                                      id: 'checkin',
+                                      label: 'Check-In Desk',
+                                      icon: Scan,
+                                      onClick: () => setSelectedEventForAttendance(ev),
+                                    },
+                                    {
+                                      id: 'registrations',
+                                      label: 'Registrations',
+                                      icon: Users,
+                                      onClick: () => setSelectedEventForRegistrations(ev),
+                                    },
+                                    {
+                                      id: 'attendance',
+                                      label: 'Attendance',
+                                      icon: UserCheck,
+                                      onClick: () => setSelectedEventForAttendance(ev),
+                                    },
+                                    {
+                                      id: 'certificates',
+                                      label: 'Certificates',
+                                      icon: Award,
+                                      onClick: () => setSelectedEventForCertificates(ev),
+                                    },
+                                    {
+                                      id: 'insights',
+                                      label: 'Analytics & Insights',
+                                      icon: BarChart3,
+                                      onClick: () => setSelectedEventForInsights(ev),
+                                    },
+                                    {
+                                      id: 'delete',
+                                      label: 'Delete Event',
+                                      icon: Trash2,
+                                      danger: true,
+                                      onClick: async () => {
+                                        if (confirm(`Are you sure you want to delete "${ev.title}"?`)) {
+                                          await api.delete(`/events/${ev._id}`);
+                                          fetchData();
+                                        }
+                                      },
+                                    },
+                                  ]}
+                                  ariaLabel={`Options for ${ev.title}`}
+                                  align="right"
+                                />
+                              </div>
+
+                              <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                                {ev.eventDate} ({ev.startTime} - {ev.endTime})
+                              </p>
+
+                              <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
+                                {ev.description}
+                              </p>
                             </div>
                           </div>
 
-                          <h3
-                            onClick={() => onViewEvent(ev)}
-                            className="text-base font-black text-[var(--text-primary)] hover:text-[var(--primary-color)] transition-colors cursor-pointer line-clamp-1"
-                          >
-                            {ev.title}
-                          </h3>
-                          <p className="text-xs text-[var(--text-muted)]">
-                            {ev.eventDate} ({ev.startTime} - {ev.endTime})
-                          </p>
-                        </div>
+                          {/* Card Footer with Capacity & Quick Actions */}
+                          <div className="p-3 border-t border-[var(--border-color)] bg-[var(--surface-subtle)] rounded-b-2xl flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5" />
+                              {ev.registeredCount || 0} / {ev.capacity}
+                            </span>
 
-                        <div className="pt-3 border-t border-[var(--border-color)] flex flex-wrap items-center gap-1.5">
-                          <button
-                            onClick={() => setSelectedEventForAttendance(ev)}
-                            className="grow px-2.5 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <Scan className="w-3.5 h-3.5" /> Check-in Desk
-                          </button>
-                          <button
-                            onClick={() => setSelectedEventForInsights(ev)}
-                            className="px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> Analytics
-                          </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEventForAttendance(ev)}
+                                className="px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+                              >
+                                <Scan className="w-3 h-3" /> Desk
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEventForRegistrations(ev)}
+                                className="px-2.5 py-1 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer hover:bg-[var(--surface-hover)] transition-colors"
+                              >
+                                <Users className="w-3 h-3 text-blue-500" /> Attendees
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -789,6 +884,38 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
             setShowShareModal(false);
             setEventToShare(null);
             if (onNavigateToMessages) onNavigateToMessages(convId);
+          }}
+        />
+      )}
+
+      {/* REGISTRATIONS MODAL */}
+      {selectedEventForRegistrations && (
+        <EventRegistrationsModal
+          isOpen={!!selectedEventForRegistrations}
+          onClose={() => setSelectedEventForRegistrations(null)}
+          event={selectedEventForRegistrations}
+        />
+      )}
+
+      {/* DOCX PARTICIPATION CERTIFICATES MANAGER (Requirement 1) */}
+      {selectedEventForCertificates && (
+        <DocxCertificateManagerModal
+          isOpen={!!selectedEventForCertificates}
+          onClose={() => setSelectedEventForCertificates(null)}
+          event={selectedEventForCertificates}
+          onUpdated={() => fetchData()}
+        />
+      )}
+
+      {/* EDIT COLLEGE EVENT MODAL */}
+      {editingCollegeEvent && (
+        <MultiStepEventForm
+          isOpen={!!editingCollegeEvent}
+          eventToEdit={editingCollegeEvent}
+          onClose={() => setEditingCollegeEvent(null)}
+          onSuccess={() => {
+            setEditingCollegeEvent(null);
+            fetchData();
           }}
         />
       )}

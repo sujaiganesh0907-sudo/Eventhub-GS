@@ -16,6 +16,18 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { api } from '../../services/api';
+import {
+  DEFAULT_STUDENT_AVATAR,
+  DEFAULT_COLLEGE_LOGO,
+  DEFAULT_EVENT_POSTER,
+} from '../../services/imageDefaults';
+import {
+  getSearchHistory,
+  saveSearchTerm,
+  removeSearchTerm,
+  clearSearchHistory,
+} from '../../services/searchHistory';
+import { SearchHistoryDropdown } from './SearchHistoryDropdown';
 
 interface NavbarProps {
   searchQuery: string;
@@ -56,10 +68,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectEvent,
   unreadMessagesCount = 0,
 }) => {
-  const { user, studentProfile, college, isAuthenticated } = useAuth();
+  const { user, studentProfile, college, isAuthenticated, hasAdminAccess } = useAuth();
   const notif = useNotifications();
   const effectiveUnread = unreadNotificationsCount !== undefined ? unreadNotificationsCount : notif.unreadCount;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Instagram-like Home Event Search History (Requirement 7)
+  const [homeHistory, setHomeHistory] = useState<string[]>([]);
+  const [showHomeHistory, setShowHomeHistory] = useState(false);
+
+  useEffect(() => {
+    setHomeHistory(getSearchHistory('home'));
+  }, []);
 
   // Live Global Search State
   const [isSearching, setIsSearching] = useState(false);
@@ -83,6 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     const handleOutsideClick = (e: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setIsDropdownOpen(false);
+        setShowHomeHistory(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -103,17 +124,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const res = await api.get<any>('/search/global', { q: trimmed });
+        const res = await api.get<any>('/search/global', { q: trimmed, type: 'events' });
         if (res.success) {
           setSearchResults({
-            students: res.students || [],
-            colleges: res.colleges || [],
+            students: [],
+            colleges: [],
             events: res.events || [],
-            total: res.total || 0,
+            total: (res.events || []).length,
           });
         }
       } catch (err) {
-        console.error('Global search error:', err);
+        console.error('Home event search error:', err);
       } finally {
         setIsSearching(false);
       }
@@ -126,10 +147,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isCollege = user?.role === 'College Super Admin' || user?.role === 'College Admin';
 
   const avatarUrl = isStudent
-    ? studentProfile?.profilePhoto ||
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
-    : college?.logo ||
-      'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=100&auto=format&fit=crop&q=80';
+    ? studentProfile?.profilePhoto || DEFAULT_STUDENT_AVATAR
+    : college?.logo || DEFAULT_COLLEGE_LOGO;
 
   const navigateTab = (tab: string) => {
     if (onSelectTab) onSelectTab(tab);
@@ -167,8 +186,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-[var(--border-color)] bg-[var(--surface)]/90 backdrop-blur-md px-4 sm:px-6 py-3">
-      <div className="flex items-center justify-between gap-3 max-w-7xl mx-auto">
+    <header className="sticky top-0 z-30 w-full border-b border-[var(--border-color)] bg-[var(--surface)]/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5">
+      <div className="flex items-center justify-between gap-4 max-w-[1440px] w-full mx-auto">
         {/* Brand / Logo */}
         <div className="flex items-center gap-2.5">
           {isAuthenticated && (
@@ -205,10 +224,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="text"
                 value={searchQuery}
                 onFocus={() => {
-                  if (searchQuery.trim()) setIsDropdownOpen(true);
+                  if (searchQuery.trim()) {
+                    setIsDropdownOpen(true);
+                  } else {
+                    setShowHomeHistory(true);
+                  }
                 }}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search students, colleges, events (@handle, name...)"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    const updated = saveSearchTerm('home', searchQuery.trim());
+                    setHomeHistory(updated);
+                    setShowHomeHistory(false);
+                    setIsDropdownOpen(false);
+                  }
+                }}
+                onChange={(e) => {
+                  onSearchChange(e.target.value);
+                  if (!e.target.value.trim()) {
+                    setShowHomeHistory(true);
+                  } else {
+                    setShowHomeHistory(false);
+                  }
+                }}
+                placeholder="Search events by title, category, host college..."
                 className="w-full pl-10 pr-12 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden transition-all shadow-xs"
               />
 
@@ -237,6 +275,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
+            {/* INSTAGRAM-LIKE HOME SEARCH HISTORY DROPDOWN (Requirement 7) */}
+            {showHomeHistory && !searchQuery.trim() && (
+              <SearchHistoryDropdown
+                context="home"
+                history={homeHistory}
+                onSelectTerm={(term) => {
+                  onSearchChange(term);
+                  setShowHomeHistory(false);
+                  const updated = saveSearchTerm('home', term);
+                  setHomeHistory(updated);
+                }}
+                onRemoveTerm={(term, e) => {
+                  e.stopPropagation();
+                  const updated = removeSearchTerm('home', term);
+                  setHomeHistory(updated);
+                }}
+                onClearAll={(e) => {
+                  e.stopPropagation();
+                  clearSearchHistory('home');
+                  setHomeHistory([]);
+                }}
+                onClose={() => setShowHomeHistory(false)}
+              />
+            )}
+
             {/* LIVE GLOBAL SEARCH RESULTS DROPDOWN (Requirement 5) */}
             {isDropdownOpen && searchQuery.trim().length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-2 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-2xl overflow-hidden z-50 max-h-[80vh] overflow-y-auto animate-in fade-in-50 zoom-in-95 backdrop-blur-md">
@@ -250,101 +313,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     No results found for <span className="font-bold text-[var(--text-primary)]">"{searchQuery}"</span>
                   </div>
                 ) : (
-                  <div className="p-3 space-y-4">
-                    {/* STUDENTS RESULTS */}
-                    {searchResults.students.length > 0 && (
-                      <div>
-                        <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                          <User className="w-3 h-3 text-[var(--primary-color)]" />
-                          <span>Students ({searchResults.students.length})</span>
-                        </div>
-                        <div className="space-y-1 mt-1">
-                          {searchResults.students.map((student) => (
-                            <div
-                              key={student._id || student.id}
-                              onClick={() => handleStudentClick(student)}
-                              className="p-2 rounded-xl hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer flex items-center justify-between gap-3 group"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <img
-                                  src={student.profilePhoto}
-                                  alt={student.fullName}
-                                  className="w-9 h-9 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
-                                />
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] truncate">
-                                      {student.fullName}
-                                    </span>
-                                    {student.username && (
-                                      <span className="text-[11px] font-semibold text-[var(--primary-color)]">
-                                        {student.username}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-[11px] text-[var(--text-muted)] truncate">
-                                    {student.collegeName} {student.department ? `· ${student.department}` : ''}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="text-[11px] font-semibold text-[var(--text-muted)] group-hover:text-[var(--primary-color)] shrink-0">
-                                View Profile →
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* COLLEGES RESULTS */}
-                    {searchResults.colleges.length > 0 && (
-                      <div>
-                        <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                          <Building2 className="w-3 h-3 text-blue-500" />
-                          <span>Colleges & Institutions ({searchResults.colleges.length})</span>
-                        </div>
-                        <div className="space-y-1 mt-1">
-                          {searchResults.colleges.map((col) => (
-                            <div
-                              key={col._id || col.id}
-                              onClick={() => handleCollegeClick(col)}
-                              className="p-2 rounded-xl hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer flex items-center justify-between gap-3 group"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <img
-                                  src={col.logo}
-                                  alt={col.name}
-                                  className="w-9 h-9 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
-                                />
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] truncate">
-                                      {col.name}
-                                    </span>
-                                    {col.isVerified && (
-                                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                    )}
-                                  </div>
-                                  <p className="text-[11px] text-[var(--text-muted)] truncate">
-                                    {col.location || 'University Campus'} {col.username ? `· ${col.username}` : ''}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="text-[11px] font-semibold text-[var(--text-muted)] group-hover:text-[var(--primary-color)] shrink-0">
-                                View College →
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* EVENTS RESULTS */}
+                  <div className="p-3 space-y-3">
+                    {/* EVENTS RESULTS ONLY (Requirement 6) */}
                     {searchResults.events.length > 0 && (
                       <div>
                         <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                          <Calendar className="w-3 h-3 text-emerald-500" />
-                          <span>Events ({searchResults.events.length})</span>
+                          <Calendar className="w-3 h-3 text-[var(--primary-color)]" />
+                          <span>Matching Events ({searchResults.events.length})</span>
                         </div>
                         <div className="space-y-1 mt-1">
                           {searchResults.events.map((ev) => (
@@ -453,6 +428,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {isStudent ? studentProfile?.fullName || user?.fullName : college?.name || user?.fullName}
                 </span>
               </button>
+
+              {/* Admin Profile shortcut for users with active admin memberships */}
+              {hasAdminAccess && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectTab) onSelectTab('admin-profile');
+                  }}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all border border-emerald-500/20 cursor-pointer shadow-xs active:scale-95"
+                  title="Open Admin Profile & Manage Colleges"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="hidden md:inline">Admin Profile</span>
+                </button>
+              )}
             </>
           ) : (
             <button
@@ -523,6 +513,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             {isCollege ? 'College ID' : 'Student ID'}
           </button>
+          {hasAdminAccess && (
+            <button
+              onClick={() => {
+                navigateTab('admin-profile');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-500" /> Admin Profile
+            </button>
+          )}
           <button
             onClick={() => {
               navigateTab('settings');

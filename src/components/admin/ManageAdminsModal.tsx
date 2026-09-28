@@ -14,6 +14,7 @@ import {
   Edit2,
   History,
   Check,
+  Ban,
 } from 'lucide-react';
 import { ADMIN_PERMISSIONS } from './AddAdminModal';
 
@@ -63,6 +64,25 @@ export const ManageAdminsModal: React.FC<ManageAdminsModalProps> = ({
       setActionError(null);
     }
   }, [isOpen, collegeId]);
+
+  const handleToggleStatus = async (membershipId: string, currentStatus: string, name: string) => {
+    const newStatus = currentStatus === 'Disabled' ? 'Active' : 'Disabled';
+    const actionWord = newStatus === 'Disabled' ? 'disable access for' : 're-enable access for';
+    if (!window.confirm(`Are you sure you want to ${actionWord} ${name}?`)) return;
+    try {
+      const res = await api.put<any>(`/admins/${membershipId}`, { status: newStatus });
+      if (res.success) {
+        setAdmins((prev) =>
+          prev.map((a) => (a._id === membershipId ? { ...a, status: newStatus } : a))
+        );
+        fetchAdminsData();
+      } else {
+        setActionError(res.message || 'Failed to update administrator status.');
+      }
+    } catch (err: any) {
+      setActionError(err.message || 'Error updating administrator status.');
+    }
+  };
 
   const handleRemove = async (membershipId: string, name: string) => {
     if (!window.confirm(`Are you sure you want to remove administrator ${name}?`)) return;
@@ -197,7 +217,8 @@ export const ManageAdminsModal: React.FC<ManageAdminsModalProps> = ({
                   const isSuper = adm.role === 'College Super Admin';
                   const isInvited = adm.status === 'Invited';
                   const isRejected = adm.status === 'Rejected';
-                  const isActive = !isInvited && !isRejected;
+                  const isDisabled = adm.status === 'Disabled';
+                  const isActive = !isInvited && !isRejected && !isDisabled;
 
                   return (
                     <div
@@ -233,6 +254,10 @@ export const ManageAdminsModal: React.FC<ManageAdminsModalProps> = ({
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-500/10 text-red-600 border border-red-500/20">
                                   Declined
                                 </span>
+                              ) : isDisabled ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-500/10 text-zinc-500 border border-zinc-500/20 flex items-center gap-1">
+                                  <Ban className="w-2.5 h-2.5" /> Access Disabled
+                                </span>
                               ) : (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
                                   <CheckCircle2 className="w-2.5 h-2.5" /> Active Admin
@@ -255,6 +280,21 @@ export const ManageAdminsModal: React.FC<ManageAdminsModalProps> = ({
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                               <span className="hidden sm:inline">Permissions</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(adm._id, adm.status, adm.name)}
+                              className={`p-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                                isDisabled
+                                  ? 'border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10'
+                                  : 'border-amber-500/30 text-amber-600 hover:bg-amber-500/10'
+                              }`}
+                              title={isDisabled ? 'Re-enable Admin Access' : 'Disable Admin Access'}
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">
+                                {isDisabled ? 'Enable' : 'Disable'}
+                              </span>
                             </button>
                             <button
                               type="button"

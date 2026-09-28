@@ -18,8 +18,17 @@ import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { Modal } from '../components/common/Modal';
 import { ShareToChatModal } from '../components/common/ShareToChatModal';
 import { AttendanceModal } from '../components/attendance/AttendanceModal';
+import { DocxCertificateManagerModal } from '../components/certificate/DocxCertificateManagerModal';
 import { IssueCertificateModal } from '../components/certificate/IssueCertificateModal';
+import { ReshareCertificateModal } from '../components/certificate/ReshareCertificateModal';
+import { PublicVerificationModal } from '../components/certificate/PublicVerificationModal';
 import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
+import {
+  DEFAULT_STUDENT_AVATAR,
+  DEFAULT_STUDENT_COVER,
+  DEFAULT_COLLEGE_LOGO,
+  DEFAULT_CERTIFICATE_TEMPLATE,
+} from '../services/imageDefaults';
 import {
   Building2,
   Calendar,
@@ -87,6 +96,8 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const [editingCert, setEditingCert] = useState<ICertificate | null>(null);
   const [selectedCert, setSelectedCert] = useState<ICertificate | null>(null);
   const [selectedReg, setSelectedReg] = useState<IEventRegistration | null>(null);
+  const [certToReshare, setCertToReshare] = useState<ICertificate | null>(null);
+  const [certIdToVerify, setCertIdToVerify] = useState<string | null>(null);
 
   // Social Connections & Follow Modals
   const [socialModalType, setSocialModalType] = useState<'connections' | 'following' | 'followers' | null>(null);
@@ -298,14 +309,12 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
       {/* SECTION 1: Digital Student ID Banner Card */}
       <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs">
         {/* Cover Photo */}
-        <div className="h-44 sm:h-56 w-full bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 relative">
-          {profile?.coverPhoto && (
-            <img
-              src={profile.coverPhoto}
-              alt="Profile Cover"
-              className="w-full h-full object-cover"
-            />
-          )}
+        <div className="h-44 sm:h-56 w-full bg-slate-900 relative overflow-hidden">
+          <img
+            src={profile?.coverPhoto || DEFAULT_STUDENT_COVER}
+            alt="Profile Cover"
+            className="w-full h-full object-cover"
+          />
           {/* Back button when viewing other student */}
           {!isOwnProfile && onBack && (
             <button
@@ -331,12 +340,12 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-4">
             <div className="flex items-end gap-4">
               <img
-                src={
-                  profile?.profilePhoto ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
-                }
+                src={profile?.profilePhoto || DEFAULT_STUDENT_AVATAR}
                 alt={profile?.fullName || 'Student'}
                 className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg shrink-0"
+                onError={(e) => {
+                  (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                }}
               />
               <div className="mb-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -609,31 +618,78 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
               {certificates.map((cert) => (
                 <div
                   key={cert._id}
-                  onClick={() => setSelectedCert(cert)}
-                  className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all cursor-pointer shadow-xs space-y-3 group"
+                  className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all shadow-xs space-y-3 flex flex-col justify-between group"
                 >
-                  <div className="aspect-video w-full rounded-xl overflow-hidden bg-slate-900 border border-[var(--border-color)] relative">
-                    <img
-                      src={cert.fileUrl}
-                      alt={cert.title}
-                      className="w-full h-full object-cover group-hover:scale-103 transition-transform"
-                      onError={(e) => {
-                        (e.target as any).src =
-                          'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80';
-                      }}
-                    />
-                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-xs text-[10px] font-bold text-amber-400">
-                      {cert.achievementType}
-                    </span>
+                  <div
+                    onClick={() => setSelectedCert(cert)}
+                    className="cursor-pointer space-y-3"
+                  >
+                    <div className="aspect-video w-full rounded-xl overflow-hidden bg-slate-900 border border-[var(--border-color)] relative">
+                      <img
+                        src={cert.fileUrl}
+                        alt={cert.title}
+                        className="w-full h-full object-cover group-hover:scale-103 transition-transform"
+                        onError={(e) => {
+                          (e.target as any).src = DEFAULT_CERTIFICATE_TEMPLATE;
+                        }}
+                      />
+                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-xs text-[10px] font-bold text-amber-400">
+                        {cert.achievementType}
+                      </span>
+                      <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-emerald-950/80 backdrop-blur-xs text-[10px] font-bold text-emerald-300 flex items-center gap-1 border border-emerald-500/30">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Verified
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] mb-1">
+                        {cert.collegeLogo ? (
+                          <img src={cert.collegeLogo} alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
+                        ) : (
+                          <Building2 className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                        )}
+                        <span className="font-semibold text-[var(--text-primary)] truncate">
+                          {cert.issuingOrganization}
+                        </span>
+                      </div>
+                      <h3 className="text-xs font-bold text-[var(--text-primary)] line-clamp-1">
+                        {cert.title}
+                      </h3>
+                      <p className="text-[11px] font-mono text-[var(--text-muted)] mt-0.5">
+                        ID: {cert.certificateId} · {cert.issueDate}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-xs font-bold text-[var(--text-primary)] line-clamp-1">
-                      {cert.title}
-                    </h3>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                      {cert.issuingOrganization} · {cert.issueDate}
-                    </p>
+                  {/* Card Actions */}
+                  <div className="pt-2.5 border-t border-[var(--border-color)] flex items-center justify-between gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCert(cert)}
+                      className="flex-1 py-1.5 px-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold text-[var(--text-primary)] transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3 text-blue-500" /> View
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCertIdToVerify(cert.certificateId)}
+                      className="py-1.5 px-2 rounded-lg border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/10 text-[11px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      title="Verify authenticity on registry"
+                    >
+                      <ShieldCheck className="w-3 h-3" /> Verify
+                    </button>
+
+                    {isOwnProfile && (
+                      <button
+                        type="button"
+                        onClick={() => setCertToReshare(cert)}
+                        className="py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                        title="Reshare as Verified Credential Post"
+                      >
+                        <Share2 className="w-3 h-3" /> Reshare
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -693,7 +749,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
-                            {reg.registrationId}
+                            {isOwnProfile ? reg.registrationId : 'Verified Participant'}
                           </span>
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
@@ -713,15 +769,17 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)]">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedReg(reg)}
-                          className="grow px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-xs active:scale-95"
-                        >
-                          <Ticket className="w-3.5 h-3.5" /> View Ticket
-                        </button>
-                      </div>
+                      {isOwnProfile && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)]">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReg(reg)}
+                            className="grow px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-xs active:scale-95"
+                          >
+                            <Ticket className="w-3.5 h-3.5" /> View Ticket
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -750,12 +808,17 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                       onViewEvent={(event) => {
                         if (onViewEvent) onViewEvent(event);
                       }}
-                      onEditEvent={(event) => {
+                      onEditEvent={isOwnProfile ? (event) => {
                         setEditingEventProposal(event);
                         setIsEditingProposalOpen(true);
-                      }}
-                      onDeleteEvent={handleDeleteOrganizedEvent}
-                      onViewInsights={(event) => setSelectedEventForInsights(event)}
+                      } : undefined}
+                      onDeleteEvent={isOwnProfile ? handleDeleteOrganizedEvent : undefined}
+                      onViewInsights={isOwnProfile ? (event) => setSelectedEventForInsights(event) : undefined}
+                      onShareEvent={(event) => setSelectedEventForShare(event)}
+                      onOpenCheckInDesk={isOwnProfile ? (event) => setSelectedEventForAttendance(event) : undefined}
+                      onViewRegistrations={isOwnProfile ? (event) => setSelectedEventForRegistrations(event) : undefined}
+                      onManageAttendance={isOwnProfile ? (event) => setSelectedEventForAttendance(event) : undefined}
+                      onManageCertificates={isOwnProfile ? (event) => setSelectedEventForCertificates(event) : undefined}
                     />
                   ))}
                 </div>
@@ -791,12 +854,12 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   <div key={col._id} className="py-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={
-                          col.logo ||
-                          'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=120&auto=format&fit=crop&q=80'
-                        }
+                        src={col.logo || DEFAULT_COLLEGE_LOGO}
                         alt={col.name}
                         className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                        onError={(e) => {
+                          (e.target as any).src = DEFAULT_COLLEGE_LOGO;
+                        }}
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -858,12 +921,12 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   <div key={stud._id} className="py-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={
-                          stud.profilePhoto ||
-                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
-                        }
+                        src={stud.profilePhoto || DEFAULT_STUDENT_AVATAR}
                         alt={stud.fullName}
                         className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                        onError={(e) => {
+                          (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                        }}
                       />
                       <div className="min-w-0">
                         <h4 className="text-xs font-bold text-[var(--text-primary)] truncate">
@@ -915,12 +978,12 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   <div key={stud._id} className="py-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={
-                          stud.profilePhoto ||
-                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
-                        }
+                        src={stud.profilePhoto || DEFAULT_STUDENT_AVATAR}
                         alt={stud.fullName}
                         className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                        onError={(e) => {
+                          (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                        }}
                       />
                       <div className="min-w-0">
                         <h4 className="text-xs font-bold text-[var(--text-primary)] truncate">
@@ -996,12 +1059,13 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           isOpen={!!selectedCert}
           onClose={() => setSelectedCert(null)}
           certificate={selectedCert}
-          onDelete={handleDeleteCertificate}
-          onEdit={(cert) => {
+          canDownload={Boolean(isOwnProfile)}
+          onDelete={isOwnProfile ? handleDeleteCertificate : undefined}
+          onEdit={isOwnProfile ? (cert) => {
             setSelectedCert(null);
             setEditingCert(cert);
             setShowAddCertModal(true);
-          }}
+          } : undefined}
         />
       )}
 
@@ -1038,6 +1102,66 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             setEditingEventProposal(null);
             fetchProfileData();
           }}
+        />
+      )}
+
+      {/* MODAL 10: Attendance & Check-in Desk */}
+      {selectedEventForAttendance && (
+        <AttendanceModal
+          isOpen={!!selectedEventForAttendance}
+          onClose={() => setSelectedEventForAttendance(null)}
+          event={selectedEventForAttendance}
+        />
+      )}
+
+      {/* MODAL 11: DOCX Participation Certificates */}
+      {selectedEventForCertificates && (
+        <DocxCertificateManagerModal
+          isOpen={!!selectedEventForCertificates}
+          onClose={() => setSelectedEventForCertificates(null)}
+          event={selectedEventForCertificates}
+          onUpdated={() => fetchProfileData()}
+        />
+      )}
+
+      {/* MODAL 12: Event Registrations List */}
+      {selectedEventForRegistrations && (
+        <EventRegistrationsModal
+          isOpen={!!selectedEventForRegistrations}
+          onClose={() => setSelectedEventForRegistrations(null)}
+          event={selectedEventForRegistrations}
+        />
+      )}
+
+      {/* MODAL 13: Share Event to Chat */}
+      {selectedEventForShare && (
+        <ShareToChatModal
+          isOpen={!!selectedEventForShare}
+          onClose={() => setSelectedEventForShare(null)}
+          event={selectedEventForShare}
+          onShareSuccess={(convId) => {
+            setSelectedEventForShare(null);
+            if (onNavigateToMessages) onNavigateToMessages(convId);
+          }}
+        />
+      )}
+
+      {/* MODAL 14: Reshare Verified Credential Post */}
+      {certToReshare && (
+        <ReshareCertificateModal
+          isOpen={!!certToReshare}
+          onClose={() => setCertToReshare(null)}
+          certificate={certToReshare}
+          onSuccess={() => fetchProfileData()}
+        />
+      )}
+
+      {/* MODAL 15: Public Certificate Verification Modal */}
+      {certIdToVerify && (
+        <PublicVerificationModal
+          isOpen={!!certIdToVerify}
+          onClose={() => setCertIdToVerify(null)}
+          certificateId={certIdToVerify}
         />
       )}
     </div>

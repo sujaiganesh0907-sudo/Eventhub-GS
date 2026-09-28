@@ -23,6 +23,8 @@ import { CollegeProfilePage } from './pages/CollegeProfilePage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MessagesPage } from './pages/MessagesPage';
+import { AdminProfilePage } from './pages/AdminProfilePage';
+import { PublicVerificationModal } from './components/certificate/PublicVerificationModal';
 import { IEvent } from './types';
 
 // Public routes that never require authentication
@@ -37,6 +39,7 @@ export const PUBLIC_ROUTES = new Set([
   'otp',
   'forgot-password',
   'reset-password',
+  'verify',
 ]);
 
 const isPublicRoute = (tab: string): boolean => PUBLIC_ROUTES.has(tab);
@@ -60,13 +63,14 @@ const resolveTabFromPath = (pathname: string): string => {
   if (p === '/register' || p === '/register/student') return 'register';
   if (p === '/register/college') return 'register-college';
   if (p === '/forgot-password' || p === '/reset-password') return 'auth';
+  if (p.startsWith('/verify')) return 'verify';
   if (p === '/' || p === '/landing') {
     const hasToken = !!localStorage.getItem('eventhub_token');
     return hasToken ? 'home' : 'landing';
   }
 
   const sub = p.replace(/^\//, '');
-  if (['home', 'events', 'colleges', 'profile', 'college-profile', 'notifications', 'settings', 'view-event', 'messages'].includes(sub)) {
+  if (['home', 'events', 'colleges', 'profile', 'college-profile', 'admin-profile', 'notifications', 'settings', 'view-event', 'messages'].includes(sub)) {
     return sub;
   }
   return 'home';
@@ -87,10 +91,12 @@ const getPathForTab = (tab: string): string => {
     case 'colleges': return '/colleges';
     case 'profile': return '/profile';
     case 'college-profile': return '/college-profile';
+    case 'admin-profile': return '/admin-profile';
     case 'notifications': return '/notifications';
     case 'settings': return '/settings';
     case 'view-event': return '/event';
     case 'messages': return '/messages';
+    case 'verify': return '/verify';
     default: return '/';
   }
 };
@@ -117,6 +123,10 @@ const AppContent: React.FC = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
   const [authNotice, setAuthNotice] = useState<string | undefined>();
+  const [publicVerifyId, setPublicVerifyId] = useState<string | null>(() => {
+    const match = window.location.pathname.match(/\/verify\/([^/?#]+)/);
+    return match ? match[1] : null;
+  });
 
   // Navigation history stack for seamless return to previous page (Requirement 17)
   const [navHistory, setNavHistory] = useState<NavHistoryItem[]>([]);
@@ -305,8 +315,9 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Determine if search and messages icons should be hidden (Requirement 3 & 9)
-  const shouldHideSearch = !isAuthenticated || isPublicAuthTab(activeTab) || activeTab === 'landing';
+  // Determine if search and messages icons should be hidden (Requirements 3, 4, 5)
+  // Search appears ONLY on Home (in Navbar), Messages (in MessagesPage), and Colleges (in CollegesListPage)
+  const shouldHideSearch = !isAuthenticated || isPublicAuthTab(activeTab) || activeTab === 'landing' || activeTab !== 'home';
   const shouldHideMessages = !isAuthenticated || isPublicAuthTab(activeTab) || activeTab === 'landing';
 
   return (
@@ -345,7 +356,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Body with Sidebar */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
+      <div className="flex-1 flex max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 gap-6">
         {/* Desktop Sidebar (Only when authenticated and on non-public routes) */}
         {isAuthenticated && !isPublicRoute(activeTab) && (
           <aside className="hidden md:block w-60 shrink-0">
@@ -506,6 +517,16 @@ const AppContent: React.FC = () => {
             )
           )}
 
+          {/* ADMIN PROFILE & MULTI-COLLEGE ADMIN WORKSPACES (Requirement 8-15) */}
+          {isAuthenticated && activeTab === 'admin-profile' && (
+            <AdminProfilePage
+              onViewEvent={handleViewEvent}
+              onSelectCollege={handleViewCollege}
+              onNavigateToMessages={handleOpenMessages}
+              onBack={goBack}
+            />
+          )}
+
           {/* NOTIFICATIONS */}
           {isAuthenticated && activeTab === 'notifications' && (
             <NotificationsPage
@@ -519,6 +540,18 @@ const AppContent: React.FC = () => {
           {isAuthenticated && activeTab === 'settings' && <SettingsPage />}
         </main>
       </div>
+
+      {/* Public Online Certificate Verification Modal (Direct URL /verify/:id support) */}
+      {publicVerifyId && (
+        <PublicVerificationModal
+          isOpen={!!publicVerifyId}
+          onClose={() => {
+            setPublicVerifyId(null);
+            window.history.pushState(null, '', '/');
+          }}
+          certificateId={publicVerifyId}
+        />
+      )}
 
       {/* Mobile Bottom Navigation (Authenticated only on non-public routes) */}
       {isAuthenticated && !isPublicRoute(activeTab) && (

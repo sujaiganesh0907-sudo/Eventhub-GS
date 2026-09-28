@@ -419,8 +419,8 @@ export async function verifyOtp(req: Request, res: Response) {
         contactNumber: record.payload.contactNumber,
         location: record.payload.location || 'Campus Main Grounds',
         bio: record.payload.bio || `Official account of ${record.payload.collegeName}.`,
-        logo: 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80',
-        coverPhoto: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1200&auto=format&fit=crop&q=80',
+        logo: record.payload.logo || '',
+        coverPhoto: record.payload.coverPhoto || '',
         verificationStatus: 'Pending',
         superAdminId: user._id,
         messagePrivacy: 'Everyone',
@@ -577,6 +577,12 @@ export async function login(req: Request, res: Response) {
       college = await College.findById(user.collegeId);
     }
 
+    const adminMembershipsCount = await CollegeAdminMembership.countDocuments({
+      userId: user._id,
+      status: 'Active',
+    });
+    const hasAdminMemberships = adminMembershipsCount > 0 || user.role === 'College Super Admin' || user.role === 'College Admin';
+
     return res.json({
       success: true,
       message: 'Login successful',
@@ -590,6 +596,7 @@ export async function login(req: Request, res: Response) {
       },
       studentProfile,
       college,
+      hasAdminMemberships,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message || 'Login failed.' });
@@ -614,6 +621,12 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
       college = await College.findById(req.user.collegeId);
     }
 
+    const adminMembershipsCount = await CollegeAdminMembership.countDocuments({
+      userId: req.user._id,
+      status: 'Active',
+    });
+    const hasAdminMemberships = adminMembershipsCount > 0 || req.user.role === 'College Super Admin' || req.user.role === 'College Admin';
+
     return res.json({
       success: true,
       user: {
@@ -625,6 +638,7 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
       },
       studentProfile,
       college,
+      hasAdminMemberships,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

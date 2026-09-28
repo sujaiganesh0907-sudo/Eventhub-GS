@@ -210,7 +210,7 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
       if (!eventId) {
         return res.status(400).json({ success: false, message: 'Event ID is required' });
       }
-      const event = await Event.findById(eventId);
+      const event = await Event.findById(String(eventId));
       if (!event || event.creatorUserId !== user._id) {
         return res.status(403).json({ success: false, message: 'You are not the organizer of this event' });
       }
@@ -257,6 +257,9 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
 
 export async function getRegistrationTicket(req: AuthenticatedRequest, res: Response) {
   try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+
     const { registrationId } = req.params;
     const registration = await EventRegistration.findOne({ registrationId });
     if (!registration) {
@@ -265,6 +268,19 @@ export async function getRegistrationTicket(req: AuthenticatedRequest, res: Resp
 
     const event = await Event.findById(registration.eventId);
     const hostCollege = await College.findById(registration.collegeId);
+
+    // Privacy & Security (Requirement STEP 10):
+    // Only the ticket owner OR host college organizers can access private ticket QR and responses
+    const isOwner = registration.studentUserId === user._id;
+    const isHostCollege = user.collegeId && (user.collegeId === registration.collegeId || (event && event.hostCollegeId === user.collegeId));
+    const isSuperAdmin = user.role === 'College Super Admin' && user.collegeId === registration.collegeId;
+
+    if (!isOwner && !isHostCollege && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You cannot view another student’s private ticket, QR code, or registration details.',
+      });
+    }
 
     // Make sure QR code is cached and consistent
     let qrCodeUrl = registration.qrCodeUrl;

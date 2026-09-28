@@ -64,6 +64,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const activeCollege = localStorage.getItem('eventhub_active_college');
+  if (activeCollege && !headers['x-college-id']) {
+    headers['x-college-id'] = activeCollege;
+  }
+
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }

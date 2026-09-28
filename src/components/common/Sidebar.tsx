@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { DEFAULT_STUDENT_AVATAR, DEFAULT_COLLEGE_LOGO } from '../../services/imageDefaults';
 
 interface SidebarProps {
   currentTab?: string;
@@ -37,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCreateEventClick,
 }) => {
   const effectiveTab = activeTab || currentTab || 'home';
-  const { user, studentProfile, college, logout, switchAccount } = useAuth();
+  const { user, studentProfile, college, hasAdminAccess, logout, switchAccount } = useAuth();
   const notif = useNotifications();
   const effectiveUnread = unreadNotifications !== undefined ? unreadNotifications : notif.unreadCount;
 
@@ -50,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'colleges', label: 'Colleges', icon: Building2 },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'profile', label: 'Student ID', icon: User },
+    ...(hasAdminAccess ? [{ id: 'admin-profile', label: 'Admin Profile', icon: ShieldCheck }] : []),
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: effectiveUnread },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -60,6 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'colleges', label: 'Colleges', icon: Building2 },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'college-profile', label: 'College ID', icon: Building2 },
+    ...(hasAdminAccess ? [{ id: 'admin-profile', label: 'Admin Profile', icon: ShieldCheck }] : []),
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: effectiveUnread },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -95,10 +98,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <img
               src={
                 isStudent
-                  ? studentProfile?.profilePhoto ||
-                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
-                  : college?.logo ||
-                    'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=100&auto=format&fit=crop&q=80'
+                  ? studentProfile?.profilePhoto || DEFAULT_STUDENT_AVATAR
+                  : college?.logo || DEFAULT_COLLEGE_LOGO
               }
               alt="Avatar"
               className="w-9 h-9 rounded-lg object-cover border border-[var(--border-color)]"

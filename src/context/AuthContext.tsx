@@ -13,6 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isCollege: boolean;
   isStudent: boolean;
+  hasAdminAccess: boolean;
   login: (email: string, password: string) => Promise<any>;
   requestStudentOtp: (data: any) => Promise<any>;
   requestCollegeOtp: (data: any) => Promise<any>;
@@ -34,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<IUser | null>(null);
   const [studentProfile, setStudentProfile] = useState<IStudentProfile | null>(null);
   const [college, setCollege] = useState<ICollege | null>(null);
+  const [hasAdminMemberships, setHasAdminMemberships] = useState(false);
   const [status, setStatus] = useState<AuthStatus>(() => {
     // If token exists in storage at boot time, we start in 'loading' to restore session
     return localStorage.getItem('eventhub_token') ? 'loading' : 'unauthenticated';
@@ -55,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(res.user);
         setStudentProfile(res.studentProfile || null);
         setCollege(res.college || null);
+        setHasAdminMemberships(Boolean(res.hasAdminMemberships));
         setStatus('authenticated');
       } else {
         // Only clear if server returned explicit failure
@@ -63,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setStudentProfile(null);
         setCollege(null);
+        setHasAdminMemberships(false);
         setStatus('unauthenticated');
       }
     } catch (err: any) {
@@ -107,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setStudentProfile(res.studentProfile || null);
       setCollege(res.college || null);
+      setHasAdminMemberships(Boolean(res.hasAdminMemberships));
       setStatus('authenticated');
     }
     return res;
@@ -167,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAuthenticated = status === 'authenticated' && !!user;
   const isCollege = user?.role === 'College Super Admin' || user?.role === 'College Admin';
   const isStudent = user?.role === 'Student' || (!user && false);
+  const hasAdminAccess = isCollege || hasAdminMemberships;
   const loading = status === 'loading';
 
   return (
@@ -180,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated,
         isCollege,
         isStudent,
+        hasAdminAccess,
         login,
         requestStudentOtp,
         requestCollegeOtp,

@@ -8,6 +8,7 @@ interface SearchHistoryDropdownProps {
   onSelectTerm: (term: string) => void;
   onRemoveTerm: (term: string, e: React.MouseEvent) => void;
   onClearAll: (e: React.MouseEvent) => void;
+  onClose?: () => void;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export const SearchHistoryDropdown: React.FC<SearchHistoryDropdownProps> = ({
   onSelectTerm,
   onRemoveTerm,
   onClearAll,
+  onClose,
   className = '',
 }) => {
   if (history.length === 0) return null;

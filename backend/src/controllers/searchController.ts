@@ -29,7 +29,7 @@ export async function globalSearch(req: AuthenticatedRequest, res: Response) {
     let eventsResult: any[] = [];
 
     // 1. Search Students
-    if (type === 'all' || type === 'students') {
+    if (type === 'all' || type === 'students' || type === 'messages') {
       const allStudents = await StudentProfile.find().limit(50).exec();
       studentsResult = allStudents
         .filter((s) => {
@@ -47,13 +47,13 @@ export async function globalSearch(req: AuthenticatedRequest, res: Response) {
           username: s.username ? (s.username.startsWith('@') ? s.username : `@${s.username}`) : undefined,
           collegeName: s.collegeName,
           department: s.department,
-          profilePhoto: s.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+          profilePhoto: s.profilePhoto || '',
           profileVisibility: s.profileVisibility || 'Public',
         }));
     }
 
     // 2. Search Colleges
-    if (type === 'all' || type === 'colleges') {
+    if (type === 'all' || type === 'colleges' || type === 'messages') {
       const allColleges = await College.find().limit(50).exec();
       collegesResult = allColleges
         .filter((c) => {
@@ -69,7 +69,7 @@ export async function globalSearch(req: AuthenticatedRequest, res: Response) {
           name: c.name,
           username: c.username ? (c.username.startsWith('@') ? c.username : `@${c.username}`) : undefined,
           location: c.location,
-          logo: c.logo || 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=120&auto=format&fit=crop&q=80',
+          logo: c.logo || '',
           verificationStatus: c.verificationStatus,
           isVerified: c.verificationStatus === 'Verified',
         }));

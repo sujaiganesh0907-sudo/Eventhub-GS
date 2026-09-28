@@ -29,12 +29,15 @@ const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterC
     'video/mp4',
     'video/webm',
     'video/quicktime',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword',
   ];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedMimeTypes.includes(file.mimetype) || ext === '.docx') {
     cb(null, true);
   } else {
-    cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: JPG, PNG, WEBP, PDF, MP4`));
+    cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: JPG, PNG, WEBP, PDF, MP4, DOCX`));
   }
 };
 
@@ -43,5 +46,28 @@ export const uploadMiddleware = multer({
   fileFilter,
   limits: {
     fileSize: 20 * 1024 * 1024, // 20 MB
+  },
+});
+
+// Dedicated strict DOCX upload middleware for certificate templates (Requirement 1.2)
+const docxFileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const isDocxMime =
+    file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    file.mimetype === 'application/zip' ||
+    file.mimetype === 'application/octet-stream';
+
+  if (ext === '.docx' || (isDocxMime && ext === '.docx')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only DOCX certificate templates are supported.'));
+  }
+};
+
+export const docxUploadMiddleware = multer({
+  storage,
+  fileFilter: docxFileFilter,
+  limits: {
+    fileSize: 15 * 1024 * 1024, // 15 MB
   },
 });
