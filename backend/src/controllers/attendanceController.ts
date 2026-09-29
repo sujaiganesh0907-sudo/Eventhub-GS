@@ -41,14 +41,15 @@ export async function isUserAuthorizedForEventAttendance(user: any, event: any):
     const membership = await CollegeAdminMembership.findOne({
       collegeId: user.collegeId,
       userId: user._id,
+      status: 'Active',
     });
-    if (!membership) return true; // fallback
+    if (!membership) return false;
     const perms = membership.permissions || [];
     return (
+      perms.includes('manageAttendance') ||
+      perms.includes('ALL_PERMISSIONS') ||
       perms.includes('ATTENDANCE_SCAN') ||
-      perms.includes('ATTENDANCE_MANAGE') ||
-      perms.includes('EVENTS_MANAGE') ||
-      perms.length === 0
+      perms.includes('ATTENDANCE_MANAGE')
     );
   }
 

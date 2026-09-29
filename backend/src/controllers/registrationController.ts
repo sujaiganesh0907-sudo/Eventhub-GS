@@ -8,6 +8,7 @@ import {
   College,
   IEventRegistration,
   User,
+  CollegeAdminMembership,
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { generateTicketQR } from '../services/qrService';
@@ -217,6 +218,22 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
       filter.eventId = eventId;
     } else {
       if (!user.collegeId) return res.status(403).json({ success: false, message: 'College account required' });
+
+      // Permission check for College Admin
+      if (user.role === 'College Admin') {
+        const membership = await CollegeAdminMembership.findOne({
+          collegeId: user.collegeId,
+          userId: user._id,
+          status: 'Active',
+        });
+        if (!membership || (!membership.permissions.includes('manageRegistrations') && !membership.permissions.includes('ALL_PERMISSIONS'))) {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied. You lack the 'manageRegistrations' permission for this institution.",
+          });
+        }
+      }
+
       filter.collegeId = user.collegeId;
       if (eventId) filter.eventId = eventId;
     }

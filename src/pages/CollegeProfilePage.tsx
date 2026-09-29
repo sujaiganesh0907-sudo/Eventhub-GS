@@ -48,13 +48,31 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
   onNavigateToMessages,
   onBack,
 }) => {
-  const { user, college: authCollege } = useAuth();
+  const { user, college: authCollege, studentProfile } = useAuth();
 
-  const targetCollegeId = collegeId || authCollege?._id;
-  const isSelf = authCollege?._id === targetCollegeId;
+  const isCollegeAccount = user?.role === 'College Super Admin' || user?.role === 'College Admin';
+  const targetCollegeId =
+    collegeId ||
+    authCollege?._id ||
+    studentProfile?.targetCollegeId ||
+    'col_apex_tech_01';
+
+  const isSelf = Boolean(
+    isCollegeAccount &&
+    authCollege?._id &&
+    targetCollegeId &&
+    authCollege._id === targetCollegeId
+  );
 
   const [college, setCollege] = useState<ICollege | null>(null);
   const [activeTab, setActiveTab] = useState<'events' | 'placements' | 'infra' | 'admins'>('events');
+
+  // If not college owner/admin, prevent admins tab from remaining active
+  useEffect(() => {
+    if (!isSelf && activeTab === 'admins') {
+      setActiveTab('events');
+    }
+  }, [isSelf, activeTab]);
 
   // Tab Data
   const [events, setEvents] = useState<IEvent[]>([]);
@@ -75,38 +93,66 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
   const [adminToEdit, setAdminToEdit] = useState<any | null>(null);
 
   const fetchCollegeData = async () => {
-    if (!targetCollegeId) return;
     try {
       setLoading(true);
-      const [colRes, evRes, plRes, inRes] = await Promise.all([
-        api.get<any>(`/colleges/${targetCollegeId}`),
-        api.get<any>('/events', { collegeId: targetCollegeId }),
-        api.get<any>('/placements', { collegeId: targetCollegeId }),
-        api.get<any>('/infrastructure', { collegeId: targetCollegeId }),
-      ]);
+      let resolvedId = targetCollegeId;
 
-      if (colRes.success && colRes.college) {
-        setCollege(colRes.college);
-      }
-
-      // Check real connection status
-      if (user?._id && targetCollegeId) {
-        const connRes = await api.get<any>(`/social/college/${targetCollegeId}/connection`);
-        if (connRes.success) {
-          setIsFollowing(!!connRes.connected);
+      if (!resolvedId) {
+        const listRes = await api.get<any>('/colleges', { limit: 1 }).catch(() => null);
+        if (listRes?.success && listRes.colleges?.length > 0) {
+          resolvedId = listRes.colleges[0]._id;
         }
       }
 
-      if (evRes.success) setEvents(evRes.events || []);
-      if (plRes.success) setPlacements(plRes.posts || []);
-      if (inRes.success) setInfrastructures(inRes.posts || []);
-
-      if (isSelf) {
-        const admRes = await api.get<any>('/admins');
-        if (admRes.success) setAdmins(admRes.admins || []);
+      if (!resolvedId) {
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error('Failed to load college profile data', err);
+
+      // Fetch primary college details
+      const colRes = await api.get<any>(`/colleges/${resolvedId}`).catch((err) => {
+        console.warn('Notice: Primary college fetch error:', err?.message || err);
+        return null;
+      });
+
+      if (colRes?.success && colRes.college) {
+        setCollege(colRes.college);
+      }
+
+      // Concurrently fetch secondary tabs with individual catch so failures don't block profile
+      const [evRes, plRes, inRes] = await Promise.all([
+        api.get<any>('/events', { collegeId: resolvedId }).catch(() => ({ success: false, events: [] })),
+        api.get<any>('/placements', { collegeId: resolvedId }).catch(() => ({ success: false, posts: [] })),
+        api.get<any>('/infrastructure', { collegeId: resolvedId }).catch(() => ({ success: false, posts: [] })),
+      ]);
+
+      if (evRes?.success) setEvents(evRes.events || []);
+      if (plRes?.success) setPlacements(plRes.posts || []);
+      if (inRes?.success) setInfrastructures(inRes.posts || []);
+
+      // Check real connection status safely for students
+      if (user?._id && resolvedId && user.role === 'Student') {
+        try {
+          const connRes = await api.get<any>(`/social/college/${resolvedId}/connection`);
+          if (connRes?.success) {
+            setIsFollowing(!!connRes.connected);
+          }
+        } catch {
+          // Connection status is optional
+        }
+      }
+
+      // Load admins only if user is authorized college admin
+      if (isSelf) {
+        try {
+          const admRes = await api.get<any>('/admins', { collegeId: resolvedId });
+          if (admRes?.success) setAdmins(admRes.admins || []);
+        } catch (admErr) {
+          console.warn('Could not load college admin list:', admErr);
+        }
+      }
+    } catch (err: any) {
+      console.warn('College profile data notice:', err?.message || err);
     } finally {
       setLoading(false);
     }

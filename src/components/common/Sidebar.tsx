@@ -51,7 +51,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'colleges', label: 'Colleges', icon: Building2 },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'profile', label: 'Student ID', icon: User },
-    ...(hasAdminAccess ? [{ id: 'admin-profile', label: 'Admin Profile', icon: ShieldCheck }] : []),
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: effectiveUnread },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -62,7 +61,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'colleges', label: 'Colleges', icon: Building2 },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'college-profile', label: 'College ID', icon: Building2 },
-    ...(hasAdminAccess ? [{ id: 'admin-profile', label: 'Admin Profile', icon: ShieldCheck }] : []),
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: effectiveUnread },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

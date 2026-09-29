@@ -49,15 +49,15 @@ async function isAuthorizedForCertificates(user: any, event: any): Promise<boole
     const membership = await CollegeAdminMembership.findOne({
       collegeId: user.collegeId,
       userId: user._id,
+      status: 'Active',
     });
-    if (!membership) return true;
+    if (!membership) return false;
     const perms = membership.permissions || [];
     return (
       perms.includes('manageCertificates') ||
+      perms.includes('manageCert') ||
       perms.includes('CERTIFICATES_MANAGE') ||
-      perms.includes('manageEvents') ||
-      perms.includes('ALL_PERMISSIONS') ||
-      perms.length === 0
+      perms.includes('ALL_PERMISSIONS')
     );
   }
 
@@ -142,15 +142,37 @@ export async function uploadCertificateTemplate(req: AuthenticatedRequest, res: 
       }
     }
 
+    // Build history if replacing existing template (Requirement 11 & 12)
+    const prevTemplate = event.certificateTemplate;
+    const prevHistory = prevTemplate?.history || [];
+    if (prevTemplate && prevTemplate.fileUrl) {
+      prevHistory.unshift({
+        version: prevTemplate.version || 1,
+        fileUrl: prevTemplate.fileUrl,
+        fileName: prevTemplate.fileName,
+        uploadedAt: prevTemplate.uploadedAt,
+        uploadedBy: prevTemplate.uploadedBy,
+        detectedPlaceholders: prevTemplate.detectedPlaceholders,
+        mappings: prevTemplate.mappings,
+        status: 'Archived',
+      });
+    }
+
+    const version = prevTemplate ? (prevTemplate.version || 1) + 1 : 1;
+    const isAutoActivated = customPlaceholders.length === 0;
+
     // Update event record in DB
     const templateConfig = {
       fileUrl,
       fileName: req.file.originalname,
+      version,
+      status: isAutoActivated ? ('Active' as const) : ('Draft' as const),
       uploadedAt: new Date().toISOString(),
       uploadedBy: user.fullName,
       detectedPlaceholders: placeholders,
       mappings: initialMappings,
-      isActivated: customPlaceholders.length === 0, // Auto-activated if all placeholders are standard!
+      isActivated: isAutoActivated,
+      history: prevHistory,
     };
 
     await Event.updateOne(
@@ -244,6 +266,7 @@ export async function savePlaceholderMappings(req: AuthenticatedRequest, res: Re
     const updatedTemplate = {
       ...event.certificateTemplate,
       mappings,
+      status: 'Active',
       isActivated: true,
     };
 
@@ -439,6 +462,22 @@ export async function bulkGenerateAndSendCertificates(req: AuthenticatedRequest,
     const authorized = await isAuthorizedForCertificates(user, event);
     if (!authorized) return res.status(403).json({ success: false, message: 'Unauthorized' });
 
+    // STRICT CHECK (Requirement 17): Attendance must be FINALIZED before certificates can be issued!
+    if (!event.attendanceFinalized) {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance must be finalized before certificates can be issued. Please complete check-in and click "Finish Attendance" in the Check-In Desk first.',
+      });
+    }
+
+    // STRICT CHECK (Requirement 9): Active template required
+    if (!event.certificateTemplate || !event.certificateTemplate.isActivated) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active certificate template found for this event. Please upload a DOCX template and verify placeholder mappings.',
+      });
+    }
+
     const college = await College.findById(event.hostCollegeId);
     const hostCollegeName = college?.name || event.hostCollegeName;
 
@@ -454,7 +493,7 @@ export async function bulkGenerateAndSendCertificates(req: AuthenticatedRequest,
     // Fetch ALL registrations for this event
     const allRegistrations = await EventRegistration.find({ eventId }).exec();
 
-    // STRICT CHECK: Only Present students become eligible! Absent students are excluded. (Requirement 1.1)
+    // STRICT CHECK: Only Present students become eligible! Absent students are excluded. (Requirement 1.1 & 18)
     const presentRegistrations = allRegistrations.filter((r) => r.attended === true);
 
     if (presentRegistrations.length === 0) {
@@ -469,13 +508,14 @@ export async function bulkGenerateAndSendCertificates(req: AuthenticatedRequest,
 
     let generatedCount = 0;
     let emailSentCount = 0;
+    let blockedCount = 0;
     const results: any[] = [];
 
     for (const reg of presentRegistrations) {
       try {
         const studentProfile = await StudentProfile.findById(reg.studentId);
 
-        // Generate canonical certificate ID
+        // Generate canonical unique immutable certificate ID (Requirement 27)
         const certCode = crypto.randomBytes(3).toString('hex').toUpperCase();
         const certificateId = reg.certificateId || `EH-CERT-${new Date().getFullYear()}-${certCode}`;
 
@@ -489,6 +529,42 @@ export async function bulkGenerateAndSendCertificates(req: AuthenticatedRequest,
             hostCollegeName,
             certificateId,
           });
+        }
+
+        // Missing Data Detection & Blocking (Requirements 21, 22, 25)
+        const missingFields: string[] = [];
+        for (const ph of detected) {
+          const val = placeholderValues[ph];
+          if (!val || val.trim() === '' || val.includes('{{')) {
+            missingFields.push(ph);
+          }
+        }
+
+        if (missingFields.length > 0) {
+          // Block broken certificate generation for this participant
+          blockedCount++;
+          await EventRegistration.findByIdAndUpdate(reg._id, {
+            certificateStatus: 'Missing Data',
+          });
+          results.push({
+            registrationId: reg.registrationId,
+            studentName: reg.studentName,
+            status: 'Blocked',
+            reason: `Missing data for required placeholders: ${missingFields.map((f) => `{{${f}}}`).join(', ')}`,
+          });
+          continue;
+        }
+
+        // Avoid duplicate issuance if already generated and sent (Requirement 38)
+        if (reg.certificateIssued && reg.certificateFileUrl && !req.body.retryAll && !req.body.force) {
+          results.push({
+            registrationId: reg.registrationId,
+            studentName: reg.studentName,
+            certificateId: reg.certificateId,
+            fileUrl: reg.certificateFileUrl,
+            status: 'Already Issued',
+          });
+          continue;
         }
 
         // Generate package (DOCX + PDF) and upload to Cloudinary/local
@@ -631,11 +707,30 @@ export async function bulkGenerateAndSendCertificates(req: AuthenticatedRequest,
       targetTitle: event.title,
     });
 
+    // Notify College Super Admin if issued by an Admin
+    const superAdmin = await CollegeAdminMembership.findOne({
+      collegeId: event.hostCollegeId,
+      role: 'College Super Admin',
+      status: 'Active',
+    });
+    if (superAdmin && String(superAdmin.userId) !== String(user._id)) {
+      await Notification.create({
+        recipientUserId: superAdmin.userId,
+        type: 'ADMIN_ACTION',
+        title: 'Certificates Batch Issued',
+        message: `${user.fullName || 'Admin'} issued ${generatedCount} verified certificates for "${event.title}".`,
+        link: `/events`,
+        read: false,
+        metadata: { eventId: event._id },
+      });
+    }
+
     return res.json({
       success: true,
-      message: `Successfully issued ${generatedCount} participation certificates (${emailSentCount} delivered via email).`,
+      message: `Successfully issued ${generatedCount} participation certificates (${emailSentCount} delivered via email)${blockedCount > 0 ? `, ${blockedCount} blocked due to missing data` : ''}.`,
       generatedCount,
       emailSentCount,
+      blockedCount,
       results,
     });
   } catch (error: any) {
@@ -737,6 +832,9 @@ export async function revokeCertificate(req: AuthenticatedRequest, res: Response
       revokedAt: now,
       revokedReason: reason,
     });
+
+    // Also remove or mark reshared credential post so revoked credentials do not linger in the community feed
+    await CredentialPost.deleteMany({ certificateId: cert.certificateId });
 
     // Notify student
     if (cert.studentUserId) {
@@ -868,6 +966,33 @@ export async function toggleLikeCredentialPost(req: AuthenticatedRequest, res: R
       success: true,
       liked: !liked,
       likesCount: updatedLikedBy.length,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * DELETE /api/certificates/feed/:id
+ * Deletes a reshared post without affecting the original certificate (Requirement 44).
+ */
+export async function deleteCredentialPost(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const post = await CredentialPost.findById(id);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+
+    if (post.studentUserId !== user._id && user.role !== 'College Super Admin') {
+      return res.status(403).json({ success: false, message: 'You can only delete your own reshared posts.' });
+    }
+
+    await CredentialPost.findByIdAndDelete(id);
+    return res.json({
+      success: true,
+      message: 'Reshared post removed. Original certificate remains intact in your credentials.',
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

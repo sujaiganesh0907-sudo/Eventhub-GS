@@ -62,6 +62,7 @@ import {
   reshareCertificate,
   getPublicCredentialPosts,
   toggleLikeCredentialPost,
+  deleteCredentialPost,
 } from '../controllers/certificateTemplateController';
 import { docxUploadMiddleware } from '../middleware/upload';
 import {
@@ -215,6 +216,7 @@ apiRouter.post('/certificates/:certificateId/revoke', authenticate, revokeCertif
 apiRouter.post('/certificates/:id/reshare', authenticate, reshareCertificate);
 apiRouter.get('/certificates/feed', getPublicCredentialPosts);
 apiRouter.post('/certificates/feed/:id/like', authenticate, toggleLikeCredentialPost);
+apiRouter.delete('/certificates/feed/:id', authenticate, deleteCredentialPost);
 
 // 7. Students profile routes
 apiRouter.get('/students/me', authenticate, getStudentProfile);

@@ -213,9 +213,21 @@ export async function getStudentCertificates(req: Request, res: Response) {
     const { studentId } = req.params;
     const { includeDrafts } = req.query;
 
+    const student = await StudentProfile.findById(studentId);
+    const authHeader = req.headers['authorization'];
+    // Check if the requester is the owner student
+    let isOwner = false;
+    if ((req as any).user && student && (req as any).user._id === student.userId) {
+      isOwner = true;
+    }
+
     const filter: any = { studentId };
     if (includeDrafts !== 'true') {
       filter.isDraft = false;
+    }
+    // Privacy: other users only see non-private credentials (Requirement 45)
+    if (!isOwner) {
+      filter.visibility = { $ne: 'Private' };
     }
 
     const certificates = await Certificate.find(filter).sort({ issueDate: -1, createdAt: -1 }).exec();
@@ -227,12 +239,28 @@ export async function getStudentCertificates(req: Request, res: Response) {
 
 export async function deleteCertificate(req: AuthenticatedRequest, res: Response) {
   try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+
     const { id } = req.params;
     const cert = await Certificate.findById(id);
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found.' });
 
+    // Requirement 40 & 41: College-Issued verified credentials are permanent and cannot be deleted by students!
+    if (cert.isCollegeVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'College-Issued verified credentials cannot be deleted from student records. They can only be revoked by the issuing institution.',
+      });
+    }
+
+    // Owner check for self-uploaded certificates
+    if (cert.studentUserId && cert.studentUserId !== user._id && user.role !== 'College Super Admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized to delete this certificate.' });
+    }
+
     await Certificate.findByIdAndDelete(id);
-    return res.json({ success: true, message: 'Certificate deleted successfully.' });
+    return res.json({ success: true, message: 'Self-uploaded certificate deleted successfully.' });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -240,9 +268,32 @@ export async function deleteCertificate(req: AuthenticatedRequest, res: Response
 
 export async function updateCertificate(req: AuthenticatedRequest, res: Response) {
   try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+
     const { id } = req.params;
     const cert = await Certificate.findById(id);
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found.' });
+
+    // Authorization check
+    if (cert.studentUserId && cert.studentUserId !== user._id && user.role !== 'College Super Admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized to edit this certificate.' });
+    }
+
+    // Requirement 41: Immutable verified credential details
+    if (cert.isCollegeVerified) {
+      // Students can ONLY update visibility or personal notes, NOT core verified metadata!
+      const allowedUpdates: any = {};
+      if (req.body.visibility) allowedUpdates.visibility = req.body.visibility;
+      if (req.body.description !== undefined) allowedUpdates.description = req.body.description;
+
+      const updated = await Certificate.findByIdAndUpdate(id, { $set: allowedUpdates });
+      return res.json({
+        success: true,
+        message: 'Certificate visibility updated. Official collegiate verified details remain immutable.',
+        certificate: updated,
+      });
+    }
 
     const updated = await Certificate.findByIdAndUpdate(id, { $set: req.body });
     return res.json({ success: true, message: 'Certificate updated.', certificate: updated });

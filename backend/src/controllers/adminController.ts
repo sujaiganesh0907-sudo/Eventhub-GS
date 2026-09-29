@@ -126,11 +126,31 @@ export async function searchUsersForAdmin(req: AuthenticatedRequest, res: Respon
 export async function getCollegeAdmins(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
-    if (!user || !user.collegeId) {
-      return res.status(403).json({ success: false, message: 'College account required' });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const admins = await CollegeAdminMembership.find({ collegeId: user.collegeId }).exec();
+    const collegeId =
+      (req.headers['x-college-id'] as string) ||
+      (req.query?.collegeId as string) ||
+      user.collegeId;
+
+    if (!collegeId) {
+      return res.json({ success: true, count: 0, maxAllowed: 10, admins: [] });
+    }
+
+    const isCollegeStaff = user.collegeId === collegeId;
+    const hasMembership = await CollegeAdminMembership.findOne({
+      collegeId,
+      userId: user._id,
+      status: 'Active',
+    });
+
+    if (!isCollegeStaff && !hasMembership && user.role !== 'College Super Admin') {
+      return res.json({ success: true, count: 0, maxAllowed: 10, admins: [] });
+    }
+
+    const admins = await CollegeAdminMembership.find({ collegeId }).exec();
     return res.json({ success: true, count: admins.length, maxAllowed: 10, admins });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
@@ -390,7 +410,13 @@ export async function removeCollegeAdmin(req: AuthenticatedRequest, res: Respons
     }
 
     const { membershipId } = req.params;
-    const membership = await CollegeAdminMembership.findById(membershipId);
+    let membership = await CollegeAdminMembership.findById(membershipId);
+    if (!membership) {
+      membership = await CollegeAdminMembership.findOne({
+        collegeId: user.collegeId,
+        $or: [{ _id: membershipId }, { id: membershipId }, { userId: membershipId }],
+      });
+    }
     if (!membership) return res.status(404).json({ success: false, message: 'Membership not found' });
 
     if (membership.collegeId !== user.collegeId) {
@@ -401,7 +427,24 @@ export async function removeCollegeAdmin(req: AuthenticatedRequest, res: Respons
       return res.status(400).json({ success: false, message: 'Cannot remove primary College Super Admin.' });
     }
 
-    await CollegeAdminMembership.findByIdAndDelete(membershipId);
+    await CollegeAdminMembership.findByIdAndDelete(membership._id);
+
+    // Notify affected user
+    const college = await College.findById(user.collegeId);
+    if (membership.userId) {
+      await Notification.create({
+        recipientUserId: membership.userId,
+        type: 'ADMIN_ACTION',
+        title: 'Admin Access Revoked',
+        message: `Your administrator access for ${college?.name || 'the institution'} has been revoked.`,
+        metadata: {
+          collegeId: user.collegeId,
+          collegeName: college?.name,
+          action: 'admin-access-revoked',
+        },
+        read: false,
+      });
+    }
 
     await logAdminActivityHelper({
       collegeId: user.collegeId,
@@ -410,7 +453,7 @@ export async function removeCollegeAdmin(req: AuthenticatedRequest, res: Respons
       actionType: 'REMOVE_ADMIN',
       details: `@${user.fullName} removed admin membership for ${membership.name}.`,
       targetType: 'AdminMembership',
-      targetId: membershipId,
+      targetId: membership._id,
       targetTitle: membership.name,
     });
 

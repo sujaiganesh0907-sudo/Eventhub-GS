@@ -110,7 +110,7 @@ interface NavHistoryItem {
 }
 
 const AppContent: React.FC = () => {
-  const { user, loading: authLoading, isAuthenticated, isCollege, isStudent } = useAuth();
+  const { user, loading: authLoading, isAuthenticated, isCollege, isStudent, college, studentProfile } = useAuth();
   const { unreadCount } = useNotifications();
 
   // Navigation State initialized safely from URL pathname
@@ -477,7 +477,7 @@ const AppContent: React.FC = () => {
           {/* COLLEGE PROFILE (Self or Viewed College) */}
           {isAuthenticated && activeTab === 'college-profile' && (
             <CollegeProfilePage
-              collegeId={selectedCollegeId || undefined}
+              collegeId={selectedCollegeId || (isCollege ? college?._id : (studentProfile?.targetCollegeId || 'col_apex_tech_01'))}
               onViewEvent={handleViewEvent}
               onRegisterEvent={(ev) => setEventToRegister(ev)}
               onNavigateToMessages={handleOpenMessages}

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Event, College, StudentProfile, Notification, IEvent, User, EventRegistration, Certificate } from '../models/index';
+import { Event, College, StudentProfile, Notification, IEvent, User, EventRegistration, Certificate, CollegeAdminMembership } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 function calculateDeadlineStatus(deadlineStr: string): 'Open' | 'Closing Soon' | 'Closed' {

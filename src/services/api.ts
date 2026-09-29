@@ -128,7 +128,19 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
   }
 
   if (!response.ok) {
-    throw new ApiError(data.message || `Request failed with status ${response.status}`, response.status, data);
+    let msg = data.message;
+    if (typeof msg === 'string' && (msg.includes('<html') || msg.includes('<!DOCTYPE') || msg.includes('<body'))) {
+      if (response.status === 403) {
+        msg = 'Access forbidden (403)';
+      } else if (response.status === 404) {
+        msg = 'Resource not found (404)';
+      } else if (response.status >= 500) {
+        msg = 'Server error occurred. Please try again.';
+      } else {
+        msg = `Request failed with status ${response.status}`;
+      }
+    }
+    throw new ApiError(msg || `Request failed with status ${response.status}`, response.status, data);
   }
 
   return data as T;

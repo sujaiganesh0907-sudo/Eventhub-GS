@@ -443,11 +443,17 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
     const senderName = senderDetails?.name || user.fullName;
     const senderRole = senderDetails?.role || user.role;
 
+    const senderAvatar = senderDetails?.avatar || undefined;
+    const isSendingAsCollege = Boolean(senderDetails?.collegeId);
+
     const message = await Message.create({
       conversationId: id,
       senderId: user._id,
       senderName,
       senderRole,
+      senderAvatar,
+      collegeId: senderDetails?.collegeId || undefined,
+      sentByAdminId: isSendingAsCollege && user.role !== 'College Super Admin' ? user._id : undefined,
       text: text.trim(),
       attachmentUrl: attachmentUrl || undefined,
       attachmentType: attachmentType || (attachmentUrl ? 'image' : undefined),

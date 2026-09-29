@@ -216,6 +216,8 @@ export interface IEvent {
   certificateTemplate?: {
     fileUrl: string;
     fileName: string;
+    version?: number;
+    status?: 'Draft' | 'Active' | 'Archived';
     uploadedAt: string;
     uploadedBy: string;
     detectedPlaceholders: string[];
@@ -225,6 +227,16 @@ export interface IEvent {
       fixedValue?: string;
     }>;
     isActivated: boolean;
+    history?: Array<{
+      version: number;
+      fileUrl: string;
+      fileName: string;
+      uploadedAt: string;
+      uploadedBy: string;
+      detectedPlaceholders: string[];
+      mappings: any;
+      status?: 'Draft' | 'Active' | 'Archived';
+    }>;
   };
   createdAt: string;
 }

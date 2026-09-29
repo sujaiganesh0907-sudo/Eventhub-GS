@@ -3,6 +3,9 @@ import { IEvent, ICollege, IEventRegistration } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { DEFAULT_COLLEGE_LOGO } from '../services/imageDefaults';
+import { Modal } from '../components/common/Modal';
+import { DocxCertificateManagerModal } from '../components/certificate/DocxCertificateManagerModal';
+import { AttendanceModal } from '../components/attendance/AttendanceModal';
 import {
   Calendar,
   Users,
@@ -17,6 +20,12 @@ import {
   TrendingUp,
   Clock,
   ExternalLink,
+  ChevronRight,
+  Filter,
+  Check,
+  X,
+  FileText,
+  Eye,
 } from 'lucide-react';
 
 interface CollegeHomePageProps {
@@ -72,6 +81,59 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
   const attendanceMarked = registrations.filter((r) => r.attended).length;
   const certificatesIssued = registrations.filter((r) => r.certificateIssued).length;
 
+  // Step 9 Drilldown Modal States:
+  const [activeDrilldownModal, setActiveDrilldownModal] = useState<
+    'active_events' | 'upcoming_events' | 'registrations' | 'attendance' | 'certificates' | 'student_requests' | null
+  >(null);
+
+  // Drilldown Selected Event / Request States
+  const [drilldownSelectedEventId, setDrilldownSelectedEventId] = useState<string | null>(null);
+  const [selectedEventForAttendance, setSelectedEventForAttendance] = useState<IEvent | null>(null);
+  const [selectedEventForCertificates, setSelectedEventForCertificates] = useState<IEvent | null>(null);
+  const [requestFilter, setRequestFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected' | 'Changes Requested'>('All');
+  const [actionProcessing, setActionProcessing] = useState(false);
+
+  // Request review actions
+  const handleApproveProposal = async (eventId: string) => {
+    try {
+      setActionProcessing(true);
+      const res = await api.put<any>(`/events/${eventId}/approve`, {});
+      if (res.success) {
+        setStudentRequests((prev) =>
+          prev.map((ev) => (ev._id === eventId ? { ...ev, status: 'Approved' } : ev))
+        );
+        fetchDashboardData();
+      } else {
+        alert(res.message || 'Failed to approve event');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve event');
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  const handleRejectProposal = async (eventId: string) => {
+    const reason = window.prompt('Enter rejection or change request reason:');
+    if (reason === null) return;
+    try {
+      setActionProcessing(true);
+      const res = await api.put<any>(`/events/${eventId}/reject`, { reason });
+      if (res.success) {
+        setStudentRequests((prev) =>
+          prev.map((ev) => (ev._id === eventId ? { ...ev, status: 'Rejected', rejectionReason: reason } : ev))
+        );
+        fetchDashboardData();
+      } else {
+        alert(res.message || 'Failed to reject event');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to reject event');
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
       {/* SECTION 25: Verification Banner */}
@@ -122,60 +184,126 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
         </button>
       </div>
 
-      {/* SECTION 26: Metrics Dashboard */}
+      {/* SECTION 26: Metrics Dashboard - Clickable cards per Step 9 */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">
-            Active Events
-          </span>
+        <div
+          onClick={() => {
+            setDrilldownSelectedEventId(null);
+            setActiveDrilldownModal('active_events');
+          }}
+          className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all cursor-pointer shadow-xs group"
+          title="Click to view Active Events list and management"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block group-hover:text-[var(--primary-color)]">
+              Active Events
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--primary-color)]" />
+          </div>
           <span className="text-2xl font-black text-[var(--text-primary)] mt-1 block">
             {activeEventsCount}
           </span>
+          <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Click to view list</span>
         </div>
 
-        <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">
-            Upcoming Events
-          </span>
+        <div
+          onClick={() => {
+            setDrilldownSelectedEventId(null);
+            setActiveDrilldownModal('upcoming_events');
+          }}
+          className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-blue-500 transition-all cursor-pointer shadow-xs group"
+          title="Click to view Upcoming Events list and management"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block group-hover:text-blue-500">
+              Upcoming Events
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-blue-500" />
+          </div>
           <span className="text-2xl font-black text-blue-600 mt-1 block">
             {upcomingEventsCount}
           </span>
+          <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Click to view list</span>
         </div>
 
-        <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">
-            Total Registrations
-          </span>
+        <div
+          onClick={() => {
+            setDrilldownSelectedEventId(null);
+            setActiveDrilldownModal('registrations');
+          }}
+          className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all cursor-pointer shadow-xs group"
+          title="Click to view Total Registrations per event and student rosters"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block group-hover:text-[var(--primary-color)]">
+              Total Registrations
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--primary-color)]" />
+          </div>
           <span className="text-2xl font-black text-[var(--primary-color)] mt-1 block">
             {totalRegistrations}
           </span>
+          <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Click to view counts</span>
         </div>
 
-        <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-emerald-600 block">
-            Attended (Present)
-          </span>
+        <div
+          onClick={() => {
+            setDrilldownSelectedEventId(null);
+            setActiveDrilldownModal('attendance');
+          }}
+          className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-emerald-500 transition-all cursor-pointer shadow-xs group"
+          title="Click to view Attendance per event and launch Check-In Desk"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-emerald-600 block">
+              Attendance
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-600" />
+          </div>
           <span className="text-2xl font-black text-emerald-600 mt-1 block">
             {attendanceMarked}
           </span>
+          <span className="text-[10px] text-emerald-600/70 mt-1 block">Open / Finalized stats</span>
         </div>
 
-        <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-amber-600 block">
-            Certificates Issued
-          </span>
+        <div
+          onClick={() => {
+            setDrilldownSelectedEventId(null);
+            setActiveDrilldownModal('certificates');
+          }}
+          className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-amber-500 transition-all cursor-pointer shadow-xs group"
+          title="Click to view Certificates Issued and manage batches"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-amber-600 block">
+              Certificates Issued
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-amber-600" />
+          </div>
           <span className="text-2xl font-black text-amber-600 mt-1 block">
             {certificatesIssued}
           </span>
+          <span className="text-[10px] text-amber-600/70 mt-1 block">Eligible / Sent stats</span>
         </div>
 
-        <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-indigo-600 block">
-            Student Proposals
-          </span>
+        <div
+          onClick={() => {
+            setDrilldownSelectedEventId(null);
+            setActiveDrilldownModal('student_requests');
+          }}
+          className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-indigo-500 transition-all cursor-pointer shadow-xs group"
+          title="Click to review Student Event Requests"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-indigo-600 block">
+              Student Requests
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-indigo-600" />
+          </div>
           <span className="text-2xl font-black text-indigo-600 mt-1 block">
             {studentRequests.length}
           </span>
+          <span className="text-[10px] text-indigo-600/70 mt-1 block">Review proposals</span>
         </div>
       </div>
 
@@ -332,6 +460,548 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* STEP 9: INTERACTIVE DRILLDOWN MODALS PER SUMMARY CARD                     */}
+      {/* ========================================================================= */}
+
+      {/* 1. Active Events Modal */}
+      {activeDrilldownModal === 'active_events' && (
+        <Modal
+          isOpen={true}
+          onClose={() => setActiveDrilldownModal(null)}
+          title="Active Events (Published)"
+          subtitle="Select an event to view full details, manage attendance, certificates, or open its public page"
+          maxWidth="3xl"
+        >
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            {events.filter((e) => e.status === 'Published').length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)] text-center py-8">
+                No active published events at this moment.
+              </p>
+            ) : (
+              <div className="divide-y divide-[var(--border-color)]">
+                {events
+                  .filter((e) => e.status === 'Published')
+                  .map((ev) => (
+                    <div
+                      key={ev._id}
+                      className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2 rounded-xl transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-[var(--text-primary)]">{ev.title}</h4>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          📅 {ev.eventDate} · 📍 {ev.venue || ev.eventMode} · 🏷️ {ev.category}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 text-[11px] text-[var(--text-secondary)]">
+                          <span>Registrations: <strong>{ev.registeredCount || 0} / {ev.capacity}</strong></span>
+                          <span>·</span>
+                          <span>Attendance: <strong>{ev.attendanceCount || 0}</strong></span>
+                          <span>·</span>
+                          <span>Finalized: <strong>{ev.attendanceFinalized ? 'Yes' : 'No'}</strong></span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDrilldownModal(null);
+                            onViewEvent(ev);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] text-xs font-semibold hover:bg-[var(--surface-subtle)] flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEventForAttendance(ev);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Scan className="w-3.5 h-3.5" /> Check-In
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEventForCertificates(ev);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Award className="w-3.5 h-3.5" /> Certificates
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* 2. Upcoming Events Modal */}
+      {activeDrilldownModal === 'upcoming_events' && (
+        <Modal
+          isOpen={true}
+          onClose={() => setActiveDrilldownModal(null)}
+          title="Upcoming Events"
+          subtitle="Scheduled events happening on or after today"
+          maxWidth="3xl"
+        >
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            {events.filter((e) => e.status === 'Published' && new Date(e.eventDate).getTime() >= Date.now()).length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)] text-center py-8">
+                No upcoming events scheduled.
+              </p>
+            ) : (
+              <div className="divide-y divide-[var(--border-color)]">
+                {events
+                  .filter((e) => e.status === 'Published' && new Date(e.eventDate).getTime() >= Date.now())
+                  .map((ev) => (
+                    <div
+                      key={ev._id}
+                      className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2 rounded-xl transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-[var(--text-primary)]">{ev.title}</h4>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          📅 {ev.eventDate} ({ev.startTime} - {ev.endTime}) · 📍 {ev.venue || ev.eventMode}
+                        </p>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-1">
+                          Deadline: {ev.registrationDeadline ? new Date(ev.registrationDeadline).toLocaleString() : 'N/A'} · Registered: {ev.registeredCount || 0}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDrilldownModal(null);
+                            onViewEvent(ev);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] text-xs font-semibold hover:bg-[var(--surface-subtle)] flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDrilldownModal(null);
+                            onSelectTab('events');
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] text-white text-xs font-semibold hover:opacity-90 flex items-center gap-1 cursor-pointer"
+                        >
+                          Manage
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* 3. Total Registrations Modal (Event list with count -> Select event -> Registered student list) */}
+      {activeDrilldownModal === 'registrations' && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setActiveDrilldownModal(null);
+            setDrilldownSelectedEventId(null);
+          }}
+          title={
+            drilldownSelectedEventId
+              ? `Registered Students — ${events.find((e) => e._id === drilldownSelectedEventId)?.title || 'Event'}`
+              : 'Registrations By Event'
+          }
+          subtitle={
+            drilldownSelectedEventId
+              ? 'Select a student to view details or go back to event list'
+              : 'Select an event to view its full student registration roster'
+          }
+          maxWidth="3xl"
+        >
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            {!drilldownSelectedEventId ? (
+              // Event List with registration counts
+              <div className="divide-y divide-[var(--border-color)]">
+                {events.length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)] text-center py-8">No events available.</p>
+                ) : (
+                  events.map((ev) => {
+                    const regCount = registrations.filter((r) => r.eventId === ev._id).length;
+                    return (
+                      <div
+                        key={ev._id}
+                        onClick={() => setDrilldownSelectedEventId(ev._id)}
+                        className="py-3 flex items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2.5 rounded-xl cursor-pointer transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{ev.title}</h4>
+                          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                            {ev.eventDate} · Capacity: {ev.capacity} · Mode: {ev.eventMode}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <span className="text-base font-black text-[var(--primary-color)]">
+                              {regCount}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-muted)] block">Students</span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            ) : (
+              // Selected Event Student Roster
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setDrilldownSelectedEventId(null)}
+                  className="text-xs font-semibold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  ← Back to event registration list
+                </button>
+
+                {registrations.filter((r) => r.eventId === drilldownSelectedEventId).length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)] text-center py-8">
+                    No students registered for this event yet.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-[var(--border-color)] border border-[var(--border-color)] rounded-xl overflow-hidden">
+                    {registrations
+                      .filter((r) => r.eventId === drilldownSelectedEventId)
+                      .map((reg) => (
+                        <div key={reg._id} className="p-3 flex items-center justify-between gap-3 bg-[var(--surface)]">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-[var(--text-primary)]">{reg.studentName}</p>
+                            <p className="text-[11px] text-[var(--text-muted)]">
+                              {reg.studentEmail} · {reg.studentCollege} ({reg.studentDepartment} - {reg.studentYear})
+                            </p>
+                            <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">
+                              Pass ID: {reg.registrationId}
+                            </p>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                reg.attended
+                                  ? 'bg-emerald-500/10 text-emerald-600'
+                                  : 'bg-zinc-500/10 text-zinc-500'
+                              }`}
+                            >
+                              {reg.attended ? 'Present' : 'Not Checked In'}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-muted)] block mt-0.5">
+                              {reg.isFree ? 'Free Pass' : reg.paymentStatus}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* 4. Attendance Modal (Event list with Present/Absent/Open/Finalized -> Select event -> Attendance Desk) */}
+      {activeDrilldownModal === 'attendance' && (
+        <Modal
+          isOpen={true}
+          onClose={() => setActiveDrilldownModal(null)}
+          title="Attendance & Check-In Desk"
+          subtitle="Overview of participant attendance state and check-in desk per event"
+          maxWidth="3xl"
+        >
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="divide-y divide-[var(--border-color)]">
+              {events.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)] text-center py-8">No events available.</p>
+              ) : (
+                events.map((ev) => {
+                  const evRegs = registrations.filter((r) => r.eventId === ev._id);
+                  const presentCount = evRegs.filter((r) => r.attended).length;
+                  const absentCount = evRegs.length - presentCount;
+
+                  return (
+                    <div
+                      key={ev._id}
+                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2.5 rounded-xl transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{ev.title}</h4>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              ev.attendanceFinalized
+                                ? 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400'
+                                : 'bg-emerald-500/10 text-emerald-600'
+                            }`}
+                          >
+                            {ev.attendanceFinalized ? '🔒 Finalized' : '🟢 Open for Check-In'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          📅 {ev.eventDate} · 📍 {ev.venue || ev.eventMode}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1.5 text-xs">
+                          <span>Total: <strong>{evRegs.length}</strong></span>
+                          <span className="text-emerald-600">Present: <strong>{presentCount}</strong></span>
+                          <span className="text-red-500">Absent: <strong>{absentCount}</strong></span>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEventForAttendance(ev);
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Scan className="w-3.5 h-3.5" /> Open Check-In Desk
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 5. Certificates Issued Modal (Eligible / Generated / Sent / Failed per event -> Select event -> Certificate Management) */}
+      {activeDrilldownModal === 'certificates' && (
+        <Modal
+          isOpen={true}
+          onClose={() => setActiveDrilldownModal(null)}
+          title="Digital Certificates Issued"
+          subtitle="Certificate generation, verification, and dispatch status per event"
+          maxWidth="3xl"
+        >
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="divide-y divide-[var(--border-color)]">
+              {events.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)] text-center py-8">No events available.</p>
+              ) : (
+                events.map((ev) => {
+                  const evRegs = registrations.filter((r) => r.eventId === ev._id);
+                  const eligibleCount = evRegs.filter((r) => r.attended).length;
+                  const generatedCount = evRegs.filter((r) => r.certificateIssued).length;
+                  const sentCount = evRegs.filter((r) => r.certificateEmailSent || r.certificateIssued).length;
+                  const failedCount = evRegs.filter((r) => r.certificateStatus === 'Failed').length;
+
+                  return (
+                    <div
+                      key={ev._id}
+                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2.5 rounded-xl transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{ev.title}</h4>
+                          {ev.certificateTemplate?.fileUrl && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600">
+                              DOCX Template {ev.certificateTemplate.version ? `v${ev.certificateTemplate.version}` : ''}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          📅 {ev.eventDate} · Attendance Finalized: {ev.attendanceFinalized ? 'Yes' : 'No'}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2.5 mt-1.5 text-xs">
+                          <span className="text-blue-600">Eligible (Present): <strong>{eligibleCount}</strong></span>
+                          <span>·</span>
+                          <span className="text-emerald-600">Generated: <strong>{generatedCount}</strong></span>
+                          <span>·</span>
+                          <span className="text-indigo-600">Sent: <strong>{sentCount}</strong></span>
+                          {failedCount > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="text-red-500 font-bold">Failed: {failedCount}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEventForCertificates(ev);
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Award className="w-3.5 h-3.5" /> Manage Certificates
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 6. Student Event Requests Modal (Pending / Changes Requested / Approved / Rejected) */}
+      {activeDrilldownModal === 'student_requests' && (
+        <Modal
+          isOpen={true}
+          onClose={() => setActiveDrilldownModal(null)}
+          title="Student Event Proposals"
+          subtitle="Proposals initiated by students targeting this college for hosting or affiliation"
+          maxWidth="3xl"
+        >
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {(['All', 'Pending', 'Approved', 'Rejected', 'Changes Requested'] as const).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setRequestFilter(st)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    requestFilter === st
+                      ? 'bg-[var(--primary-color)] text-white'
+                      : 'border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--surface-subtle)]'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+
+            {studentRequests.filter((req) => {
+              if (requestFilter === 'All') return true;
+              if (requestFilter === 'Pending') return req.status === 'Pending Approval';
+              if (requestFilter === 'Approved') return req.status === 'Approved' || req.status === 'Published';
+              if (requestFilter === 'Rejected') return req.status === 'Rejected';
+              if (requestFilter === 'Changes Requested') return req.status === 'Changes Requested';
+              return true;
+            }).length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)] text-center py-8">
+                No student proposals found for this filter.
+              </p>
+            ) : (
+              <div className="divide-y divide-[var(--border-color)]">
+                {studentRequests
+                  .filter((req) => {
+                    if (requestFilter === 'All') return true;
+                    if (requestFilter === 'Pending') return req.status === 'Pending Approval';
+                    if (requestFilter === 'Approved') return req.status === 'Approved' || req.status === 'Published';
+                    if (requestFilter === 'Rejected') return req.status === 'Rejected';
+                    if (requestFilter === 'Changes Requested') return req.status === 'Changes Requested';
+                    return true;
+                  })
+                  .map((ev) => (
+                    <div
+                      key={ev._id}
+                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2.5 rounded-xl transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{ev.title}</h4>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              ev.status === 'Approved' || ev.status === 'Published'
+                                ? 'bg-emerald-500/10 text-emerald-600'
+                                : ev.status === 'Rejected'
+                                ? 'bg-red-500/10 text-red-600'
+                                : ev.status === 'Changes Requested'
+                                ? 'bg-amber-500/10 text-amber-600'
+                                : 'bg-blue-500/10 text-blue-600'
+                            }`}
+                          >
+                            {ev.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-1">
+                          {ev.description}
+                        </p>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-1">
+                          Proposed Date: {ev.eventDate} · Mode: {ev.eventMode} · Category: {ev.category}
+                        </p>
+                        {ev.rejectionReason && (
+                          <p className="text-xs text-red-500 mt-1 font-semibold">
+                            Note: {ev.rejectionReason}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDrilldownModal(null);
+                            onViewEvent(ev);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] text-xs font-semibold hover:bg-[var(--surface-subtle)] flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Details
+                        </button>
+                        {ev.status === 'Pending Approval' && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={actionProcessing}
+                              onClick={() => handleApproveProposal(ev._id)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={actionProcessing}
+                              onClick={() => handleRejectProposal(ev._id)}
+                              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
+                            >
+                              Reject / Changes
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Attendance Modal connected from drilldown */}
+      {selectedEventForAttendance && (
+        <AttendanceModal
+          isOpen={true}
+          onClose={() => setSelectedEventForAttendance(null)}
+          event={selectedEventForAttendance}
+          onEventUpdated={() => {
+            fetchDashboardData();
+          }}
+        />
+      )}
+
+      {/* DOCX Certificate Manager Modal connected from drilldown */}
+      {selectedEventForCertificates && (
+        <DocxCertificateManagerModal
+          isOpen={true}
+          onClose={() => setSelectedEventForCertificates(null)}
+          event={selectedEventForCertificates}
+          onUpdated={() => {
+            fetchDashboardData();
+          }}
+        />
+      )}
     </div>
   );
 };

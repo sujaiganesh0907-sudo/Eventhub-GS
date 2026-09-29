@@ -282,6 +282,7 @@ export interface IEvent {
       uploadedBy: string;
       detectedPlaceholders: string[];
       mappings: any;
+      status?: 'Draft' | 'Active' | 'Archived';
     }>;
   };
   

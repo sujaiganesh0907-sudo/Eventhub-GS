@@ -361,6 +361,20 @@ export class CollectionModel<T extends { _id?: string; id?: string }> {
     return { deletedCount: 1 };
   }
 
+  async deleteMany(filter: any): Promise<{ deletedCount: number }> {
+    let deletedCount = 0;
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      if (matchFilter(this.items[i], filter)) {
+        this.items.splice(i, 1);
+        deletedCount++;
+      }
+    }
+    if (deletedCount > 0) {
+      persistDB();
+    }
+    return { deletedCount };
+  }
+
   async findByIdAndDelete(id: string): Promise<T | null> {
     const existing = await this.findById(id);
     if (!existing) return null;
