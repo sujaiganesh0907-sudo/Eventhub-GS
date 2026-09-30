@@ -21,6 +21,7 @@ import {
   ExternalLink,
   Award,
   Lock,
+  Upload,
 } from 'lucide-react';
 import { IEvent } from '../../types';
 import { api } from '../../services/api';
@@ -70,6 +71,12 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   const [retryingEmailId, setRetryingEmailId] = useState<string | null>(null);
   const [exportingReport, setExportingReport] = useState(false);
   const [showDocxCertModal, setShowDocxCertModal] = useState(false);
+  const [docxCertInitialTab, setDocxCertInitialTab] = useState<'upload' | 'mapping' | 'issuance'>('upload');
+
+  const hasActiveTemplate = Boolean(
+    event.certificateTemplate?.isActivated ||
+    (event.certificateTemplate?.fileUrl && event.certificateTemplate?.status === 'Active')
+  );
 
   // Fetch Attendance List
   const fetchAttendanceList = async () => {
@@ -272,6 +279,14 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
         setIsConfirmingFinalize(false);
         fetchAttendanceList();
         if (onEventUpdated) onEventUpdated();
+
+        // Requirements 20 & 21: Auto-route to next certificate step
+        if (hasActiveTemplate) {
+          setDocxCertInitialTab('issuance');
+        } else {
+          setDocxCertInitialTab('upload');
+        }
+        setShowDocxCertModal(true);
       } else {
         alert(res.message || 'Failed to finalize attendance');
       }
@@ -422,23 +437,52 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
               Download CSV
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowDocxCertModal(true)}
-              className="px-3.5 py-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileText className="w-4 h-4 text-indigo-600" /> Participation Certificates (DOCX)
-            </button>
-
             {!isFinalized ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDocxCertInitialTab(hasActiveTemplate ? 'issuance' : 'upload');
+                    setShowDocxCertModal(true);
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-indigo-600" /> Participation Certificates (DOCX)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingFinalize(true)}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Award className="w-4 h-4" /> Finish Attendance
+                </button>
+              </>
+            ) : hasActiveTemplate ? (
+              /* Requirement 20: Template exists -> Proceed to Certificate Verification */
               <button
                 type="button"
-                onClick={() => setIsConfirmingFinalize(true)}
+                onClick={() => {
+                  setDocxCertInitialTab('issuance');
+                  setShowDocxCertModal(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <ShieldCheck className="w-4 h-4" /> Proceed to Certificate Verification
+              </button>
+            ) : (
+              /* Requirement 21: No active template -> Add Participation Certificate Template */
+              <button
+                type="button"
+                onClick={() => {
+                  setDocxCertInitialTab('upload');
+                  setShowDocxCertModal(true);
+                }}
                 className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
-                <Award className="w-4 h-4" /> Finish Attendance
+                <Upload className="w-4 h-4" /> Add Participation Certificate Template
               </button>
-            ) : null}
+            )}
           </div>
         </div>
 
@@ -982,6 +1026,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
             isOpen={showDocxCertModal}
             onClose={() => setShowDocxCertModal(false)}
             event={event}
+            initialTab={docxCertInitialTab}
             onUpdated={() => {
               fetchAttendanceList();
               onEventUpdated?.();

@@ -255,7 +255,10 @@ export async function deleteCertificate(req: AuthenticatedRequest, res: Response
     }
 
     // Owner check for self-uploaded certificates
-    if (cert.studentUserId && cert.studentUserId !== user._id && user.role !== 'College Super Admin') {
+    const studentProfile = await StudentProfile.findOne({ userId: user._id });
+    const isOwner = (cert.studentUserId && cert.studentUserId === user._id) ||
+                    (studentProfile && cert.studentId === studentProfile._id);
+    if (!isOwner && user.role !== 'College Super Admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized to delete this certificate.' });
     }
 
@@ -276,7 +279,10 @@ export async function updateCertificate(req: AuthenticatedRequest, res: Response
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found.' });
 
     // Authorization check
-    if (cert.studentUserId && cert.studentUserId !== user._id && user.role !== 'College Super Admin') {
+    const studentProfile = await StudentProfile.findOne({ userId: user._id });
+    const isOwner = (cert.studentUserId && cert.studentUserId === user._id) ||
+                    (studentProfile && cert.studentId === studentProfile._id);
+    if (!isOwner && user.role !== 'College Super Admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized to edit this certificate.' });
     }
 

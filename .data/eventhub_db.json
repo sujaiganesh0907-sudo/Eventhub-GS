@@ -126,7 +126,7 @@
       "connectionsCount": 2,
       "id": "prof_student_alex",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-09-24T14:52:40.035Z",
+      "updatedAt": "2026-09-30T14:32:00.824Z",
       "username": "alexanderchen",
       "profileVisibility": "Public",
       "messagePrivacy": "Everyone"
@@ -147,7 +147,7 @@
       "_id": "d64333f639c7fdf3cbc7dcd2",
       "id": "d64333f639c7fdf3cbc7dcd2",
       "createdAt": "2026-09-24T15:16:29.112Z",
-      "updatedAt": "2026-09-25T09:05:21.023Z",
+      "updatedAt": "2026-09-30T14:32:00.824Z",
       "bio": "I am a Computer Science Engineering student specializing in Cyber Security, with a strong interest in cybersecurity, cloud computing, and software development. I enjoy building practical projects, exploring new technologies, and continuously improving my technical and problem-solving skills. I am passionate about gaining real-world experience and developing secure, useful technology solutions.",
       "location": "Erode",
       "profilePhoto": "/uploads/upload-1790327118175-443534204.jpg",
@@ -172,7 +172,7 @@
       "_id": "ad99efcaa557ec5179fb7637",
       "id": "ad99efcaa557ec5179fb7637",
       "createdAt": "2026-09-25T01:31:11.968Z",
-      "updatedAt": "2026-09-25T01:31:11.968Z",
+      "updatedAt": "2026-09-30T14:32:00.824Z",
       "username": "suresh1",
       "profileVisibility": "Public",
       "messagePrivacy": "Everyone"
@@ -193,7 +193,7 @@
       "_id": "6536522e2f969663e8448fc0",
       "id": "6536522e2f969663e8448fc0",
       "createdAt": "2026-09-25T04:22:04.686Z",
-      "updatedAt": "2026-09-25T04:23:25.929Z",
+      "updatedAt": "2026-09-30T14:32:00.824Z",
       "bio": "",
       "location": "",
       "profilePhoto": "/uploads/upload-1790310193133-528150284.jpeg",
@@ -216,10 +216,10 @@
       "coverPhoto": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1200&auto=format&fit=crop&q=80",
       "verificationStatus": "Verified",
       "superAdminId": "usr_col_apex_admin",
-      "connectionsCount": 142,
+      "connectionsCount": 1,
       "id": "col_apex_tech_01",
       "createdAt": "2026-09-24T13:38:09.698Z",
-      "updatedAt": "2026-09-24T13:38:09.698Z",
+      "updatedAt": "2026-09-30T14:32:00.822Z",
       "username": "apexinstituteof",
       "messagePrivacy": "Everyone"
     },
@@ -236,10 +236,10 @@
       "coverPhoto": "https://images.unsplash.com/photo-1562774053-701939374585?w=1200&auto=format&fit=crop&q=80",
       "verificationStatus": "Verified",
       "superAdminId": "usr_col_horizon_admin",
-      "connectionsCount": 98,
+      "connectionsCount": 1,
       "id": "col_horizon_univ_02",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-30T14:32:00.823Z",
       "username": "horizonstateuni",
       "messagePrivacy": "Everyone"
     },
@@ -256,10 +256,10 @@
       "coverPhoto": "https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?w=1200&auto=format&fit=crop&q=80",
       "verificationStatus": "Verified",
       "superAdminId": "usr_col_nexus_admin",
-      "connectionsCount": 64,
+      "connectionsCount": 0,
       "id": "col_nexus_eng_03",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-09-24T13:38:09.699Z",
+      "updatedAt": "2026-09-30T14:32:00.823Z",
       "username": "nexusengineerin",
       "messagePrivacy": "Everyone"
     }
@@ -1299,5 +1299,10 @@
       "createdAt": "2026-09-25T08:51:56.240Z",
       "updatedAt": "2026-09-25T08:56:19.587Z"
     }
-  ]
+  ],
+  "conversations": [],
+  "messages": [],
+  "conversationPreferences": [],
+  "adminActivityLogs": [],
+  "credentialPosts": []
 }

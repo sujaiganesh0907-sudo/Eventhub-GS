@@ -31,7 +31,7 @@ interface CollegesListPageProps {
 export const CollegesListPage: React.FC<CollegesListPageProps> = ({
   onSelectCollege,
 }) => {
-  const { user, isCollege, isStudent } = useAuth();
+  const { user, isCollege, isStudent, studentProfile } = useAuth();
   const [colleges, setColleges] = useState<ICollege[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -63,13 +63,22 @@ export const CollegesListPage: React.FC<CollegesListPageProps> = ({
       const res = await api.get<any>('/colleges', { search });
       if (res.success) {
         setColleges(res.colleges || []);
-        const map: Record<string, boolean> = {};
-        for (const col of res.colleges || []) {
-          if (col.followers && user?._id && col.followers.includes(user._id)) {
-            map[col._id] = true;
+        
+        // Fetch accurate connected colleges for student
+        if (user && user.role === 'Student' && studentProfile?._id) {
+          try {
+            const connRes = await api.get<any>(`/social/student/${studentProfile._id}/connected-colleges`);
+            if (connRes?.success && Array.isArray(connRes.colleges)) {
+              const map: Record<string, boolean> = {};
+              for (const col of connRes.colleges) {
+                map[col._id] = true;
+              }
+              setFollowingMap(map);
+            }
+          } catch {
+            // Optional
           }
         }
-        setFollowingMap(map);
       }
     } catch (err) {
       console.error('Failed to fetch colleges', err);
@@ -112,12 +121,19 @@ export const CollegesListPage: React.FC<CollegesListPageProps> = ({
 
   const handleToggleFollow = async (collegeId: string) => {
     try {
-      const res = await api.post<any>(`/colleges/${collegeId}/follow`, {});
+      const res = await api.post<any>('/social/college/connection', { collegeId });
       if (res.success) {
         setFollowingMap((prev) => ({
           ...prev,
-          [collegeId]: res.following,
+          [collegeId]: res.connected,
         }));
+        if (typeof res.connectionsCount === 'number') {
+          setColleges((prev) =>
+            prev.map((c) =>
+              c._id === collegeId ? { ...c, connectionsCount: res.connectionsCount } : c
+            )
+          );
+        }
       }
     } catch (err) {
       console.error('Failed to toggle follow', err);

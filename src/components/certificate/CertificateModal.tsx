@@ -28,6 +28,7 @@ interface CertificateModalProps {
   onEdit?: (cert: ICertificate) => void;
   onRevoked?: (certificateId: string) => void;
   canDownload?: boolean;
+  isOwner?: boolean;
 }
 
 export const CertificateModal: React.FC<CertificateModalProps> = ({
@@ -38,6 +39,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
   onEdit,
   onRevoked,
   canDownload = true,
+  isOwner = true,
 }) => {
   const { user, isCollege } = useAuth();
   const [certificate, setCertificate] = useState<ICertificate | null>(initialCert);
@@ -155,9 +157,19 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
             )}
 
             <div className="absolute top-3 right-3 flex items-center gap-1.5">
-              <span className="px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-xs text-[11px] font-bold text-emerald-400 flex items-center gap-1 border border-emerald-500/30">
-                <ShieldCheck className="w-3.5 h-3.5" /> Verified Credential
-              </span>
+              {certificate.revoked ? (
+                <span className="px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-xs text-[11px] font-bold text-red-400 flex items-center gap-1 border border-red-500/30">
+                  <ShieldAlert className="w-3.5 h-3.5" /> Credential Revoked
+                </span>
+              ) : certificate.isCollegeVerified ? (
+                <span className="px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-xs text-[11px] font-bold text-emerald-400 flex items-center gap-1 border border-emerald-500/30">
+                  <ShieldCheck className="w-3.5 h-3.5" /> College Issued / Verified
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-xs text-[11px] font-bold text-indigo-400 flex items-center gap-1 border border-indigo-500/30">
+                  Self Uploaded
+                </span>
+              )}
             </div>
           </div>
 
@@ -244,14 +256,16 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Verify Authenticity
               </button>
 
-              {/* Reshare as Verified Credential Post (Requirement 1.4) */}
-              <button
-                type="button"
-                onClick={() => setShowReshareModal(true)}
-                className="px-3 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-              >
-                <Share2 className="w-3.5 h-3.5 text-indigo-600" /> Reshare Credential
-              </button>
+              {/* Reshare as Verified Credential Post - Owner only (Requirement 11) */}
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => setShowReshareModal(true)}
+                  className="px-3 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-indigo-600" /> Reshare Credential
+                </button>
+              )}
 
               {/* Authorized College Admin Revoke */}
               {isCollege && !certificate.revoked && (
@@ -266,7 +280,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                 </button>
               )}
 
-              {onEdit && (
+              {isOwner && onEdit && !certificate.isCollegeVerified && (
                 <button
                   type="button"
                   onClick={() => {
@@ -279,7 +293,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                 </button>
               )}
 
-              {onDelete && (
+              {isOwner && onDelete && !certificate.isCollegeVerified && (
                 <button
                   type="button"
                   onClick={() => onDelete(certificate._id)}

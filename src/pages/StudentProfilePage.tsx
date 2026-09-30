@@ -52,6 +52,10 @@ import {
   AlertCircle,
   Eye,
   MessageSquare,
+  Shield,
+  ShieldAlert,
+  Upload,
+  ChevronRight,
 } from 'lucide-react';
 
 interface StudentProfilePageProps {
@@ -59,6 +63,7 @@ interface StudentProfilePageProps {
   onSelectCollege?: (collegeId: string) => void;
   studentId?: string; // Optional: view another student's profile
   onNavigateToMessages?: (conversationId?: string) => void;
+  onOpenAdminAccess?: (collegeId?: string) => void;
   onBack?: () => void;
 }
 
@@ -67,6 +72,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   onSelectCollege,
   studentId,
   onNavigateToMessages,
+  onOpenAdminAccess,
   onBack,
 }) => {
   const { user, studentProfile, updateStudentProfileLocal } = useAuth();
@@ -106,6 +112,28 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const [followerStudents, setFollowerStudents] = useState<IStudentProfile[]>([]);
   const [socialLoading, setSocialLoading] = useState(false);
 
+  // Admin Access Modal State (Requirements 2 & 5)
+  const [showAdminAccessModal, setShowAdminAccessModal] = useState(false);
+  const [adminRoles, setAdminRoles] = useState<any[]>([]);
+  const [loadingAdminRoles, setLoadingAdminRoles] = useState(false);
+
+  const handleOpenAdminAccessModal = async () => {
+    setShowAdminAccessModal(true);
+    setLoadingAdminRoles(true);
+    try {
+      const res = await api.get<any>('/admins/my-roles');
+      if (res.success) {
+        setAdminRoles(res.adminRoles || []);
+      } else {
+        setAdminRoles([]);
+      }
+    } catch {
+      setAdminRoles([]);
+    } finally {
+      setLoadingAdminRoles(false);
+    }
+  };
+
   // Events Modal / Management State
   const [showEventsModal, setShowEventsModal] = useState(false);
   const [selectedEventForInsights, setSelectedEventForInsights] = useState<IEvent | null>(null);
@@ -120,13 +148,22 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
     try {
       setLoading(true);
       const targetId = studentId || 'me';
+      const isOwnerView = !studentId || (user && (user._id === studentId || studentProfile?._id === studentId));
 
-      const [profRes, certRes, regRes, orgRes] = await Promise.all([
+      const fetchTasks: Promise<any>[] = [
         api.get<any>(`/students/${targetId}`),
-        api.get<any>(targetId === 'me' ? '/certificates/my-certificates' : `/certificates/student/${targetId}`),
-        api.get<any>('/registrations/student'),
-        api.get<any>('/student/my-events'),
-      ]);
+        api.get<any>(isOwnerView ? '/certificates/my-certificates' : `/certificates/student/${targetId}`),
+      ];
+
+      if (isOwnerView) {
+        fetchTasks.push(api.get<any>('/registrations/student'));
+        fetchTasks.push(api.get<any>('/student/my-events'));
+      } else {
+        fetchTasks.push(Promise.resolve({ success: true, registrations: [] }));
+        fetchTasks.push(api.get<any>('/events', { limit: 50 }));
+      }
+
+      const [profRes, certRes, regRes, orgRes] = await Promise.all(fetchTasks);
 
       if (profRes.success && (profRes.student || profRes.profile)) {
         const p = profRes.student || profRes.profile;
@@ -135,11 +172,21 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         if (!studentId && updateStudentProfileLocal) {
           updateStudentProfileLocal(p);
         }
+        if (!isOwnerView) {
+          // For another student, only show their published organized events
+          const userEvents = (orgRes.events || []).filter(
+            (e: any) => (e.creatorUserId === p.userId || e.createdBy === p.userId) && e.status === 'Published'
+          );
+          setOrganizedEvents(userEvents);
+          setRegistrations([]);
+          setEventSectionTab('organized');
+        } else {
+          setOrganizedEvents(orgRes.events || []);
+          setRegistrations(regRes.registrations || []);
+        }
       }
 
       if (certRes.success) setCertificates(certRes.certificates || []);
-      if (regRes.success) setRegistrations(regRes.registrations || []);
-      if (orgRes.success) setOrganizedEvents(orgRes.events || []);
     } catch (err) {
       console.error('Failed to load student profile data', err);
     } finally {
@@ -302,7 +349,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   }
 
   const attendedEvents = registrations.filter((r) => r.attended);
-  const totalEventsCount = profile?.eventsCount ?? (registrations.length + organizedEvents.length);
+  const totalEventsCount = isOwnProfile ? (profile?.eventsCount ?? (registrations.length + organizedEvents.length)) : organizedEvents.length;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-16">
@@ -420,15 +467,27 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
               </button>
 
               {isOwnProfile && (
-                <button
-                  onClick={() => {
-                    setEditingCert(null);
-                    setShowAddCertModal(true);
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                >
-                  <Plus className="w-4 h-4" /> Add Certificate
-                </button>
+                <>
+                  {/* Admin Access Button (Requirement 2 & 5) */}
+                  <button
+                    type="button"
+                    onClick={handleOpenAdminAccessModal}
+                    className="px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                    title="View authorized college administrator workspaces"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-[var(--primary-color)]" /> Admin Access
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setEditingCert(null);
+                      setShowAddCertModal(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Plus className="w-4 h-4" /> Add Certificate
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -511,7 +570,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Attended Events</span>
-              <span className="font-bold text-emerald-600">{attendedEvents.length} Events</span>
+              <span className="font-bold text-emerald-600">{isOwnProfile ? attendedEvents.length : (profile?.attendedEventsCount ?? 0)} Events</span>
             </div>
           </div>
 
@@ -636,9 +695,19 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                       <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-xs text-[10px] font-bold text-amber-400">
                         {cert.achievementType}
                       </span>
-                      <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-emerald-950/80 backdrop-blur-xs text-[10px] font-bold text-emerald-300 flex items-center gap-1 border border-emerald-500/30">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Verified
-                      </span>
+                      {cert.revoked ? (
+                        <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-red-950/80 backdrop-blur-xs text-[10px] font-bold text-red-300 flex items-center gap-1 border border-red-500/30">
+                          <ShieldAlert className="w-3 h-3 text-red-400" /> Credential Revoked
+                        </span>
+                      ) : cert.isCollegeVerified ? (
+                        <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-emerald-950/80 backdrop-blur-xs text-[10px] font-bold text-emerald-300 flex items-center gap-1 border border-emerald-500/30">
+                          <ShieldCheck className="w-3 h-3 text-emerald-400" /> College Issued / Verified
+                        </span>
+                      ) : (
+                        <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-indigo-950/80 backdrop-blur-xs text-[10px] font-bold text-indigo-300 flex items-center gap-1 border border-indigo-500/30">
+                          <Upload className="w-3 h-3 text-indigo-400" /> Self Uploaded
+                        </span>
+                      )}
                     </div>
 
                     <div>
@@ -702,34 +771,41 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
       {activeSection === 'events' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 bg-[var(--surface-subtle)] p-1 rounded-xl border border-[var(--border-color)]">
-              <button
-                type="button"
-                onClick={() => setEventSectionTab('participated')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  eventSectionTab === 'participated'
-                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                Participated ({registrations.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setEventSectionTab('organized')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  eventSectionTab === 'organized'
-                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                Organized ({organizedEvents.length})
-              </button>
-            </div>
+            {isOwnProfile ? (
+              <div className="flex items-center gap-2 bg-[var(--surface-subtle)] p-1 rounded-xl border border-[var(--border-color)]">
+                <button
+                  type="button"
+                  onClick={() => setEventSectionTab('participated')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    eventSectionTab === 'participated'
+                      ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  Participated ({registrations.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventSectionTab('organized')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    eventSectionTab === 'organized'
+                      ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  Organized ({organizedEvents.length})
+                </button>
+              </div>
+            ) : (
+              <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-[var(--primary-color)]" />
+                Organized Collegiate Events ({organizedEvents.length})
+              </h3>
+            )}
           </div>
 
-          {/* Sub-tab 1: Participated */}
-          {eventSectionTab === 'participated' && (
+          {/* Sub-tab 1: Participated - Owner Only (Requirement 11) */}
+          {isOwnProfile && eventSectionTab === 'participated' && (
             <div>
               {registrations.length === 0 ? (
                 <div className="p-12 text-center border border-[var(--border-color)] rounded-2xl bg-[var(--surface)] space-y-2">
@@ -1059,13 +1135,17 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           isOpen={!!selectedCert}
           onClose={() => setSelectedCert(null)}
           certificate={selectedCert}
-          canDownload={Boolean(isOwnProfile)}
-          onDelete={isOwnProfile ? handleDeleteCertificate : undefined}
-          onEdit={isOwnProfile ? (cert) => {
+          isOwner={Boolean(isOwnProfile)}
+          canDownload={Boolean(isOwnProfile || user?.role === 'College Super Admin' || user?.role === 'College Admin')}
+          onDelete={isOwnProfile && !selectedCert.isCollegeVerified ? handleDeleteCertificate : undefined}
+          onEdit={isOwnProfile && !selectedCert.isCollegeVerified ? (cert) => {
             setSelectedCert(null);
             setEditingCert(cert);
             setShowAddCertModal(true);
           } : undefined}
+          onRevoked={() => {
+            fetchProfileData();
+          }}
         />
       )}
 
@@ -1163,6 +1243,108 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           onClose={() => setCertIdToVerify(null)}
           certificateId={certIdToVerify}
         />
+      )}
+      {/* MODAL 10: Student Admin Access List Modal (Requirements 2 & 5) */}
+      {showAdminAccessModal && (
+        <Modal
+          isOpen={showAdminAccessModal}
+          onClose={() => setShowAdminAccessModal(false)}
+          title="Admin Access"
+          subtitle="Authorized collegiate administration"
+          maxWidth="md"
+        >
+          <div className="py-2">
+            {loadingAdminRoles ? (
+              <div className="py-12 flex flex-col justify-center items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--primary-color)]" />
+                <span>Checking college admin authorizations...</span>
+              </div>
+            ) : adminRoles.length === 0 ? (
+              <div className="p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-color)] flex items-center justify-center mx-auto text-[var(--text-muted)]">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-bold text-[var(--text-primary)]">Admin Access</h4>
+                <p className="text-xs text-[var(--text-secondary)] max-w-xs mx-auto">
+                  No active College Admin access.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminAccessModal(false)}
+                    className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-[var(--text-muted)]">
+                  You are an authorized administrator for the following colleges. Select an institution to enter its workspace:
+                </p>
+
+                <div className="divide-y divide-[var(--border-color)] border border-[var(--border-color)] rounded-2xl overflow-hidden bg-[var(--surface)] shadow-xs">
+                  {adminRoles.map((role) => (
+                    <div
+                      key={role.membershipId || role.collegeId}
+                      onClick={() => {
+                        if (role.status === 'Active') {
+                          setShowAdminAccessModal(false);
+                          localStorage.setItem('eventhub_active_college', role.collegeId);
+                          if (onOpenAdminAccess) {
+                            onOpenAdminAccess(role.collegeId);
+                          } else if (onSelectCollege) {
+                            onSelectCollege(role.collegeId);
+                          }
+                        }
+                      }}
+                      className={`p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                        role.status === 'Active'
+                          ? 'hover:bg-[var(--surface-hover)] cursor-pointer group'
+                          : 'bg-[var(--surface-subtle)] opacity-70 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={role.college?.logo || DEFAULT_COLLEGE_LOGO}
+                          alt={role.college?.name}
+                          className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                          onError={(e) => {
+                            (e.target as any).src = DEFAULT_COLLEGE_LOGO;
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] transition-colors truncate">
+                            {role.college?.name || 'Institution'}
+                          </h4>
+                          <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                            Role: <span className="font-semibold text-[var(--text-secondary)]">{role.role || 'College Admin'}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            role.status === 'Active'
+                              ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                              : 'bg-zinc-500/10 text-zinc-500 border border-zinc-500/20'
+                          }`}
+                        >
+                          Status: {role.status}
+                        </span>
+                        {role.status === 'Active' && (
+                          <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-color)] transition-colors" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );

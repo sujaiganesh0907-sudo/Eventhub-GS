@@ -43,9 +43,19 @@ export async function getEvents(req: Request, res: Response) {
     } = req.query;
 
     const filter: any = {};
+    const authUser = (req as any).user;
 
-    if (status) {
-      filter.status = status;
+    if (status && status !== 'Published') {
+      // Only allow querying Draft/Pending events if authenticated and authorized for college or creator
+      let canViewUnpublished = false;
+      if (authUser) {
+        if (collegeId && (authUser.collegeId === collegeId)) {
+          canViewUnpublished = true;
+        } else if (authUser.role === 'College Super Admin' || authUser.role === 'College Admin') {
+          canViewUnpublished = true;
+        }
+      }
+      filter.status = canViewUnpublished ? status : 'Published';
     } else {
       filter.status = 'Published'; // Default public discovery shows Published
     }
@@ -110,6 +120,32 @@ export async function getEventById(req: AuthenticatedRequest, res: Response) {
     const event = await Event.findById(id);
     if (!event) {
       return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    // Backend protection for Draft/Pending events (Requirements 1 & 4)
+    if (event.status !== 'Published') {
+      const u = req.user;
+      let authorized = false;
+      if (u) {
+        if (event.creatorUserId === u._id || (event as any).createdBy === u._id) {
+          authorized = true;
+        } else if (u.collegeId && (u.collegeId === event.hostCollegeId || u.collegeId === event.targetCollegeId)) {
+          authorized = true;
+        } else {
+          const membership = await CollegeAdminMembership.findOne({
+            collegeId: event.hostCollegeId,
+            userId: u._id,
+            status: 'Active',
+          });
+          if (membership) authorized = true;
+        }
+      }
+      if (!authorized) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. This event has not been published or approved.',
+        });
+      }
     }
 
     // Increment views

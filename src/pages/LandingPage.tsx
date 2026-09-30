@@ -20,6 +20,10 @@ interface LandingPageProps {
 }
 
 interface RealStats {
+  totalColleges?: number;
+  totalStudents?: number;
+  totalEvents?: number;
+  activeEvents?: number;
   verifiedCollegesCount: number;
   participantsCount: number;
   publishedEventsCount: number;
@@ -60,6 +64,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     };
   }, []);
 
+  const collegesCount = stats.totalColleges !== undefined ? stats.totalColleges : stats.verifiedCollegesCount;
+  const studentsCount = stats.totalStudents !== undefined ? stats.totalStudents : stats.participantsCount;
+  const eventsCount = stats.activeEvents !== undefined ? stats.activeEvents : stats.publishedEventsCount;
+  const certsCount = stats.certificatesCount;
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text-primary)]">
       {/* Top Banner / Hero */}
@@ -97,38 +106,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           </div>
 
-          {/* Quick Real Metrics Bar (Requirement 7: Real database counts, no hardcoded marketing values) */}
+          {/* Quick Real Metrics Bar (Requirement 6: Real database counts, no hardcoded marketing values, no + approximations) */}
           <div className="pt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
             <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)]">
               <span className="text-2xl font-black text-[var(--primary-color)]">
-                {loadingStats ? '—' : stats.verifiedCollegesCount}
+                {loadingStats ? '—' : collegesCount}
               </span>
               <p className="text-xs text-[var(--text-muted)] font-semibold mt-0.5">
-                Verified Colleges
+                Partner Colleges
               </p>
             </div>
             <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)]">
               <span className="text-2xl font-black text-emerald-500">
-                {loadingStats ? '—' : stats.participantsCount}
+                {loadingStats ? '—' : studentsCount}
               </span>
               <p className="text-xs text-[var(--text-muted)] font-semibold mt-0.5">
-                Event Registrations
+                Students & Participants
               </p>
             </div>
             <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)]">
               <span className="text-2xl font-black text-indigo-500">
-                {loadingStats ? '—' : stats.publishedEventsCount}
+                {loadingStats ? '—' : eventsCount}
               </span>
               <p className="text-xs text-[var(--text-muted)] font-semibold mt-0.5">
-                Live Events
+                Live Collegiate Events
               </p>
             </div>
             <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface)]">
               <span className="text-2xl font-black text-amber-500">
-                {loadingStats ? '—' : stats.certificatesCount}
+                {loadingStats ? '—' : certsCount}
               </span>
               <p className="text-xs text-[var(--text-muted)] font-semibold mt-0.5">
-                Issued Certificates
+                Verified Certificates
               </p>
             </div>
           </div>

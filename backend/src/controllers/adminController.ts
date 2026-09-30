@@ -145,9 +145,10 @@ export async function getCollegeAdmins(req: AuthenticatedRequest, res: Response)
       userId: user._id,
       status: 'Active',
     });
+    const isCollegeSuperAdmin = user.role === 'College Super Admin' && user.collegeId === collegeId;
 
-    if (!isCollegeStaff && !hasMembership && user.role !== 'College Super Admin') {
-      return res.json({ success: true, count: 0, maxAllowed: 10, admins: [] });
+    if (!isCollegeStaff && !hasMembership && !isCollegeSuperAdmin) {
+      return res.status(403).json({ success: false, message: 'Unauthorized. You do not have administrator permissions for this college.' });
     }
 
     const admins = await CollegeAdminMembership.find({ collegeId }).exec();
@@ -239,6 +240,7 @@ export async function inviteCollegeAdmin(req: AuthenticatedRequest, res: Respons
           membershipId: existingMembership._id,
           collegeId: college._id,
           collegeName: college.name,
+          collegeLogo: college.logo,
           permissions,
         },
         read: false,
@@ -275,6 +277,7 @@ export async function inviteCollegeAdmin(req: AuthenticatedRequest, res: Respons
         membershipId: membership._id,
         collegeId: college._id,
         collegeName: college.name,
+        collegeLogo: college.logo,
         permissions,
       },
       read: false,
@@ -527,20 +530,24 @@ export async function acceptAdminInvite(req: AuthenticatedRequest, res: Response
     const college = await College.findById(membership.collegeId);
 
     // Notify College Super Admin
+    const recipients = new Set<string>();
+    if (college?.superAdminId) recipients.add(college.superAdminId);
     const superAdminMembership = await CollegeAdminMembership.findOne({
       collegeId: membership.collegeId,
       role: 'College Super Admin',
     });
+    if (superAdminMembership?.userId) recipients.add(superAdminMembership.userId);
 
-    if (superAdminMembership) {
+    for (const recipientId of recipients) {
       await Notification.create({
-        recipientUserId: superAdminMembership.userId,
+        recipientUserId: recipientId,
         type: 'ADMIN_ACTION',
         title: 'Admin Invitation Accepted',
         message: `@${user.fullName} accepted your invitation to become an Admin for ${college?.name || 'your college'}.`,
         metadata: {
           collegeId: membership.collegeId,
           adminUserId: user._id,
+          action: 'manage-admins',
         },
         read: false,
       });
@@ -593,20 +600,24 @@ export async function rejectAdminInvite(req: AuthenticatedRequest, res: Response
     const college = await College.findById(membership.collegeId);
 
     // Notify College Super Admin
+    const recipients = new Set<string>();
+    if (college?.superAdminId) recipients.add(college.superAdminId);
     const superAdminMembership = await CollegeAdminMembership.findOne({
       collegeId: membership.collegeId,
       role: 'College Super Admin',
     });
+    if (superAdminMembership?.userId) recipients.add(superAdminMembership.userId);
 
-    if (superAdminMembership) {
+    for (const recipientId of recipients) {
       await Notification.create({
-        recipientUserId: superAdminMembership.userId,
+        recipientUserId: recipientId,
         type: 'ADMIN_ACTION',
         title: 'Admin Invitation Declined',
         message: `@${user.fullName} declined the College Admin invitation for ${college?.name || 'your college'}.`,
         metadata: {
           collegeId: membership.collegeId,
           adminUserId: user._id,
+          action: 'manage-admins',
         },
         read: false,
       });
@@ -693,7 +704,9 @@ export async function getAdminActivity(req: AuthenticatedRequest, res: Response)
       status: 'Active',
     });
 
-    if (!membership && user.role !== 'College Super Admin') {
+    const isCollegeSuperAdmin = user.role === 'College Super Admin' && user.collegeId === collegeId;
+
+    if (!membership && !isCollegeSuperAdmin) {
       return res.status(403).json({ success: false, message: 'Access denied to this institution activity log.' });
     }
 

@@ -44,7 +44,7 @@ export const ManageAdminsModal: React.FC<ManageAdminsModalProps> = ({
     try {
       setLoading(true);
       const [admRes, actRes] = await Promise.all([
-        api.get<any>('/admins'),
+        api.get<any>('/admins', { collegeId }),
         api.get<any>('/admins/activity', { collegeId }),
       ]);
 

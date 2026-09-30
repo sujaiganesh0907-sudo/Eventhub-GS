@@ -147,6 +147,7 @@ apiRouter.post('/auth/refresh-token', refreshToken);
 
 // Public Stats route (real database metrics)
 apiRouter.get('/stats', getPublicStats);
+apiRouter.get('/public/stats', getPublicStats);
 
 // 2. Events routes
 apiRouter.get('/events', getEvents);
@@ -156,7 +157,9 @@ apiRouter.put('/events/:id', authenticate, updateEvent);
 apiRouter.delete('/events/:id', authenticate, deleteEvent);
 apiRouter.get('/events/:id/insights', authenticate, getEventInsights);
 apiRouter.post('/events/:id/approve', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), approveStudentEvent);
+apiRouter.put('/events/:id/approve', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), approveStudentEvent);
 apiRouter.post('/events/:id/reject', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), rejectStudentEvent);
+apiRouter.put('/events/:id/reject', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), rejectStudentEvent);
 apiRouter.put('/events/:id/review', authenticate, requireRole(['College Super Admin', 'College Admin']), requireAdminPermission('manageEventRequests'), (req, res) => {
   if (req.body && req.body.action === 'reject') {
     return rejectStudentEvent(req, res);

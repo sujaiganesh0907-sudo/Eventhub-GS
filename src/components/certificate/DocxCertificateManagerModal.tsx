@@ -27,6 +27,7 @@ interface DocxCertificateManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: IEvent;
+  initialTab?: 'upload' | 'mapping' | 'issuance';
   onUpdated?: () => void;
 }
 
@@ -34,9 +35,12 @@ export const DocxCertificateManagerModal: React.FC<DocxCertificateManagerModalPr
   isOpen,
   onClose,
   event,
+  initialTab,
   onUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'mapping' | 'issuance'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'mapping' | 'issuance'>(
+    initialTab || (event.certificateTemplate?.isActivated ? 'issuance' : 'upload')
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -109,13 +113,18 @@ export const DocxCertificateManagerModal: React.FC<DocxCertificateManagerModalPr
 
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab);
+      } else {
+        setActiveTab(event.certificateTemplate?.isActivated ? 'issuance' : 'upload');
+      }
       fetchTemplateAndAttendees();
     } else {
       setError(null);
       setSuccess(null);
       setPreviewResult(null);
     }
-  }, [isOpen, event._id]);
+  }, [isOpen, event._id, initialTab]);
 
   // Handle DOCX file upload strictly
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

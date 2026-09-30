@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IEvent, ICollege } from '../types';
+import { useAuth } from '../context/AuthContext';
 import { EventCard } from '../components/event/EventCard';
 import { EventCardSkeleton } from '../components/common/Skeleton';
 import { EmptyState } from '../components/common/EmptyState';
@@ -35,9 +36,11 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
   onSelectTab,
   onOpenFilter,
 }) => {
+  const { user, studentProfile } = useAuth();
   const [mainView, setMainView] = useState<'events' | 'credentials'>('events');
   const [events, setEvents] = useState<IEvent[]>([]);
   const [colleges, setColleges] = useState<ICollege[]>([]);
+  const [connectedCollegeIds, setConnectedCollegeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategoryChip, setSelectedCategoryChip] = useState('All');
 
@@ -59,6 +62,17 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
 
       if (eventRes.success) setEvents(eventRes.events || []);
       if (collegeRes.success) setColleges(collegeRes.colleges || []);
+
+      if (user?.role === 'Student' && studentProfile?._id) {
+        try {
+          const connRes = await api.get<any>(`/social/student/${studentProfile._id}/connected-colleges`);
+          if (connRes?.success && Array.isArray(connRes.colleges)) {
+            setConnectedCollegeIds(connRes.colleges.map((c: any) => c._id));
+          }
+        } catch {
+          // graceful
+        }
+      }
     } catch (err) {
       console.error('Failed to load home events', err);
     } finally {
@@ -74,6 +88,11 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
   const displayedEvents = selectedCategoryChip === 'All'
     ? events
     : events.filter((e) => e.category.toLowerCase() === selectedCategoryChip.toLowerCase());
+
+  // Connected colleges events (Requirement 5)
+  const connectedCollegeEvents = displayedEvents.filter(
+    (e) => connectedCollegeIds.includes(e.hostCollegeId)
+  );
 
   // Segregate sections for Discovery (Section 12)
   const upcomingEvents = [...displayedEvents].sort(
@@ -185,6 +204,37 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
         </section>
       ) : (
         <>
+          {/* SECTION: Connected Colleges Feed (Requirement 5) */}
+          {connectedCollegeEvents.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-indigo-500" />
+                  <h2 className="text-lg font-black tracking-tight text-[var(--text-primary)]">
+                    Events from Your Connected Colleges
+                  </h2>
+                </div>
+                <button
+                  onClick={() => onSelectTab('events')}
+                  className="text-xs font-bold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  View all <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {connectedCollegeEvents.slice(0, 4).map((ev) => (
+                  <EventCard
+                    key={ev._id}
+                    event={ev}
+                    onViewEvent={onViewEvent}
+                    onRegister={onRegister}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* SECTION 1: Trending & Popular Events */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">

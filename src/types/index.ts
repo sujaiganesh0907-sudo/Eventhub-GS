@@ -48,6 +48,7 @@ export interface IStudentProfile {
   certificatesCount?: number;
   eventsCount?: number;
   registeredCount?: number;
+  attendedEventsCount?: number;
   organizedCount?: number;
 }
 

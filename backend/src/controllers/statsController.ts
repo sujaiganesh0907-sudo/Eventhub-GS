@@ -1,8 +1,14 @@
 import { Request, Response } from 'express';
-import { College, EventRegistration, Event, Certificate } from '../models/index';
+import { College, EventRegistration, Event, Certificate, User, StudentProfile } from '../models/index';
 
 export async function getPublicStats(_req: Request, res: Response) {
   try {
+    const totalUsers = await User.countDocuments({});
+    const totalStudents = await StudentProfile.countDocuments({});
+    const totalColleges = await College.countDocuments({});
+    const totalEvents = await Event.countDocuments({});
+    const activeEvents = await Event.countDocuments({ status: 'Published' });
+
     // 1. Premier Colleges: count verified colleges ONLY
     const allColleges = await College.find({}).exec();
     const verifiedCollegesCount = allColleges.filter(
@@ -22,10 +28,7 @@ export async function getPublicStats(_req: Request, res: Response) {
     const uniqueParticipantsCount = uniqueParticipantIds.size;
 
     // 3. Published Events count
-    const allEvents = await Event.find({}).exec();
-    const publishedEventsCount = allEvents.filter(
-      (e) => e.status === 'Published'
-    ).length;
+    const publishedEventsCount = activeEvents;
 
     // 4. Certificates issued
     const allCertificates = await Certificate.find({}).exec();
@@ -34,6 +37,11 @@ export async function getPublicStats(_req: Request, res: Response) {
     return res.json({
       success: true,
       stats: {
+        totalUsers,
+        totalStudents,
+        totalColleges,
+        totalEvents,
+        activeEvents,
         verifiedCollegesCount,
         participantsCount,
         uniqueParticipantsCount,

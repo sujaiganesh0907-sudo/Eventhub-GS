@@ -18,10 +18,21 @@ export async function getColleges(req: Request, res: Response) {
       );
     }
 
+    // Enrich with exact connection counts from Connection collection
+    const enriched = await Promise.all(
+      colleges.map(async (c) => {
+        const count = await Connection.countDocuments({ collegeId: c._id });
+        return {
+          ...c,
+          connectionsCount: count,
+        };
+      })
+    );
+
     return res.json({
       success: true,
-      total: colleges.length,
-      colleges,
+      total: enriched.length,
+      colleges: enriched,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

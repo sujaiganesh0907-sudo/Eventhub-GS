@@ -17,15 +17,19 @@ export async function toggleCollegeConnection(req: AuthenticatedRequest, res: Re
     if (existing) {
       // Disconnect
       await Connection.deleteOne({ _id: existing._id });
-      await College.updateOne({ _id: collegeId }, { $inc: { connectionsCount: -1 } });
-      await StudentProfile.updateOne({ _id: studentProfile._id }, { $inc: { connectionsCount: -1 } });
-      return res.json({ success: true, connected: false, message: 'Connection removed' });
+      const newCount = await Connection.countDocuments({ collegeId });
+      await College.updateOne({ _id: collegeId }, { $set: { connectionsCount: newCount } });
+      const newStudentCount = await Connection.countDocuments({ studentId: studentProfile._id });
+      await StudentProfile.updateOne({ _id: studentProfile._id }, { $set: { connectionsCount: newStudentCount } });
+      return res.json({ success: true, connected: false, connectionsCount: newCount, message: 'Connection removed' });
     } else {
       // Connect
       await Connection.create({ studentId: studentProfile._id, collegeId });
-      await College.updateOne({ _id: collegeId }, { $inc: { connectionsCount: 1 } });
-      await StudentProfile.updateOne({ _id: studentProfile._id }, { $inc: { connectionsCount: 1 } });
-      return res.json({ success: true, connected: true, message: 'Connected to college' });
+      const newCount = await Connection.countDocuments({ collegeId });
+      await College.updateOne({ _id: collegeId }, { $set: { connectionsCount: newCount } });
+      const newStudentCount = await Connection.countDocuments({ studentId: studentProfile._id });
+      await StudentProfile.updateOne({ _id: studentProfile._id }, { $set: { connectionsCount: newStudentCount } });
+      return res.json({ success: true, connected: true, connectionsCount: newCount, message: 'Connected to college' });
     }
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

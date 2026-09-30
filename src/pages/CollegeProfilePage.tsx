@@ -171,9 +171,11 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
         if (college) {
           setCollege({
             ...college,
-            connectionsCount: res.connected
-              ? (college.connectionsCount || 0) + 1
-              : Math.max(0, (college.connectionsCount || 0) - 1),
+            connectionsCount: typeof res.connectionsCount === 'number'
+              ? res.connectionsCount
+              : (res.connected
+                ? (college.connectionsCount || 0) + 1
+                : Math.max(0, (college.connectionsCount || 0) - 1)),
           });
         }
       }

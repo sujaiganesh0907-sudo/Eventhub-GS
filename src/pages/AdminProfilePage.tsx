@@ -80,7 +80,17 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
         api.get<any>('/admins/my-invitations'),
       ]);
 
-      if (rolesRes.success) setAdminRoles(rolesRes.adminRoles || []);
+      if (rolesRes.success) {
+        const roles = rolesRes.adminRoles || [];
+        setAdminRoles(roles);
+        const storedCollegeId = localStorage.getItem('eventhub_active_college');
+        if (storedCollegeId) {
+          const matchedRole = roles.find((r: any) => r.collegeId === storedCollegeId && r.status === 'Active');
+          if (matchedRole) {
+            handleSelectWorkspace(matchedRole);
+          }
+        }
+      }
       if (invitesRes.success) setPendingInvitations(invitesRes.invitations || []);
     } catch (err: any) {
       console.error('Failed to load admin roles', err);

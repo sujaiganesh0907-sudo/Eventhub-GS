@@ -58,6 +58,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
     isCollege ? 'published' : 'registered'
   );
   const [studentRegSubTab, setStudentRegSubTab] = useState<'upcoming' | 'completed'>('upcoming');
+  const [studentProposalSubTab, setStudentProposalSubTab] = useState<'all' | 'drafts' | 'pending' | 'approved'>('all');
 
   // Data
   const [registrations, setRegistrations] = useState<IEventRegistration[]>([]);
@@ -276,6 +277,51 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
               </button>
             </div>
           )}
+
+          {activeTab === 'proposals' && (
+            <div className="flex items-center gap-1 bg-[var(--surface-subtle)] p-1 rounded-xl border border-[var(--border-color)]">
+              <button
+                onClick={() => setStudentProposalSubTab('all')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  studentProposalSubTab === 'all'
+                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                    : 'text-[var(--text-secondary)]'
+                }`}
+              >
+                All ({studentProposals.length})
+              </button>
+              <button
+                onClick={() => setStudentProposalSubTab('drafts')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  studentProposalSubTab === 'drafts'
+                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                    : 'text-[var(--text-secondary)]'
+                }`}
+              >
+                Drafts ({studentProposals.filter((p) => p.status === 'Draft').length})
+              </button>
+              <button
+                onClick={() => setStudentProposalSubTab('pending')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  studentProposalSubTab === 'pending'
+                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                    : 'text-[var(--text-secondary)]'
+                }`}
+              >
+                Pending ({studentProposals.filter((p) => p.status === 'Pending Approval').length})
+              </button>
+              <button
+                onClick={() => setStudentProposalSubTab('approved')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  studentProposalSubTab === 'approved'
+                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                    : 'text-[var(--text-secondary)]'
+                }`}
+              >
+                Live ({studentProposals.filter((p) => p.status === 'Published' || p.status === 'Approved').length})
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -479,22 +525,29 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {studentProposals.map((prop) => (
-                    <OrganizedEventCard
-                      key={prop._id}
-                      event={prop}
-                      isStudent={true}
-                      onViewEvent={onViewEvent}
-                      onEditEvent={handleEditProposal}
-                      onDeleteEvent={handleDeleteProposal}
-                      onViewInsights={(ev) => setSelectedEventForInsights(ev)}
-                      onOpenCheckInDesk={(ev) => setSelectedEventForAttendance(ev)}
-                      onShareEvent={(ev) => {
-                        setEventToShare(ev);
-                        setShowShareModal(true);
-                      }}
-                    />
-                  ))}
+                  {studentProposals
+                    .filter((p) => {
+                      if (studentProposalSubTab === 'drafts') return p.status === 'Draft';
+                      if (studentProposalSubTab === 'pending') return p.status === 'Pending Approval';
+                      if (studentProposalSubTab === 'approved') return p.status === 'Published' || p.status === 'Approved';
+                      return true;
+                    })
+                    .map((prop) => (
+                      <OrganizedEventCard
+                        key={prop._id}
+                        event={prop}
+                        isStudent={true}
+                        onViewEvent={onViewEvent}
+                        onEditEvent={handleEditProposal}
+                        onDeleteEvent={handleDeleteProposal}
+                        onViewInsights={(ev) => setSelectedEventForInsights(ev)}
+                        onOpenCheckInDesk={(ev) => setSelectedEventForAttendance(ev)}
+                        onShareEvent={(ev) => {
+                          setEventToShare(ev);
+                          setShowShareModal(true);
+                        }}
+                      />
+                    ))}
                 </div>
               )}
             </div>

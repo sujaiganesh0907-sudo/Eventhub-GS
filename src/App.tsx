@@ -182,6 +182,12 @@ const AppContent: React.FC = () => {
       if (activeTab === 'view-event') {
         setActiveTab('events');
         updateUrl('events');
+      } else if (activeTab === 'college-profile') {
+        setActiveTab('colleges');
+        updateUrl('colleges');
+      } else if (activeTab === 'admin-profile') {
+        setActiveTab('profile');
+        updateUrl('profile');
       } else {
         navigateToTab(isAuthenticated ? 'home' : 'landing');
       }
@@ -470,6 +476,12 @@ const AppContent: React.FC = () => {
               onViewEvent={handleViewEvent}
               onSelectCollege={handleViewCollege}
               onNavigateToMessages={handleOpenMessages}
+              onOpenAdminAccess={(collegeId) => {
+                if (collegeId) {
+                  localStorage.setItem('eventhub_active_college', collegeId);
+                }
+                navigateToTab('admin-profile');
+              }}
               onBack={goBack}
             />
           )}
@@ -532,6 +544,33 @@ const AppContent: React.FC = () => {
             <NotificationsPage
               onSelectEvent={(eventId) => {
                 handleViewEvent(eventId);
+              }}
+              onOpenManageAdmins={(collegeId) => {
+                handleViewCollege(collegeId);
+              }}
+              onNavigateToTab={(tab, meta) => {
+                if (tab === 'messages') {
+                  handleOpenMessages(meta?.conversationId);
+                } else if (tab === 'profile') {
+                  pushNavState(isCollege ? 'college-profile' : 'profile', {
+                    selectedCollegeId: null,
+                    selectedStudentId: null,
+                  });
+                } else if (tab === 'college-profile') {
+                  if (meta?.collegeId) {
+                    handleViewCollege(meta.collegeId);
+                  } else {
+                    pushNavState('college-profile');
+                  }
+                } else if (tab === 'events') {
+                  if (meta?.eventId) {
+                    handleViewEvent(meta.eventId);
+                  } else {
+                    pushNavState('events');
+                  }
+                } else {
+                  navigateToTab(tab);
+                }
               }}
             />
           )}

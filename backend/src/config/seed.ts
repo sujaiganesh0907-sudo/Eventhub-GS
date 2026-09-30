@@ -67,7 +67,7 @@ async function ensureUsernamesAndCollections() {
     }
   }
 
-  // 2. Ensure college usernames & privacy
+  // 2. Ensure college usernames, privacy & exact connection counts from real Connection records
   const colleges = await College.find().exec();
   const collegeUsernameMap: Record<string, string> = {
     col_apex_tech_01: 'apextech',
@@ -81,11 +81,13 @@ async function ensureUsernamesAndCollections() {
       colUser = collegeUsernameMap[col._id] || col.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
     }
     const messagePrivacy = col.messagePrivacy || 'Everyone';
+    const realConns = await Connection.countDocuments({ collegeId: col._id });
 
-    if (col.username !== colUser || !col.messagePrivacy) {
+    if (col.username !== colUser || !col.messagePrivacy || col.connectionsCount !== realConns) {
       await College.findByIdAndUpdate(col._id, {
         username: colUser,
         messagePrivacy,
+        connectionsCount: realConns,
       });
     }
   }
