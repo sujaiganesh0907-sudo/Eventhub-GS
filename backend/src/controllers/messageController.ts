@@ -68,6 +68,23 @@ async function getParticipantDetails(userId: string, activeCollegeId?: string): 
 }
 
 /**
+ * Helper to verify manageMessages permission for college admin actions (Requirement 14)
+ */
+export async function checkManageMessagesPermission(user: any, collegeId: string): Promise<boolean> {
+  if (!user || !collegeId) return false;
+  if (user.role === 'College Super Admin' && user.collegeId === collegeId) return true;
+  const membership = await CollegeAdminMembership.findOne({
+    collegeId,
+    userId: user._id,
+    status: 'Active',
+  });
+  if (!membership) return false;
+  if (membership.role === 'College Super Admin') return true;
+  const perms = membership.permissions || [];
+  return perms.includes('manageMessages') || perms.includes('ALL_PERMISSIONS');
+}
+
+/**
  * Validate message privacy permission between sender and receiver
  */
 async function checkMessagePermission(senderUserId: string, targetUserId: string): Promise<{ allowed: boolean; reason?: string }> {
@@ -146,15 +163,47 @@ async function checkMessagePermission(senderUserId: string, targetUserId: string
 
 /**
  * GET /api/messages/conversations
+ * Supports personal student conversations or separate College Admin Workspace Inbox (Requirements 14, 15)
  */
 export async function getConversations(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    // Find all conversations containing this user
+    const { asCollegeId } = req.query;
+    const activeCollegeId =
+      typeof asCollegeId === 'string' && asCollegeId.trim()
+        ? asCollegeId.trim()
+        : (req.headers['x-college-id'] as string) || undefined;
+
+    let userConvs: any[] = [];
     const allConvs = await Conversation.find().sort({ updatedAt: -1 }).exec();
-    const userConvs = allConvs.filter((c) => c.participants && c.participants.includes(user._id));
+
+    if (activeCollegeId && (user.role === 'College Super Admin' || user.collegeId === activeCollegeId || req.query.asCollegeId)) {
+      // 1. Verify manageMessages permission for college workspace (Requirement 14)
+      const hasPerm = await checkManageMessagesPermission(user, activeCollegeId);
+      if (!hasPerm) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. You lack the 'manageMessages' permission for this college.",
+        });
+      }
+
+      const college = await College.findById(activeCollegeId);
+      const superAdminId = college?.superAdminId;
+
+      // College Workspace Inbox: filter conversations for this college specifically
+      userConvs = allConvs.filter(
+        (c) =>
+          c.collegeId === activeCollegeId ||
+          (superAdminId && c.participants && c.participants.includes(superAdminId))
+      );
+    } else {
+      // 2. Personal Student / User Inbox: separate from collegiate administration
+      userConvs = allConvs.filter(
+        (c) => c.participants && c.participants.includes(user._id) && !c.collegeId
+      );
+    }
 
     // Get preferences
     const preferences = await ConversationPreference.find({ userId: user._id }).exec();
@@ -168,7 +217,7 @@ export async function getConversations(req: AuthenticatedRequest, res: Response)
         })
         .map(async (c) => {
           const pref = prefMap.get(c._id);
-          const otherParticipantIds = c.participants.filter((p) => p !== user._id);
+          const otherParticipantIds = c.participants.filter((p: string) => p !== user._id);
           const otherId = otherParticipantIds[0] || user._id;
 
           // Fresh details for other participant
@@ -199,30 +248,62 @@ export async function getConversations(req: AuthenticatedRequest, res: Response)
 
 /**
  * POST /api/messages/conversations
- * Start or get existing conversation with a target user
+ * Start or get existing conversation with a target user (Requirements 15, 17)
  */
 export async function startOrGetConversation(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const { targetUserId, targetStudentId, targetCollegeId } = req.body;
+    const { targetUserId, targetStudentId, targetCollegeId, asCollegeId } = req.body;
     let actualTargetUserId = targetUserId;
 
+    // Robust resolution: targetStudentId might be studentProfile._id, or studentProfile.userId, or user._id
     if (!actualTargetUserId && targetStudentId) {
-      const sp = await StudentProfile.findById(targetStudentId);
-      if (sp) actualTargetUserId = sp.userId;
+      let sp = await StudentProfile.findById(targetStudentId);
+      if (!sp) {
+        sp = await StudentProfile.findOne({
+          $or: [{ userId: targetStudentId }, { id: targetStudentId }, { _id: targetStudentId }],
+        });
+      }
+      if (sp) {
+        actualTargetUserId = sp.userId;
+      } else {
+        const u = await User.findById(targetStudentId);
+        if (u) actualTargetUserId = u._id;
+      }
     } else if (!actualTargetUserId && targetCollegeId) {
       const col = await College.findById(targetCollegeId);
-      if (col && col.superAdminId) actualTargetUserId = col.superAdminId;
+      if (col) {
+        if (col.superAdminId) {
+          actualTargetUserId = col.superAdminId;
+        } else {
+          const superAdminMem = await CollegeAdminMembership.findOne({
+            collegeId: col._id,
+            role: 'College Super Admin',
+          });
+          if (superAdminMem) actualTargetUserId = superAdminMem.userId;
+        }
+      }
     }
 
     if (!actualTargetUserId) {
-      return res.status(400).json({ success: false, message: 'Target user ID is required.' });
+      return res.status(400).json({ success: false, message: 'Target user ID could not be resolved.' });
     }
 
     if (actualTargetUserId === user._id) {
       return res.status(400).json({ success: false, message: 'Cannot start a conversation with yourself.' });
+    }
+
+    // Verify manageMessages permission if starting conversation on behalf of a college workspace
+    if (asCollegeId) {
+      const hasPerm = await checkManageMessagesPermission(user, asCollegeId);
+      if (!hasPerm) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. You lack the 'manageMessages' permission for this college.",
+        });
+      }
     }
 
     // Check message privacy permissions
@@ -238,7 +319,8 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
         c.participants &&
         c.participants.length === 2 &&
         c.participants.includes(user._id) &&
-        c.participants.includes(actualTargetUserId)
+        c.participants.includes(actualTargetUserId) &&
+        (!asCollegeId || c.collegeId === asCollegeId)
     );
 
     if (existing) {
@@ -260,11 +342,12 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
 
     // Create new conversation
     const [meDetails, otherDetails] = await Promise.all([
-      getParticipantDetails(user._id),
+      getParticipantDetails(user._id, asCollegeId),
       getParticipantDetails(actualTargetUserId),
     ]);
 
     const newConv = await Conversation.create({
+      collegeId: asCollegeId || undefined,
       participants: [user._id, actualTargetUserId],
       participantDetails: [meDetails!, otherDetails!].filter(Boolean),
       lastMessage: undefined,
@@ -437,7 +520,18 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
     const activeCollegeId =
       (req.headers['x-college-id'] as string) ||
       req.body?.asCollegeId ||
+      conv.collegeId ||
       undefined;
+
+    if (activeCollegeId) {
+      const hasPerm = await checkManageMessagesPermission(user, activeCollegeId);
+      if (!hasPerm) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. You lack the 'manageMessages' permission for this college.",
+        });
+      }
+    }
 
     const senderDetails = await getParticipantDetails(user._id, activeCollegeId);
     const senderName = senderDetails?.name || user.fullName;
@@ -453,7 +547,7 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
       senderRole,
       senderAvatar,
       collegeId: senderDetails?.collegeId || undefined,
-      sentByAdminId: isSendingAsCollege && user.role !== 'College Super Admin' ? user._id : undefined,
+      sentByAdminId: isSendingAsCollege ? user._id : undefined,
       text: text.trim(),
       attachmentUrl: attachmentUrl || undefined,
       attachmentType: attachmentType || (attachmentUrl ? 'image' : undefined),

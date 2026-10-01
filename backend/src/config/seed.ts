@@ -3,6 +3,7 @@ import {
   User,
   StudentProfile,
   College,
+  CollegeAdminMembership,
   Event,
   PlacementPost,
   InfrastructurePost,
@@ -90,6 +91,37 @@ async function ensureUsernamesAndCollections() {
         connectionsCount: realConns,
       });
     }
+  }
+
+  // Ensure Nexus Engineering College Super Admin user exists for conversations/messaging
+  const nexusAdminUser = await User.findById('usr_col_nexus_admin');
+  if (!nexusAdminUser) {
+    const passwordHash = await bcrypt.hash('Password123!', 10);
+    await User.create({
+      _id: 'usr_col_nexus_admin',
+      email: 'contact@nexuseng.edu',
+      passwordHash,
+      role: 'College Super Admin',
+      fullName: 'Dean Marcus Vance',
+      isEmailVerified: true,
+      collegeId: 'col_nexus_eng_03',
+    });
+  }
+
+  const nexusMembership = await CollegeAdminMembership.findOne({ collegeId: 'col_nexus_eng_03', role: 'College Super Admin' });
+  if (!nexusMembership) {
+    await CollegeAdminMembership.create({
+      _id: 'mem_col_nexus_super',
+      collegeId: 'col_nexus_eng_03',
+      userId: 'usr_col_nexus_admin',
+      role: 'College Super Admin',
+      name: 'Dean Marcus Vance',
+      email: 'contact@nexuseng.edu',
+      username: 'nexuseng',
+      permissions: ['ALL_PERMISSIONS'],
+      status: 'Active',
+      addedBy: 'System',
+    });
   }
 
   syncPersistDBNow();

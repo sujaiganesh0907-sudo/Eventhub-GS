@@ -104,6 +104,11 @@ import {
   getMyAdminRoles,
   getAdminActivity,
   createAdminActivity,
+  getAdminPinStatus,
+  setupAdminPin,
+  verifyAdminPin,
+  requestForgotAdminPinOtp,
+  resetAdminPinWithOtp,
 } from '../controllers/adminController';
 import {
   getUserNotifications,
@@ -268,6 +273,13 @@ apiRouter.post('/admins/invitations/:membershipId/reject', authenticate, rejectA
 apiRouter.get('/admins/my-roles', authenticate, getMyAdminRoles);
 apiRouter.get('/admins/activity', authenticate, getAdminActivity);
 apiRouter.post('/admins/activity', authenticate, createAdminActivity);
+
+// 4-Digit Admin Access PIN Routes (Requirements 2, 3, 4, 5)
+apiRouter.get('/admins/pin/status', authenticate, getAdminPinStatus);
+apiRouter.post('/admins/pin/setup', authenticate, setupAdminPin);
+apiRouter.post('/admins/pin/verify', authenticate, verifyAdminPin);
+apiRouter.post('/admins/pin/forgot', authenticate, requestForgotAdminPinOtp);
+apiRouter.post('/admins/pin/reset', authenticate, resetAdminPinWithOtp);
 
 // 12. Notifications & Reminders
 apiRouter.get('/notifications', authenticate, getUserNotifications);

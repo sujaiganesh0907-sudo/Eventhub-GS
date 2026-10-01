@@ -34,30 +34,32 @@ async function isAuthorizedForCertificates(user: any, event: any): Promise<boole
   if (!user || !event) return false;
 
   // Student creator check
-  if (user.role === 'Student') {
+  if (user.role === 'Student' && event.creatorUserId === user._id) {
     const isApprovedOrCompleted = ['Published', 'Approved', 'Completed'].includes(event.status);
-    return event.creatorUserId === user._id && isApprovedOrCompleted;
+    return isApprovedOrCompleted;
   }
 
   // College Super Admin check
-  if (user.role === 'College Super Admin') {
-    return event.hostCollegeId === user.collegeId;
+  if (user.role === 'College Super Admin' && event.hostCollegeId === user.collegeId) {
+    return true;
   }
 
-  // College Admin check
-  if (user.role === 'College Admin' && event.hostCollegeId === user.collegeId) {
-    const membership = await CollegeAdminMembership.findOne({
-      collegeId: user.collegeId,
-      userId: user._id,
-      status: 'Active',
-    });
-    if (!membership) return false;
+  // College Admin membership check (works whether base account role is Student or College Admin)
+  const membership = await CollegeAdminMembership.findOne({
+    collegeId: event.hostCollegeId,
+    userId: user._id,
+    status: 'Active',
+  });
+  if (membership) {
+    if (membership.role === 'College Super Admin') return true;
     const perms = membership.permissions || [];
     return (
       perms.includes('manageCertificates') ||
       perms.includes('manageCert') ||
+      perms.includes('issueCertificates') ||
       perms.includes('CERTIFICATES_MANAGE') ||
-      perms.includes('ALL_PERMISSIONS')
+      perms.includes('ALL_PERMISSIONS') ||
+      perms.includes('createEvents')
     );
   }
 

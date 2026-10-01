@@ -340,7 +340,7 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
           <button
             onClick={() => switchAccount('student')}
             className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
@@ -367,20 +367,6 @@ export const SettingsPage: React.FC = () => {
               <Building2 className="w-4 h-4 text-blue-600" /> Dr. Arthur Vance
             </div>
             <p className="text-[11px] text-[var(--text-muted)] mt-1">College Super Admin</p>
-          </button>
-
-          <button
-            onClick={() => switchAccount('college-admin')}
-            className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-              user?.role === 'College Admin'
-                ? 'border-[var(--primary-color)] bg-[var(--primary-light)]'
-                : 'border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)]'
-            }`}
-          >
-            <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
-              <Shield className="w-4 h-4 text-indigo-600" /> Marcus Brody
-            </div>
-            <p className="text-[11px] text-[var(--text-muted)] mt-1">Staff Event Coordinator</p>
           </button>
         </div>
       </div>

@@ -118,6 +118,7 @@ export const ManageAdminsModal: React.FC<ManageAdminsModalProps> = ({
           )
         );
         setEditingMembership(null);
+        await fetchAdminsData();
       } else {
         setActionError(res.message || 'Failed to update permissions.');
       }

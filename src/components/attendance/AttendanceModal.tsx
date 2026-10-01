@@ -301,9 +301,11 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
     setExportingReport(true);
     try {
       const token = localStorage.getItem('eventhub_token');
+      const activeCollege = localStorage.getItem('eventhub_active_college') || event.hostCollegeId;
       const response = await fetch(`/api/attendance/event/${event._id}/export`, {
         headers: {
           Authorization: `Bearer ${token}`,
+          ...(activeCollege ? { 'x-college-id': activeCollege } : {}),
         },
       });
 

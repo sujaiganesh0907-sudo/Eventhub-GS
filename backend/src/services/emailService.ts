@@ -34,7 +34,7 @@ export interface SendOtpOptions {
   email: string;
   otp: string;
   recipientName?: string;
-  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION';
+  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'RESET_ADMIN_PIN';
 }
 
 export async function sendOtpEmail(options: SendOtpOptions): Promise<{ success: boolean; error?: string }> {
@@ -45,9 +45,12 @@ export async function sendOtpEmail(options: SendOtpOptions): Promise<{ success: 
       return { success: false, error: 'Invalid email address provided.' };
     }
 
-    const title = purpose === 'STUDENT_REGISTRATION'
-      ? 'Verify Your Student Account'
-      : 'Verify Your Official College Account';
+    const title =
+      purpose === 'RESET_ADMIN_PIN'
+        ? 'Reset Your Admin Access PIN'
+        : purpose === 'STUDENT_REGISTRATION'
+        ? 'Verify Your Student Account'
+        : 'Verify Your Official College Account';
 
     console.log('\n======================================================');
     console.log(`[EMAIL SERVICE] OTP DISPATCH to: ${email}`);

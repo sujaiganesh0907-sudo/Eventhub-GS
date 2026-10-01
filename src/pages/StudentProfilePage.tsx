@@ -54,6 +54,7 @@ import {
   MessageSquare,
   Shield,
   ShieldAlert,
+  Lock,
   Upload,
   ChevronRight,
 } from 'lucide-react';
@@ -112,25 +113,165 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const [followerStudents, setFollowerStudents] = useState<IStudentProfile[]>([]);
   const [socialLoading, setSocialLoading] = useState(false);
 
-  // Admin Access Modal State (Requirements 2 & 5)
+  // Admin Access Modal State (Requirements 2, 3, 4, 5)
   const [showAdminAccessModal, setShowAdminAccessModal] = useState(false);
   const [adminRoles, setAdminRoles] = useState<any[]>([]);
   const [loadingAdminRoles, setLoadingAdminRoles] = useState(false);
+  const [isPinVerifiedInSession, setIsPinVerifiedInSession] = useState(false);
+  const [hasConfiguredPin, setHasConfiguredPin] = useState<boolean | null>(null);
+  const [pinStep, setPinStep] = useState<'enter' | 'setup' | 'forgot'>('enter');
+  const [pinInput, setPinInput] = useState('');
+  const [confirmPinInput, setConfirmPinInput] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPin, setForgotNewPin] = useState('');
+  const [forgotConfirmPin, setForgotConfirmPin] = useState('');
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinNotice, setPinNotice] = useState<string | null>(null);
 
   const handleOpenAdminAccessModal = async () => {
     setShowAdminAccessModal(true);
     setLoadingAdminRoles(true);
+    setPinError(null);
+    setPinNotice(null);
+    setPinInput('');
+    setConfirmPinInput('');
     try {
       const res = await api.get<any>('/admins/my-roles');
-      if (res.success) {
-        setAdminRoles(res.adminRoles || []);
-      } else {
-        setAdminRoles([]);
+      const roles = res.success ? (res.adminRoles || []) : [];
+      setAdminRoles(roles);
+
+      const activeList = roles.filter((r: any) => r.status === 'Active');
+      if (activeList.length > 0 && !isPinVerifiedInSession) {
+        // Check PIN status
+        const pinRes = await api.get<any>('/admins/pin/status');
+        if (pinRes.success) {
+          setHasConfiguredPin(pinRes.hasPin);
+          setPinStep(pinRes.hasPin ? 'enter' : 'setup');
+        }
       }
     } catch {
       setAdminRoles([]);
     } finally {
       setLoadingAdminRoles(false);
+    }
+  };
+
+  const handleSetupPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError(null);
+    setPinNotice(null);
+    if (!/^\d{4}$/.test(pinInput.trim())) {
+      setPinError('PIN must be exactly 4 digits.');
+      return;
+    }
+    if (pinInput.trim() !== confirmPinInput.trim()) {
+      setPinError('PINs do not match.');
+      return;
+    }
+    setPinLoading(true);
+    try {
+      const res = await api.post<any>('/admins/pin/setup', {
+        pin: pinInput.trim(),
+        confirmPin: confirmPinInput.trim(),
+      });
+      if (res.success) {
+        setHasConfiguredPin(true);
+        setIsPinVerifiedInSession(true);
+        setPinInput('');
+        setConfirmPinInput('');
+      } else {
+        setPinError(res.message || 'Failed to setup PIN.');
+      }
+    } catch (err: any) {
+      setPinError(err.message || 'Error setting up PIN.');
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  const handleVerifyPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError(null);
+    setPinNotice(null);
+    if (!/^\d{4}$/.test(pinInput.trim())) {
+      setPinError('Please enter your 4-digit PIN.');
+      return;
+    }
+    setPinLoading(true);
+    try {
+      const res = await api.post<any>('/admins/pin/verify', {
+        pin: pinInput.trim(),
+      });
+      if (res.success && res.verified) {
+        setIsPinVerifiedInSession(true);
+        setPinInput('');
+      } else {
+        setPinError(res.message || 'Incorrect PIN.');
+      }
+    } catch (err: any) {
+      setPinError(err.message || 'Incorrect 4-digit PIN. Please try again.');
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  const handleRequestForgotOtp = async () => {
+    setPinError(null);
+    setPinNotice(null);
+    setPinLoading(true);
+    try {
+      const res = await api.post<any>('/admins/pin/forgot', {});
+      if (res.success) {
+        setPinStep('forgot');
+        setPinNotice(res.message || 'Verification code sent to registered email.');
+      } else {
+        setPinError(res.message || 'Unable to send reset code.');
+      }
+    } catch (err: any) {
+      setPinError(err.message || 'Failed to request reset code.');
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  const handleResetPinWithOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError(null);
+    setPinNotice(null);
+    if (!forgotOtp.trim()) {
+      setPinError('Please enter the 6-digit verification code.');
+      return;
+    }
+    if (!/^\d{4}$/.test(forgotNewPin.trim())) {
+      setPinError('New PIN must be exactly 4 digits.');
+      return;
+    }
+    if (forgotNewPin.trim() !== forgotConfirmPin.trim()) {
+      setPinError('PINs do not match.');
+      return;
+    }
+    setPinLoading(true);
+    try {
+      const res = await api.post<any>('/admins/pin/reset', {
+        otp: forgotOtp.trim(),
+        newPin: forgotNewPin.trim(),
+        confirmPin: forgotConfirmPin.trim(),
+      });
+      if (res.success) {
+        setHasConfiguredPin(true);
+        setIsPinVerifiedInSession(true);
+        setPinStep('enter');
+        setForgotOtp('');
+        setForgotNewPin('');
+        setForgotConfirmPin('');
+      } else {
+        setPinError(res.message || 'Failed to reset PIN.');
+      }
+    } catch (err: any) {
+      setPinError(err.message || 'Failed to reset PIN.');
+    } finally {
+      setPinLoading(false);
     }
   };
 
@@ -1277,6 +1418,197 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                     Close
                   </button>
                 </div>
+              </div>
+            ) : !isPinVerifiedInSession ? (
+              /* PIN-Gated Security Challenge (Requirements 2, 3, 4, 5) */
+              <div className="p-4 sm:p-6 space-y-4">
+                <div className="text-center space-y-1.5">
+                  <div className="w-12 h-12 rounded-2xl bg-[var(--primary-light)] text-[var(--primary-color)] flex items-center justify-center mx-auto shadow-xs">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-black text-[var(--text-primary)]">
+                    {pinStep === 'setup'
+                      ? 'Create 4-Digit Admin Access PIN'
+                      : pinStep === 'forgot'
+                      ? 'Reset Admin Access PIN'
+                      : 'Enter 4-Digit Admin Access PIN'}
+                  </h4>
+                  <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
+                    {pinStep === 'setup'
+                      ? 'Set up a secure 4-digit numeric PIN to protect your authorized collegiate workspaces.'
+                      : pinStep === 'forgot'
+                      ? 'Enter the 6-digit email verification code and choose a new 4-digit PIN.'
+                      : 'Authorized institutional workspaces are protected. Enter your 4-digit PIN to proceed.'}
+                  </p>
+                </div>
+
+                {pinNotice && (
+                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>{pinNotice}</span>
+                  </div>
+                )}
+
+                {pinError && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-medium flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{pinError}</span>
+                  </div>
+                )}
+
+                {/* FORM A: ENTER PIN */}
+                {pinStep === 'enter' && (
+                  <form onSubmit={handleVerifyPin} className="space-y-4 max-w-xs mx-auto">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 text-center">
+                        4-Digit PIN
+                      </label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="\d{4}"
+                        value={pinInput}
+                        onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                        placeholder="••••"
+                        autoFocus
+                        className="w-full text-center tracking-[0.5em] text-lg font-mono font-bold py-2.5 px-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-[var(--text-primary)] focus:outline-hidden transition-all"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={pinLoading || pinInput.length !== 4}
+                      className="w-full py-2.5 px-4 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {pinLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                      <span>Unlock Admin Access</span>
+                    </button>
+
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={handleRequestForgotOtp}
+                        disabled={pinLoading}
+                        className="text-xs text-[var(--primary-color)] hover:underline font-semibold cursor-pointer"
+                      >
+                        Forgot PIN? Reset via Email OTP
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* FORM B: SETUP INITIAL PIN */}
+                {pinStep === 'setup' && (
+                  <form onSubmit={handleSetupPin} className="space-y-3.5 max-w-xs mx-auto">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                        Choose 4-Digit PIN
+                      </label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="\d{4}"
+                        value={pinInput}
+                        onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                        placeholder="••••"
+                        className="w-full text-center tracking-[0.4em] text-base font-mono font-bold py-2 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                        Confirm 4-Digit PIN
+                      </label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="\d{4}"
+                        value={confirmPinInput}
+                        onChange={(e) => setConfirmPinInput(e.target.value.replace(/\D/g, ''))}
+                        placeholder="••••"
+                        className="w-full text-center tracking-[0.4em] text-base font-mono font-bold py-2 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={pinLoading || pinInput.length !== 4 || confirmPinInput.length !== 4}
+                      className="w-full py-2.5 px-4 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {pinLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>Set PIN & View Workspaces</span>
+                    </button>
+                  </form>
+                )}
+
+                {/* FORM C: FORGOT PIN OTP RESET */}
+                {pinStep === 'forgot' && (
+                  <form onSubmit={handleResetPinWithOtp} className="space-y-3.5 max-w-xs mx-auto">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                        6-Digit Email Code
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={forgotOtp}
+                        onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                        placeholder="123456"
+                        className="w-full text-center tracking-widest text-base font-mono font-bold py-2 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                        New 4-Digit PIN
+                      </label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={forgotNewPin}
+                        onChange={(e) => setForgotNewPin(e.target.value.replace(/\D/g, ''))}
+                        placeholder="••••"
+                        className="w-full text-center tracking-[0.4em] text-base font-mono font-bold py-2 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                        Confirm New PIN
+                      </label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={forgotConfirmPin}
+                        onChange={(e) => setForgotConfirmPin(e.target.value.replace(/\D/g, ''))}
+                        placeholder="••••"
+                        className="w-full text-center tracking-[0.4em] text-base font-mono font-bold py-2 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-[var(--text-primary)] focus:outline-hidden"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={pinLoading || forgotOtp.length !== 6 || forgotNewPin.length !== 4 || forgotConfirmPin.length !== 4}
+                      className="w-full py-2.5 px-4 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {pinLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>Reset PIN & Unlock</span>
+                    </button>
+
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPinStep('enter');
+                          setPinError(null);
+                        }}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] font-semibold cursor-pointer"
+                      >
+                        Cancel, Back to PIN Entry
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             ) : (
               <div className="space-y-4">

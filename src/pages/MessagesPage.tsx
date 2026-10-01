@@ -38,6 +38,9 @@ import { SearchHistoryDropdown } from '../components/common/SearchHistoryDropdow
 
 interface MessagesPageProps {
   initialConversationId?: string | null;
+  asCollegeId?: string;
+  collegeName?: string;
+  collegeLogo?: string;
   onViewEvent?: (eventId: string) => void;
   onViewStudent?: (studentId: string) => void;
   onViewCollege?: (collegeId: string) => void;
@@ -46,6 +49,9 @@ interface MessagesPageProps {
 
 export const MessagesPage: React.FC<MessagesPageProps> = ({
   initialConversationId,
+  asCollegeId,
+  collegeName,
+  collegeLogo,
   onViewEvent,
   onViewStudent,
   onViewCollege,

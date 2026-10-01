@@ -10,6 +10,7 @@ export interface IUser {
   isEmailVerified: boolean;
   emailVerificationToken?: string;
   collegeId?: string; // If College Admin/Super Admin
+  adminPinHash?: string; // Hashed 4-digit Admin Access PIN (never plain)
   createdAt: string;
   updatedAt: string;
 }
@@ -73,7 +74,7 @@ export interface ICollegeAdminMembership {
   email: string;
   username?: string;
   permissions: string[];
-  status?: 'Active' | 'Invited' | 'Rejected';
+  status?: 'Active' | 'Invited' | 'Rejected' | 'Disabled';
   invitedBy?: string;
   invitedAt?: string;
   acceptedAt?: string;
@@ -530,7 +531,7 @@ export interface IOtpVerification {
   id?: string;
   email: string;
   otpHash: string;
-  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION';
+  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'RESET_ADMIN_PIN';
   payload?: any;
   expiresAt: string;
   resendAvailableAt: string;
@@ -552,6 +553,7 @@ export interface IConversationParticipant {
 export interface IConversation {
   _id: string;
   id?: string;
+  collegeId?: string; // If this conversation is in a College Workspace Inbox
   participants: string[]; // user IDs
   participantDetails: IConversationParticipant[];
   lastMessage?: {

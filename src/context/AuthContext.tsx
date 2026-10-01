@@ -26,7 +26,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   updateStudentProfileLocal: (profile: Partial<IStudentProfile>) => void;
   updateCollegeProfileLocal: (college: Partial<ICollege>) => void;
-  switchAccount: (role: 'student' | 'college-super' | 'college-admin') => Promise<void>;
+  switchAccount: (role: 'student' | 'college-super') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -162,10 +162,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCollege((prev) => (prev ? { ...prev, ...updated } : (updated as ICollege)));
   };
 
-  const switchAccount = async (target: 'student' | 'college-super' | 'college-admin') => {
+  const switchAccount = async (target: 'student' | 'college-super') => {
     let email = 'alex.chen@student.edu';
     if (target === 'college-super') email = 'admin@apextech.edu';
-    if (target === 'college-admin') email = 'events@apextech.edu';
     await login(email, 'Password123!');
   };
 

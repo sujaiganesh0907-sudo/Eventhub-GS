@@ -14,6 +14,7 @@ import {
 import { AuthenticatedRequest } from '../middleware/auth';
 import { generatePdfCertificate } from '../services/certificateService';
 import { sendCertificateEmail } from '../services/emailService';
+import { logAdminActivityHelper } from './adminController';
 
 /**
  * Helper to check whether user has event management / attendance access.
@@ -26,30 +27,31 @@ export async function isUserAuthorizedForEventAttendance(user: any, event: any):
   if (!user || !event) return false;
 
   // 1. Student Creator check
-  if (user.role === 'Student') {
+  if (user.role === 'Student' && event.creatorUserId === user._id) {
     const isApprovedOrCompleted = ['Published', 'Approved', 'Completed'].includes(event.status);
-    return event.creatorUserId === user._id && isApprovedOrCompleted;
+    return isApprovedOrCompleted;
   }
 
   // 2. College Super Admin check
-  if (user.role === 'College Super Admin') {
-    return event.hostCollegeId === user.collegeId;
+  if (user.role === 'College Super Admin' && event.hostCollegeId === user.collegeId) {
+    return true;
   }
 
-  // 3. College Admin check
-  if (user.role === 'College Admin' && event.hostCollegeId === user.collegeId) {
-    const membership = await CollegeAdminMembership.findOne({
-      collegeId: user.collegeId,
-      userId: user._id,
-      status: 'Active',
-    });
-    if (!membership) return false;
+  // 3. College Admin check (works whether base account role is Student or College Admin)
+  const membership = await CollegeAdminMembership.findOne({
+    collegeId: event.hostCollegeId,
+    userId: user._id,
+    status: 'Active',
+  });
+  if (membership) {
+    if (membership.role === 'College Super Admin') return true;
     const perms = membership.permissions || [];
     return (
       perms.includes('manageAttendance') ||
       perms.includes('ALL_PERMISSIONS') ||
       perms.includes('ATTENDANCE_SCAN') ||
-      perms.includes('ATTENDANCE_MANAGE')
+      perms.includes('ATTENDANCE_MANAGE') ||
+      perms.includes('createEvents')
     );
   }
 
@@ -349,6 +351,7 @@ export async function markAttendance(req: AuthenticatedRequest, res: Response) {
       message: `Attendance marked as ${status} for ${registration.studentName}.`,
       registrationId: registration.registrationId,
       status,
+      attended: status === 'Present',
       timestamp: now,
       registration: updatedReg,
     });
@@ -395,6 +398,31 @@ export async function getEventAttendanceList(req: AuthenticatedRequest, res: Res
     const present = registrations.filter((r) => r.attended).length;
     const absent = registrations.filter((r) => !r.attended).length;
 
+    const mappedList = registrations.map((r) => ({
+      _id: r._id,
+      registrationId: r.registrationId,
+      passId: r.qrToken,
+      qrToken: r.qrToken,
+      studentName: r.studentName,
+      studentEmail: r.studentEmail,
+      studentPhone: r.studentPhone,
+      studentCollege: r.studentCollege,
+      studentDepartment: r.studentDepartment,
+      studentYear: r.studentYear,
+      status: r.attended ? 'Present' : 'Absent',
+      attended: r.attended,
+      attendedAt: r.attendedAt || null,
+      attendanceMethod: r.attendanceMethod || (r.attended ? 'QR_SCAN' : undefined),
+      paymentStatus: r.paymentStatus,
+      certificateIssued: r.certificateIssued,
+      certificateStatus: r.certificateStatus || (r.attended ? (r.certificateIssued ? 'Generated' : 'Pending') : 'Not Eligible'),
+      certificateId: r.certificateId,
+      certificateFileUrl: r.certificateFileUrl,
+      certificateEmailSent: r.certificateEmailSent,
+      customResponses: r.customResponses || {},
+      qrCodeUrl: r.qrCodeUrl,
+    }));
+
     return res.json({
       success: true,
       attendanceFinalized: Boolean(event.attendanceFinalized),
@@ -406,30 +434,8 @@ export async function getEventAttendanceList(req: AuthenticatedRequest, res: Res
         absent,
         pending: registered - present,
       },
-      list: registrations.map((r) => ({
-        _id: r._id,
-        registrationId: r.registrationId,
-        passId: r.qrToken,
-        qrToken: r.qrToken,
-        studentName: r.studentName,
-        studentEmail: r.studentEmail,
-        studentPhone: r.studentPhone,
-        studentCollege: r.studentCollege,
-        studentDepartment: r.studentDepartment,
-        studentYear: r.studentYear,
-        status: r.attended ? 'Present' : 'Absent',
-        attended: r.attended,
-        attendedAt: r.attendedAt || null,
-        attendanceMethod: r.attendanceMethod || (r.attended ? 'QR_SCAN' : undefined),
-        paymentStatus: r.paymentStatus,
-        certificateIssued: r.certificateIssued,
-        certificateStatus: r.certificateStatus || (r.attended ? (r.certificateIssued ? 'Generated' : 'Pending') : 'Not Eligible'),
-        certificateId: r.certificateId,
-        certificateFileUrl: r.certificateFileUrl,
-        certificateEmailSent: r.certificateEmailSent,
-        customResponses: r.customResponses || {},
-        qrCodeUrl: r.qrCodeUrl,
-      })),
+      list: mappedList,
+      registrations: mappedList,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

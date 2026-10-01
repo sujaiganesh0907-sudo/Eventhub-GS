@@ -163,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider mb-1.5">
             Quick Switch Account
           </p>
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => switchAccount('student')}
               title="Switch to Student account"
@@ -185,17 +185,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               Super Admin
-            </button>
-            <button
-              onClick={() => switchAccount('college-admin')}
-              title="Switch to College Admin"
-              className={`text-[10px] font-medium py-1 px-1.5 rounded-md border text-center transition-colors cursor-pointer ${
-                user?.role === 'College Admin'
-                  ? 'bg-[var(--primary-light)] border-[var(--primary-color)] text-[var(--primary-color)] font-bold'
-                  : 'border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-              }`}
-            >
-              Admin
             </button>
           </div>
         </div>

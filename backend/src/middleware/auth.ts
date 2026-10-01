@@ -134,8 +134,11 @@ export function requireAdminPermission(permission: string) {
       const hasPerm =
         permissions.includes('ALL_PERMISSIONS') ||
         permissions.includes(permission) ||
-        (permission === 'manageCertificates' && permissions.includes('manageCert')) ||
-        (permission === 'manageCert' && permissions.includes('manageCertificates'));
+        (permission === 'manageCertificates' && (permissions.includes('manageCert') || permissions.includes('issueCertificates'))) ||
+        (permission === 'manageCert' && (permissions.includes('manageCertificates') || permissions.includes('issueCertificates'))) ||
+        (permission === 'issueCertificates' && (permissions.includes('manageCertificates') || permissions.includes('manageCert'))) ||
+        (permission === 'manageAttendance' && (permissions.includes('ATTENDANCE_SCAN') || permissions.includes('ATTENDANCE_MANAGE'))) ||
+        (permission === 'manageMessages' && permissions.includes('MESSAGES_MANAGE'));
 
       if (!hasPerm) {
         return res.status(403).json({

@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import bcrypt from 'bcryptjs';
 import {
   User,
   CollegeAdminMembership,
@@ -6,8 +7,14 @@ import {
   College,
   Notification,
   AdminActivityLog,
+  OtpVerification,
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { sendOtpEmail } from '../services/emailService';
+
+function generate6DigitOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 /**
  * Helper to record admin activities and notify the College Super Admin
@@ -216,7 +223,11 @@ export async function inviteCollegeAdmin(req: AuthenticatedRequest, res: Respons
 
     if (existingMembership) {
       if (existingMembership.status === 'Active') {
-        return res.status(400).json({ success: false, message: 'User is already an active administrator for this college.' });
+        return res.status(200).json({
+          success: true,
+          message: 'User is already an active administrator for this college.',
+          membership: existingMembership,
+        });
       }
       if (existingMembership.status === 'Invited') {
         return res.status(400).json({ success: false, message: 'An invitation is already pending for this user.' });
@@ -332,15 +343,46 @@ export async function updateCollegeAdmin(req: AuthenticatedRequest, res: Respons
 
     const college = await College.findById(user.collegeId);
 
+    // Merge permissions properly without wiping unrelated existing permissions (Requirement 7)
+    let finalPermissions = membership.permissions || [];
+    let addedPerms: string[] = [];
+    let removedPerms: string[] = [];
+
+    if (permissions !== undefined) {
+      const KNOWN_ADMIN_PERMISSIONS = [
+        'createEvents',
+        'manageAttendance',
+        'issueCertificates',
+        'managePlacements',
+        'manageInfrastructure',
+        'manageMessages',
+      ];
+      // Keep any unmanaged custom/system permissions already on the membership
+      const unmanagedExisting = (membership.permissions || []).filter(
+        (p) => !KNOWN_ADMIN_PERMISSIONS.includes(p)
+      );
+
+      const requestedList = Array.isArray(permissions) ? permissions : [];
+      const candidateSet = new Set([...unmanagedExisting, ...requestedList]);
+      finalPermissions = Array.from(candidateSet);
+
+      const prevSet = new Set(membership.permissions || []);
+      const nextSet = new Set(finalPermissions);
+
+      addedPerms = finalPermissions.filter((p) => !prevSet.has(p));
+      removedPerms = (membership.permissions || []).filter((p) => !nextSet.has(p));
+    }
+
     const updated = await CollegeAdminMembership.findByIdAndUpdate(
       membershipId,
       {
         ...(name && { name }),
-        ...(permissions && { permissions }),
+        ...(permissions !== undefined && { permissions: finalPermissions }),
         ...(status && { status }),
       }
     );
 
+    // Handle status toggle (Enable / Disable)
     if (status && status !== membership.status) {
       const isDisabling = status === 'Disabled';
       const actionType = isDisabling ? 'DISABLE_ADMIN' : 'ENABLE_ADMIN';
@@ -381,12 +423,52 @@ export async function updateCollegeAdmin(req: AuthenticatedRequest, res: Respons
       });
     }
 
+    // Handle permissions update notification (Requirement 8)
+    if (permissions !== undefined && (addedPerms.length > 0 || removedPerms.length > 0)) {
+      const changesList: string[] = [];
+      if (addedPerms.length > 0) changesList.push(`Added: ${addedPerms.join(', ')}`);
+      if (removedPerms.length > 0) changesList.push(`Removed: ${removedPerms.join(', ')}`);
+      const changeText = changesList.join('; ');
+
+      await logAdminActivityHelper({
+        collegeId: user.collegeId,
+        adminUserId: user._id,
+        adminName: user.fullName,
+        actionType: 'UPDATE_PERMISSIONS',
+        details: `@${user.fullName} updated permissions for ${membership.name}: ${changeText}.`,
+        targetType: 'AdminMembership',
+        targetId: membershipId,
+        targetTitle: membership.name,
+      });
+
+      // Notify the Admin stating exactly what changed
+      await Notification.create({
+        recipientUserId: membership.userId,
+        type: 'ADMIN_ACTION',
+        title: 'Admin Permissions Updated',
+        message: `Your administrator permissions for ${college?.name || 'the college'} have been updated. ${changeText}.`,
+        metadata: {
+          collegeId: user.collegeId,
+          membershipId,
+          added: addedPerms,
+          removed: removedPerms,
+        },
+        read: false,
+      });
+
+      return res.json({
+        success: true,
+        message: `Administrator permissions updated successfully. (${changeText})`,
+        membership: updated,
+      });
+    }
+
     await logAdminActivityHelper({
       collegeId: user.collegeId,
       adminUserId: user._id,
       adminName: user.fullName,
       actionType: 'UPDATE_PERMISSIONS',
-      details: `@${user.fullName} updated permissions for admin ${membership.name}.`,
+      details: `@${user.fullName} updated profile for admin ${membership.name}.`,
       targetType: 'AdminMembership',
       targetId: membershipId,
       targetTitle: membership.name,
@@ -394,7 +476,7 @@ export async function updateCollegeAdmin(req: AuthenticatedRequest, res: Respons
 
     return res.json({
       success: true,
-      message: 'Administrator permissions updated successfully.',
+      message: 'Administrator details updated successfully.',
       membership: updated,
     });
   } catch (error: any) {
@@ -403,7 +485,7 @@ export async function updateCollegeAdmin(req: AuthenticatedRequest, res: Respons
 }
 
 /**
- * Remove an administrator or cancel invitation
+ * Remove an administrator or cancel invitation (Revoke) (Requirement 10)
  */
 export async function removeCollegeAdmin(req: AuthenticatedRequest, res: Response) {
   try {
@@ -430,9 +512,26 @@ export async function removeCollegeAdmin(req: AuthenticatedRequest, res: Respons
       return res.status(400).json({ success: false, message: 'Cannot remove primary College Super Admin.' });
     }
 
+    // Immediately remove from collegeAdminMemberships collection
     await CollegeAdminMembership.findByIdAndDelete(membership._id);
 
-    // Notify affected user
+    // If user has no remaining active admin memberships, reset role to Student
+    const remainingActive = await CollegeAdminMembership.find({
+      userId: membership.userId,
+      status: 'Active',
+    }).exec();
+
+    if (remainingActive.length === 0) {
+      const targetUser = await User.findById(membership.userId);
+      if (targetUser && targetUser.role === 'College Admin') {
+        await User.findByIdAndUpdate(membership.userId, {
+          role: 'Student',
+          collegeId: undefined,
+        });
+      }
+    }
+
+    // Notify affected user immediately (Requirement 10)
     const college = await College.findById(user.collegeId);
     if (membership.userId) {
       await Notification.create({
@@ -678,6 +777,7 @@ export async function getMyAdminRoles(req: AuthenticatedRequest, res: Response) 
       success: true,
       count: validColleges.length,
       adminRoles: validColleges,
+      roles: validColleges,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
@@ -757,6 +857,233 @@ export async function createAdminActivity(req: AuthenticatedRequest, res: Respon
     });
 
     return res.status(201).json({ success: true, log });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * 4-DIGIT ADMIN ACCESS PIN SYSTEM (Requirements 2, 3, 4, 5)
+ */
+
+/**
+ * GET /api/admins/pin/status
+ * Check if the user has configured an Admin Access PIN
+ */
+export async function getAdminPinStatus(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const freshUser = await User.findById(user._id);
+    const hasPin = Boolean(freshUser?.adminPinHash);
+
+    return res.json({
+      success: true,
+      hasPin,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * POST /api/admins/pin/setup
+ * Create a new 4-digit Admin Access PIN (Hashed with bcrypt, never plain - Req 3, 4)
+ */
+export async function setupAdminPin(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { pin, confirmPin } = req.body;
+
+    if (!pin || !confirmPin) {
+      return res.status(400).json({ success: false, message: 'PIN and confirm PIN are required.' });
+    }
+
+    const cleanPin = String(pin).trim();
+    const cleanConfirm = String(confirmPin).trim();
+
+    if (!/^\d{4}$/.test(cleanPin)) {
+      return res.status(400).json({ success: false, message: 'Admin Access PIN must be exactly 4 digits.' });
+    }
+
+    if (cleanPin !== cleanConfirm) {
+      return res.status(400).json({ success: false, message: 'PINs do not match.' });
+    }
+
+    const adminPinHash = await bcrypt.hash(cleanPin, 10);
+
+    await User.findByIdAndUpdate(user._id, {
+      adminPinHash,
+    });
+
+    return res.json({
+      success: true,
+      message: 'Admin Access PIN configured successfully.',
+      hasPin: true,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * POST /api/admins/pin/verify
+ * Verify a 4-digit Admin Access PIN
+ */
+export async function verifyAdminPin(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const freshUser = await User.findById(user._id);
+    if (!freshUser || !freshUser.adminPinHash) {
+      return res.status(400).json({
+        success: false,
+        hasPin: false,
+        message: 'No Admin PIN configured. Please set up a 4-digit PIN first.',
+      });
+    }
+
+    const { pin } = req.body;
+    if (!pin) {
+      return res.status(400).json({ success: false, message: 'PIN is required.' });
+    }
+
+    const cleanPin = String(pin).trim();
+    const isMatch = await bcrypt.compare(cleanPin, freshUser.adminPinHash);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        message: 'Incorrect 4-digit PIN. Please try again.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      verified: true,
+      message: 'PIN verified successfully.',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * POST /api/admins/pin/forgot
+ * Send OTP to user's registered email to reset forgotten PIN (Req 5)
+ */
+export async function requestForgotAdminPinOtp(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const cleanEmail = user.email.trim().toLowerCase();
+    const otp = generate6DigitOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+
+    const existingOtp = await OtpVerification.findOne({
+      email: cleanEmail,
+      purpose: 'RESET_ADMIN_PIN',
+    });
+
+    if (existingOtp) {
+      await OtpVerification.findByIdAndUpdate(existingOtp._id, {
+        otpHash,
+        expiresAt,
+        verified: false,
+        attempts: 0,
+      });
+    } else {
+      await OtpVerification.create({
+        email: cleanEmail,
+        otpHash,
+        purpose: 'RESET_ADMIN_PIN',
+        expiresAt,
+        resendAvailableAt: new Date().toISOString(),
+        verified: false,
+        attempts: 0,
+      });
+    }
+
+    // Send email using existing email service (Req 5)
+    await sendOtpEmail({
+      email: cleanEmail,
+      otp,
+      recipientName: user.fullName || 'Administrator',
+      purpose: 'RESET_ADMIN_PIN',
+    });
+
+    return res.json({
+      success: true,
+      message: `A 6-digit reset code has been sent to ${cleanEmail}.`,
+      email: cleanEmail,
+      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otp } : {}),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * POST /api/admins/pin/reset
+ * Verify OTP and set a new 4-digit Admin Access PIN (Req 5)
+ */
+export async function resetAdminPinWithOtp(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { otp, newPin, confirmPin } = req.body;
+    if (!otp || !newPin || !confirmPin) {
+      return res.status(400).json({ success: false, message: 'Verification code, new PIN, and confirm PIN are required.' });
+    }
+
+    const cleanPin = String(newPin).trim();
+    const cleanConfirm = String(confirmPin).trim();
+
+    if (!/^\d{4}$/.test(cleanPin)) {
+      return res.status(400).json({ success: false, message: 'PIN must be exactly 4 digits.' });
+    }
+
+    if (cleanPin !== cleanConfirm) {
+      return res.status(400).json({ success: false, message: 'PINs do not match.' });
+    }
+
+    const cleanEmail = user.email.trim().toLowerCase();
+    const otpRecord = await OtpVerification.findOne({
+      email: cleanEmail,
+      purpose: 'RESET_ADMIN_PIN',
+    });
+
+    if (!otpRecord) {
+      return res.status(400).json({ success: false, message: 'No reset request found. Please request a new code.' });
+    }
+
+    if (new Date(otpRecord.expiresAt) < new Date()) {
+      return res.status(400).json({ success: false, message: 'Reset code has expired. Please request a new one.' });
+    }
+
+    const cleanOtp = String(otp).trim();
+    const isOtpValid = await bcrypt.compare(cleanOtp, otpRecord.otpHash);
+    if (!isOtpValid) {
+      return res.status(400).json({ success: false, message: 'Invalid verification code.' });
+    }
+
+    const adminPinHash = await bcrypt.hash(cleanPin, 10);
+    await User.findByIdAndUpdate(user._id, { adminPinHash });
+
+    await OtpVerification.findByIdAndUpdate(otpRecord._id, { verified: true });
+
+    return res.json({
+      success: true,
+      message: 'Admin Access PIN has been successfully reset.',
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }

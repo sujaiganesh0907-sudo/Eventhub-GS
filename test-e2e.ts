@@ -271,12 +271,25 @@ async function runTests() {
         fullName: 'Student Beta',
         email: studentBEmail,
         password: 'Password123!',
+        confirmPassword: 'Password123!',
+        phoneNumber: '+1 (555) 999-1234',
         collegeName: 'Nexus Engineering College',
         department: 'Information Science',
         yearOfStudy: '2nd Year',
       }),
     });
     const regBData = await regBRes.json();
+    if (regBData.devOtp) {
+      await fetch(`${BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: studentBEmail,
+          otp: regBData.devOtp,
+          purpose: 'STUDENT_REGISTRATION',
+        }),
+      });
+    }
     studentBAuth = await login(studentBEmail);
   }
 

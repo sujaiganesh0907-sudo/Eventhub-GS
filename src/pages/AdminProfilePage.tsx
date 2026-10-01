@@ -32,6 +32,7 @@ import { IssueCertificateModal } from '../components/certificate/IssueCertificat
 import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { AddPlacementPostModal } from '../components/profile/AddPlacementPostModal';
 import { AddInfrastructureModal } from '../components/profile/AddInfrastructureModal';
+import { MessagesPage } from './MessagesPage';
 
 interface AdminProfilePageProps {
   onViewEvent?: (event: IEvent) => void;
@@ -295,12 +296,14 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
             {hasPerm('manageMessages') && (
               <button
                 type="button"
-                onClick={() => {
-                  if (onNavigateToMessages) onNavigateToMessages();
-                }}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 cursor-pointer bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                onClick={() => setActiveModule('messages')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeModule === 'messages'
+                    ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                    : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+                }`}
               >
-                <MessageSquare className="w-3.5 h-3.5 text-blue-500" /> College Messages
+                <MessageSquare className="w-3.5 h-3.5" /> College Messages
               </button>
             )}
 
@@ -516,6 +519,37 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* MODULE: COLLEGE MESSAGES (SEPARATE ADMIN WORKSPACE INBOX - Requirement 15 & 16) */}
+            {activeModule === 'messages' && hasPerm('manageMessages') && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-primary)]">
+                      {selectedWorkspace.college?.name || 'Collegiate'} Admin Messages
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Official communication inbox. Outgoing replies display the college identity while recording your administrator ID.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--border-color)] overflow-hidden bg-[var(--surface)] shadow-xs min-h-[600px]">
+                  <MessagesPage
+                    asCollegeId={selectedWorkspace.collegeId}
+                    collegeName={selectedWorkspace.college?.name}
+                    collegeLogo={selectedWorkspace.college?.logo}
+                    onViewEvent={(eventId) => {
+                      if (onViewEvent) {
+                        const ev = workspaceEvents.find((e) => e._id === eventId);
+                        if (ev) onViewEvent(ev);
+                      }
+                    }}
+                    onViewCollege={onSelectCollege}
+                  />
+                </div>
               </div>
             )}
 
