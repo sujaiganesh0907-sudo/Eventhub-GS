@@ -45,8 +45,8 @@
       "isEmailVerified": true,
       "id": "usr_student_alex",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-10-01T08:51:57.873Z",
-      "adminPinHash": "$2b$10$26Iu0Xz4dU5.snaIE26seO72TSUS/LugNaBbl.DpRLGOoKQnOqK7G"
+      "updatedAt": "2026-10-03T07:57:27.762Z",
+      "adminPinHash": "$2b$10$3lDDBj46xzq7AusW/.3juu9QI8mtMh2zP6eA5QqB6Ssda6or12xEG"
     },
     {
       "email": "sureshmanikkavasagam123@gmail.com",
@@ -57,7 +57,8 @@
       "_id": "e9560105e93fa99a682097a6",
       "id": "e9560105e93fa99a682097a6",
       "createdAt": "2026-09-24T15:16:29.112Z",
-      "updatedAt": "2026-09-25T09:05:21.023Z"
+      "updatedAt": "2026-10-03T07:35:20.690Z",
+      "adminPinHash": "$2b$10$ecFW1vxILijTEl55.YrXtOj4qaWipjUkMiZcBXwumZ4Znhdm4PXVu"
     },
     {
       "email": "sureshmanikkavasakam@gmail.com",
@@ -163,19 +164,21 @@
       "phoneNumber": "8610458285",
       "department": "Computer Science & Engineering",
       "yearOfStudy": "3rd Year",
-      "skills": [],
+      "skills": [
+        "Full Stack Development, Cyber Security, Cloud Computing, and building practical software solutions."
+      ],
       "achievements": [],
       "followersCount": 0,
       "followingCount": 0,
-      "connectionsCount": 0,
+      "connectionsCount": 1,
       "_id": "d64333f639c7fdf3cbc7dcd2",
       "id": "d64333f639c7fdf3cbc7dcd2",
       "createdAt": "2026-09-24T15:16:29.112Z",
-      "updatedAt": "2026-09-30T14:32:00.824Z",
+      "updatedAt": "2026-10-03T07:31:58.172Z",
       "bio": "I am a Computer Science Engineering student specializing in Cyber Security, with a strong interest in cybersecurity, cloud computing, and software development. I enjoy building practical projects, exploring new technologies, and continuously improving my technical and problem-solving skills. I am passionate about gaining real-world experience and developing secure, useful technology solutions.",
       "location": "Erode",
-      "profilePhoto": "/uploads/upload-1790327118175-443534204.jpg",
-      "coverPhoto": "/uploads/upload-1790327111242-107939334.jpeg",
+      "profilePhoto": "/uploads/media/upload-1791012676822-989051059.jpg",
+      "coverPhoto": "/uploads/media/upload-1791012674190-58046504.jpeg",
       "username": "suresh",
       "profileVisibility": "Public",
       "messagePrivacy": "Everyone"
@@ -261,10 +264,10 @@
       "coverPhoto": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1200&auto=format&fit=crop&q=80",
       "verificationStatus": "Verified",
       "superAdminId": "usr_col_apex_admin",
-      "connectionsCount": 1,
+      "connectionsCount": 2,
       "id": "col_apex_tech_01",
       "createdAt": "2026-09-24T13:38:09.698Z",
-      "updatedAt": "2026-09-30T14:32:00.822Z",
+      "updatedAt": "2026-10-03T07:27:50.006Z",
       "username": "apexinstituteof",
       "messagePrivacy": "Everyone"
     },
@@ -347,6 +350,33 @@
     },
     {
       "collegeId": "col_apex_tech_01",
+      "userId": "e9560105e93fa99a682097a6",
+      "role": "College Admin",
+      "name": "Suresh",
+      "email": "sureshmanikkavasagam123@gmail.com",
+      "username": "suresh",
+      "permissions": [
+        "manageEvents",
+        "manageAttendance",
+        "manageCertificates",
+        "viewAnalytics",
+        "manageRegistrations",
+        "manageInfrastructure",
+        "manageCollegeProfileContent",
+        "managePlacements"
+      ],
+      "status": "Active",
+      "invitedBy": "Dr. Eleanor Vance",
+      "invitedAt": "2026-10-03T07:34:36.517Z",
+      "addedBy": "Dr. Eleanor Vance",
+      "_id": "c9210135381dc578163667fa",
+      "id": "c9210135381dc578163667fa",
+      "createdAt": "2026-10-03T07:34:36.517Z",
+      "updatedAt": "2026-10-03T07:35:03.916Z",
+      "acceptedAt": "2026-10-03T07:35:03.916Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
       "userId": "usr_student_alex",
       "role": "College Admin",
       "name": "Alexander Chen",
@@ -360,13 +390,13 @@
       ],
       "status": "Active",
       "invitedBy": "Dr. Eleanor Vance",
-      "invitedAt": "2026-10-01T08:51:58.022Z",
+      "invitedAt": "2026-10-03T07:57:27.934Z",
       "addedBy": "Dr. Eleanor Vance",
-      "_id": "0c58bb3df0690bcaf76f6856",
-      "id": "0c58bb3df0690bcaf76f6856",
-      "createdAt": "2026-10-01T08:51:58.022Z",
-      "updatedAt": "2026-10-01T08:51:58.070Z",
-      "acceptedAt": "2026-10-01T08:51:58.030Z"
+      "_id": "a56b92cfaac96da7b5da0761",
+      "id": "a56b92cfaac96da7b5da0761",
+      "createdAt": "2026-10-03T07:57:27.934Z",
+      "updatedAt": "2026-10-03T07:57:27.993Z",
+      "acceptedAt": "2026-10-03T07:57:27.938Z"
     }
   ],
   "events": [
@@ -731,7 +761,7 @@
       "updatedAt": "2026-09-24T13:38:09.700Z"
     },
     {
-      "title": "Apex Tech Symposium 1790844718044",
+      "title": "Apex Tech Symposium 1791014247967",
       "poster": "https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80",
       "hostCollegeId": "col_apex_tech_01",
       "hostCollegeName": "Apex Institute of Technology",
@@ -820,25 +850,25 @@
       "creatorUserId": "usr_student_alex",
       "targetCollegeId": "col_apex_tech_01",
       "status": "Published",
-      "viewsCount": 4,
+      "viewsCount": 5,
       "attendanceCount": 1,
-      "certificatesIssuedCount": 6,
+      "certificatesIssuedCount": 7,
       "_id": "c3497ad6fbaa9aba34854ccb",
       "id": "c3497ad6fbaa9aba34854ccb",
       "createdAt": "2026-09-24T14:52:40.061Z",
-      "updatedAt": "2026-10-01T08:52:01.235Z",
+      "updatedAt": "2026-10-03T07:57:32.014Z",
       "$inc": {
         "certificatesIssuedCount": 1
       },
       "attendanceFinalized": true,
-      "attendanceFinalizedAt": "2026-10-01T08:51:58.230Z",
+      "attendanceFinalizedAt": "2026-10-03T07:57:28.184Z",
       "attendanceFinalizedBy": "usr_col_apex_admin",
       "certificateTemplate": {
-        "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1790844718118.docx",
+        "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1791014248038.docx",
         "fileName": "template.docx",
-        "version": 5,
+        "version": 6,
         "status": "Active",
-        "uploadedAt": "2026-10-01T08:51:58.119Z",
+        "uploadedAt": "2026-10-03T07:57:28.039Z",
         "uploadedBy": "Dr. Eleanor Vance",
         "detectedPlaceholders": [
           "student_name",
@@ -852,6 +882,24 @@
         },
         "isActivated": true,
         "history": [
+          {
+            "version": 5,
+            "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1790844718118.docx",
+            "fileName": "template.docx",
+            "uploadedAt": "2026-10-01T08:51:58.119Z",
+            "uploadedBy": "Dr. Eleanor Vance",
+            "detectedPlaceholders": [
+              "student_name",
+              "event_name",
+              "college_name"
+            ],
+            "mappings": {
+              "student_name": "student.fullName",
+              "event_name": "event.title",
+              "college_name": "college.name"
+            },
+            "status": "Archived"
+          },
           {
             "version": 4,
             "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1790844621247.docx",
@@ -935,7 +983,7 @@
           }
         ]
       },
-      "certificateTemplateUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1790844718118.docx",
+      "certificateTemplateUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1791014248038.docx",
       "certificateTemplateName": "template.docx"
     },
     {
@@ -1923,10 +1971,10 @@
       "_id": "13fe5d1614504ae0233b9b5b",
       "id": "13fe5d1614504ae0233b9b5b",
       "createdAt": "2026-09-25T09:17:27.943Z",
-      "updatedAt": "2026-10-01T08:52:01.235Z",
+      "updatedAt": "2026-10-03T07:57:32.013Z",
       "qrCodeUrl": "data:image/png;base64,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",
       "certificateStatus": "Sent",
-      "attendedAt": "2026-10-01T08:51:58.205Z",
+      "attendedAt": "2026-10-03T07:57:28.155Z",
       "attendanceMethod": "QR_SCAN",
       "certificateId": "EH-CERT-2026-3324BB",
       "certificateFileUrl": "/uploads/certificates/EH-CERT-2026-3324BB.pdf",
@@ -1960,11 +2008,11 @@
       "method": "QR_SCAN",
       "markedByUserId": "usr_col_apex_admin",
       "status": "Present",
-      "markedAt": "2026-10-01T08:51:58.205Z",
+      "markedAt": "2026-10-03T07:57:28.155Z",
       "_id": "a22b6566bdf8c6d566d60460",
       "id": "a22b6566bdf8c6d566d60460",
       "createdAt": "2026-10-01T08:46:48.527Z",
-      "updatedAt": "2026-10-01T08:51:58.205Z"
+      "updatedAt": "2026-10-03T07:57:28.155Z"
     }
   ],
   "certificates": [
@@ -2021,6 +2069,26 @@
       "id": "1ed130fd46b3fbeb94a72d41",
       "createdAt": "2026-10-01T08:47:42.638Z",
       "updatedAt": "2026-10-01T08:47:42.638Z"
+    },
+    {
+      "certificateId": "EH-AWARD-2026-F5E8E8",
+      "title": "NEXORA",
+      "studentId": "d64333f639c7fdf3cbc7dcd2",
+      "issuingOrganization": "SNS college ",
+      "achievementType": "Participation",
+      "issueDate": "2026-10-03",
+      "location": "",
+      "eventName": "NEXORA",
+      "description": "",
+      "fileUrl": "/uploads/media/upload-1791012564024-307646796.pdf",
+      "credentialUrl": "",
+      "visibility": "Public",
+      "tags": [],
+      "isDraft": false,
+      "_id": "3e3cd34fc6b5cee6220b41eb",
+      "id": "3e3cd34fc6b5cee6220b41eb",
+      "createdAt": "2026-10-03T07:29:25.998Z",
+      "updatedAt": "2026-10-03T07:29:25.998Z"
     }
   ],
   "placementPosts": [
@@ -2120,6 +2188,14 @@
       "id": "66859facf731680376da87f8",
       "createdAt": "2026-09-24T13:38:09.699Z",
       "updatedAt": "2026-09-24T13:38:09.699Z"
+    },
+    {
+      "studentId": "d64333f639c7fdf3cbc7dcd2",
+      "collegeId": "col_apex_tech_01",
+      "_id": "fca14b531935707f54a07558",
+      "id": "fca14b531935707f54a07558",
+      "createdAt": "2026-10-03T07:27:50.005Z",
+      "updatedAt": "2026-10-03T07:27:50.005Z"
     }
   ],
   "follows": [],
@@ -2134,7 +2210,7 @@
       "_id": "45bc131d8ac399e59c22f9a2",
       "id": "45bc131d8ac399e59c22f9a2",
       "createdAt": "2026-09-24T14:52:40.062Z",
-      "updatedAt": "2026-09-24T15:55:16.147Z"
+      "updatedAt": "2026-10-03T07:37:54.952Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -2178,11 +2254,11 @@
       "title": "New Event Registration",
       "message": "Alexander Chen registered for \"Autonomous Drone Obstacle Challenge 2026\".",
       "link": "/college/events?eventId=c3497ad6fbaa9aba34854ccb&tab=registrations",
-      "read": false,
+      "read": true,
       "_id": "5fc446966efc2b6392de7899",
       "id": "5fc446966efc2b6392de7899",
       "createdAt": "2026-09-25T09:17:28.083Z",
-      "updatedAt": "2026-09-25T09:17:28.083Z"
+      "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
       "recipientUserId": "usr_col_apex_staff",
@@ -2248,11 +2324,11 @@
         "adminUserId": "usr_student_alex",
         "action": "manage-admins"
       },
-      "read": false,
+      "read": true,
       "_id": "f165b4a696c2dd875b69efc8",
       "id": "f165b4a696c2dd875b69efc8",
       "createdAt": "2026-10-01T08:44:21.575Z",
-      "updatedAt": "2026-10-01T08:44:21.575Z"
+      "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -2374,11 +2450,11 @@
         "adminUserId": "usr_student_alex",
         "action": "manage-admins"
       },
-      "read": false,
+      "read": true,
       "_id": "843e89c503897998518a26c4",
       "id": "843e89c503897998518a26c4",
       "createdAt": "2026-10-01T08:44:24.729Z",
-      "updatedAt": "2026-10-01T08:44:24.729Z"
+      "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -2586,11 +2662,11 @@
         "adminUserId": "usr_student_alex",
         "action": "manage-admins"
       },
-      "read": false,
+      "read": true,
       "_id": "17e4de0547ecc340772f48d2",
       "id": "17e4de0547ecc340772f48d2",
       "createdAt": "2026-10-01T08:47:46.271Z",
-      "updatedAt": "2026-10-01T08:47:46.271Z"
+      "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -2834,11 +2910,11 @@
         "adminUserId": "usr_student_alex",
         "action": "manage-admins"
       },
-      "read": false,
+      "read": true,
       "_id": "4d7e055361feb9d23f0959d5",
       "id": "4d7e055361feb9d23f0959d5",
       "createdAt": "2026-10-01T08:49:29.720Z",
-      "updatedAt": "2026-10-01T08:49:29.720Z"
+      "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -3094,11 +3170,11 @@
         "adminUserId": "usr_student_alex",
         "action": "manage-admins"
       },
-      "read": false,
+      "read": true,
       "_id": "689256f3147c4232b16ff6c4",
       "id": "689256f3147c4232b16ff6c4",
       "createdAt": "2026-10-01T08:50:21.119Z",
-      "updatedAt": "2026-10-01T08:50:21.119Z"
+      "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -3354,11 +3430,11 @@
         "adminUserId": "usr_student_alex",
         "action": "manage-admins"
       },
-      "read": false,
+      "read": true,
       "_id": "68e2e438e2a60a6402ff09b7",
       "id": "68e2e438e2a60a6402ff09b7",
       "createdAt": "2026-10-01T08:51:58.030Z",
-      "updatedAt": "2026-10-01T08:51:58.030Z"
+      "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
       "recipientUserId": "usr_student_alex",
@@ -3493,6 +3569,333 @@
       "id": "db554bf7c439fb17627d0c3f",
       "createdAt": "2026-10-01T08:52:01.235Z",
       "updatedAt": "2026-10-01T08:52:01.235Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "EVENT_APPROVAL",
+      "title": "Event Proposal Approved!",
+      "message": "Your event proposal \"Apex Tech Symposium 1790844718044\" was approved by Apex Institute of Technology and is now live!",
+      "link": "/events/c3497ad6fbaa9aba34854ccb",
+      "read": false,
+      "_id": "7524ed1b011ea4acdc5b0ca3",
+      "id": "7524ed1b011ea4acdc5b0ca3",
+      "createdAt": "2026-10-03T07:33:57.434Z",
+      "updatedAt": "2026-10-03T07:33:57.434Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "EVENT_APPROVAL",
+      "title": "Event Proposal Approved!",
+      "message": "Your event proposal \"Apex Tech Symposium 1790844718044\" was approved by Apex Institute of Technology and is now live!",
+      "link": "/events/c3497ad6fbaa9aba34854ccb",
+      "read": false,
+      "_id": "a336bc60c23272ca04d86c93",
+      "id": "a336bc60c23272ca04d86c93",
+      "createdAt": "2026-10-03T07:34:01.384Z",
+      "updatedAt": "2026-10-03T07:34:01.384Z"
+    },
+    {
+      "recipientUserId": "e9560105e93fa99a682097a6",
+      "type": "ADMIN_INVITE",
+      "title": "College Admin Invitation",
+      "message": "Apex Institute of Technology invited you to become a College Admin.",
+      "metadata": {
+        "membershipId": "c9210135381dc578163667fa",
+        "collegeId": "col_apex_tech_01",
+        "collegeName": "Apex Institute of Technology",
+        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+        "permissions": [
+          "manageEvents",
+          "manageAttendance",
+          "manageCertificates",
+          "viewAnalytics",
+          "manageRegistrations",
+          "manageInfrastructure",
+          "manageCollegeProfileContent",
+          "managePlacements"
+        ]
+      },
+      "read": true,
+      "_id": "1d9e9984b1b8a1ec91e6d663",
+      "id": "1d9e9984b1b8a1ec91e6d663",
+      "createdAt": "2026-10-03T07:34:36.517Z",
+      "updatedAt": "2026-10-03T07:35:04.056Z"
+    },
+    {
+      "recipientUserId": "usr_col_apex_admin",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Invitation Accepted",
+      "message": "@Suresh accepted your invitation to become an Admin for Apex Institute of Technology.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "adminUserId": "e9560105e93fa99a682097a6",
+        "action": "manage-admins"
+      },
+      "read": true,
+      "_id": "9fe0bd49a3cf757a9afc5c5e",
+      "id": "9fe0bd49a3cf757a9afc5c5e",
+      "createdAt": "2026-10-03T07:35:03.916Z",
+      "updatedAt": "2026-10-03T07:37:54.953Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "0c58bb3df0690bcaf76f6856",
+        "added": [],
+        "removed": [
+          "manageMessages"
+        ]
+      },
+      "read": false,
+      "_id": "8ac61de5619a1e0444552ca6",
+      "id": "8ac61de5619a1e0444552ca6",
+      "createdAt": "2026-10-03T07:57:27.890Z",
+      "updatedAt": "2026-10-03T07:57:27.890Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "0c58bb3df0690bcaf76f6856",
+        "added": [
+          "manageMessages"
+        ],
+        "removed": [
+          "manageAttendance",
+          "issueCertificates"
+        ]
+      },
+      "read": false,
+      "_id": "282fb38bed09a21b562e2b25",
+      "id": "282fb38bed09a21b562e2b25",
+      "createdAt": "2026-10-03T07:57:27.894Z",
+      "updatedAt": "2026-10-03T07:57:27.894Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Access Disabled",
+      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "0c58bb3df0690bcaf76f6856"
+      },
+      "read": false,
+      "_id": "5f2fd3d466e86f65e2e400a4",
+      "id": "5f2fd3d466e86f65e2e400a4",
+      "createdAt": "2026-10-03T07:57:27.901Z",
+      "updatedAt": "2026-10-03T07:57:27.901Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Access Restored",
+      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "0c58bb3df0690bcaf76f6856"
+      },
+      "read": false,
+      "_id": "78e1f9bf8a7465107e950a84",
+      "id": "78e1f9bf8a7465107e950a84",
+      "createdAt": "2026-10-03T07:57:27.919Z",
+      "updatedAt": "2026-10-03T07:57:27.919Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Access Revoked",
+      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "collegeName": "Apex Institute of Technology",
+        "action": "admin-access-revoked"
+      },
+      "read": false,
+      "_id": "f5d202e933c5a89d0333a5ee",
+      "id": "f5d202e933c5a89d0333a5ee",
+      "createdAt": "2026-10-03T07:57:27.924Z",
+      "updatedAt": "2026-10-03T07:57:27.924Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_INVITE",
+      "title": "College Admin Invitation",
+      "message": "Apex Institute of Technology invited you to become a College Admin.",
+      "metadata": {
+        "membershipId": "a56b92cfaac96da7b5da0761",
+        "collegeId": "col_apex_tech_01",
+        "collegeName": "Apex Institute of Technology",
+        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+        "permissions": [
+          "createEvents",
+          "manageAttendance",
+          "issueCertificates",
+          "manageMessages"
+        ]
+      },
+      "read": false,
+      "_id": "9a7bd4823e7753e76315527a",
+      "id": "9a7bd4823e7753e76315527a",
+      "createdAt": "2026-10-03T07:57:27.934Z",
+      "updatedAt": "2026-10-03T07:57:27.934Z"
+    },
+    {
+      "recipientUserId": "usr_col_apex_admin",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Invitation Accepted",
+      "message": "@Alexander Chen accepted your invitation to become an Admin for Apex Institute of Technology.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "adminUserId": "usr_student_alex",
+        "action": "manage-admins"
+      },
+      "read": false,
+      "_id": "d68221244546cb9631da9f15",
+      "id": "d68221244546cb9631da9f15",
+      "createdAt": "2026-10-03T07:57:27.938Z",
+      "updatedAt": "2026-10-03T07:57:27.938Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "a56b92cfaac96da7b5da0761",
+        "added": [],
+        "removed": [
+          "issueCertificates"
+        ]
+      },
+      "read": false,
+      "_id": "33ba003a3553ed0d1d3f0038",
+      "id": "33ba003a3553ed0d1d3f0038",
+      "createdAt": "2026-10-03T07:57:27.979Z",
+      "updatedAt": "2026-10-03T07:57:27.979Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "a56b92cfaac96da7b5da0761",
+        "added": [],
+        "removed": [
+          "manageMessages"
+        ]
+      },
+      "read": false,
+      "_id": "478b2b07614183096bc49f63",
+      "id": "478b2b07614183096bc49f63",
+      "createdAt": "2026-10-03T07:57:27.987Z",
+      "updatedAt": "2026-10-03T07:57:27.987Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "a56b92cfaac96da7b5da0761",
+        "added": [
+          "issueCertificates",
+          "manageMessages"
+        ],
+        "removed": []
+      },
+      "read": false,
+      "_id": "2d54812c4718b356a8fd4b75",
+      "id": "2d54812c4718b356a8fd4b75",
+      "createdAt": "2026-10-03T07:57:27.993Z",
+      "updatedAt": "2026-10-03T07:57:27.993Z"
+    },
+    {
+      "recipientUserId": "aafd16de800892fbe16c2722",
+      "type": "EVENT_UPDATE",
+      "title": "New message from Apex Institute of Technology",
+      "message": "Collegiate message test with sentByAdminId tracking.",
+      "link": "/messages?conversationId=88822f95119d36469b33116e",
+      "read": false,
+      "metadata": {
+        "conversationId": "88822f95119d36469b33116e",
+        "senderId": "usr_student_alex"
+      },
+      "_id": "afc745d2532d29b4a46c0348",
+      "id": "afc745d2532d29b4a46c0348",
+      "createdAt": "2026-10-03T07:57:28.007Z",
+      "updatedAt": "2026-10-03T07:57:28.007Z"
+    },
+    {
+      "recipientUserId": "aafd16de800892fbe16c2722",
+      "type": "EVENT_UPDATE",
+      "title": "New message from Apex Institute of Technology",
+      "message": "Hey Student Beta, testing search-to-chat flow!",
+      "link": "/messages?conversationId=88822f95119d36469b33116e",
+      "read": false,
+      "metadata": {
+        "conversationId": "88822f95119d36469b33116e",
+        "senderId": "usr_student_alex"
+      },
+      "_id": "c1f64f96106e41b2059e56a7",
+      "id": "c1f64f96106e41b2059e56a7",
+      "createdAt": "2026-10-03T07:57:28.015Z",
+      "updatedAt": "2026-10-03T07:57:28.015Z"
+    },
+    {
+      "recipientUserId": "aafd16de800892fbe16c2722",
+      "type": "EVENT_UPDATE",
+      "title": "New message from Apex Institute of Technology",
+      "message": "Shared an event",
+      "link": "/messages?conversationId=88822f95119d36469b33116e",
+      "read": false,
+      "metadata": {
+        "conversationId": "88822f95119d36469b33116e",
+        "senderId": "usr_student_alex"
+      },
+      "_id": "29d2c16ce519cc22a81b89db",
+      "id": "29d2c16ce519cc22a81b89db",
+      "createdAt": "2026-10-03T07:57:28.020Z",
+      "updatedAt": "2026-10-03T07:57:28.020Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ATTENDANCE",
+      "title": "Attendance Confirmed!",
+      "message": "Your check-in for \"Apex Tech Symposium 1791014247967\" was marked as Present (Scanned Pass).",
+      "link": "/events",
+      "read": false,
+      "_id": "7f4fcc1ac1f18f2399e520cf",
+      "id": "7f4fcc1ac1f18f2399e520cf",
+      "createdAt": "2026-10-03T07:57:28.156Z",
+      "updatedAt": "2026-10-03T07:57:28.156Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "CERTIFICATE",
+      "title": "Participation Certificate Issued!",
+      "message": "Your participation certificate for \"Apex Tech Symposium 1791014247967\" is now available in your Student Profile.",
+      "link": "/profile?tab=certificates",
+      "read": false,
+      "metadata": {
+        "certificateId": "EH-CERT-2026-3324BB",
+        "eventId": "c3497ad6fbaa9aba34854ccb"
+      },
+      "_id": "b3863fadfb367484d313042d",
+      "id": "b3863fadfb367484d313042d",
+      "createdAt": "2026-10-03T07:57:32.014Z",
+      "updatedAt": "2026-10-03T07:57:32.014Z"
     }
   ],
   "reminders": [
@@ -3624,16 +4027,16 @@
     },
     {
       "email": "alex.chen@student.edu",
-      "otpHash": "$2b$10$BQ4IPeDMBtkDarB8Wicu2ui8Gouhg2nbmpqAt/UurcFC3gLPw3P6K",
+      "otpHash": "$2b$10$Vvx8FgzH7aF5XxhHKG/UhOJ0v1wgc1DoA1ckF4qemZM..yvpnocCu",
       "purpose": "RESET_ADMIN_PIN",
-      "expiresAt": "2026-10-01T09:01:54.567Z",
+      "expiresAt": "2026-10-03T08:07:23.249Z",
       "resendAvailableAt": "2026-10-01T08:40:32.584Z",
       "verified": true,
       "attempts": 0,
       "_id": "845035f3dd38b4a4160fc709",
       "id": "845035f3dd38b4a4160fc709",
       "createdAt": "2026-10-01T08:40:32.584Z",
-      "updatedAt": "2026-10-01T08:51:57.873Z"
+      "updatedAt": "2026-10-03T07:57:27.763Z"
     }
   ],
   "conversations": [
@@ -3663,12 +4066,64 @@
       "lastMessage": {
         "text": "Shared an event",
         "senderId": "usr_student_alex",
-        "timestamp": "2026-10-01T08:51:58.099Z"
+        "timestamp": "2026-10-03T07:57:28.020Z"
       },
       "_id": "88822f95119d36469b33116e",
       "id": "88822f95119d36469b33116e",
       "createdAt": "2026-10-01T08:47:46.310Z",
-      "updatedAt": "2026-10-01T08:51:58.099Z"
+      "updatedAt": "2026-10-03T07:57:28.020Z"
+    },
+    {
+      "participants": [
+        "e9560105e93fa99a682097a6",
+        "0e324d4013afe7e579d45339"
+      ],
+      "participantDetails": [
+        {
+          "userId": "e9560105e93fa99a682097a6",
+          "role": "Student",
+          "name": "Suresh",
+          "username": "suresh",
+          "avatar": "/uploads/upload-1790327118175-443534204.jpg"
+        },
+        {
+          "userId": "0e324d4013afe7e579d45339",
+          "role": "Student",
+          "name": "Suresh",
+          "username": "suresh1",
+          "avatar": ""
+        }
+      ],
+      "_id": "9fc9c407d8f172b0e9c68208",
+      "id": "9fc9c407d8f172b0e9c68208",
+      "createdAt": "2026-10-03T07:27:14.456Z",
+      "updatedAt": "2026-10-03T07:27:14.456Z"
+    },
+    {
+      "participants": [
+        "e9560105e93fa99a682097a6",
+        "8d254e7a0ffe4f12eae91060"
+      ],
+      "participantDetails": [
+        {
+          "userId": "e9560105e93fa99a682097a6",
+          "role": "Student",
+          "name": "Suresh",
+          "username": "suresh",
+          "avatar": "/uploads/media/upload-1791012676822-989051059.jpg"
+        },
+        {
+          "userId": "8d254e7a0ffe4f12eae91060",
+          "role": "Student",
+          "name": "Sujai  Ganesh K",
+          "username": "sujaiganeshk",
+          "avatar": "/uploads/upload-1790310193133-528150284.jpeg"
+        }
+      ],
+      "_id": "c52fcfb12d3bc0493af843df",
+      "id": "c52fcfb12d3bc0493af843df",
+      "createdAt": "2026-10-03T07:32:48.574Z",
+      "updatedAt": "2026-10-03T07:32:48.574Z"
     }
   ],
   "messages": [
@@ -3883,18 +4338,76 @@
       "id": "872d5c507c85b48c9be9593d",
       "createdAt": "2026-10-01T08:51:58.099Z",
       "updatedAt": "2026-10-01T08:51:58.099Z"
+    },
+    {
+      "conversationId": "88822f95119d36469b33116e",
+      "senderId": "usr_student_alex",
+      "senderName": "Apex Institute of Technology",
+      "senderRole": "College Admin",
+      "senderAvatar": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "collegeId": "col_apex_tech_01",
+      "sentByAdminId": "usr_student_alex",
+      "text": "Collegiate message test with sentByAdminId tracking.",
+      "readBy": [
+        "usr_student_alex"
+      ],
+      "deletedFor": [],
+      "deletedForEveryone": false,
+      "_id": "97c2bf0a7d9edf62e7581b87",
+      "id": "97c2bf0a7d9edf62e7581b87",
+      "createdAt": "2026-10-03T07:57:28.007Z",
+      "updatedAt": "2026-10-03T07:57:28.007Z"
+    },
+    {
+      "conversationId": "88822f95119d36469b33116e",
+      "senderId": "usr_student_alex",
+      "senderName": "Apex Institute of Technology",
+      "senderRole": "College Admin",
+      "senderAvatar": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "collegeId": "col_apex_tech_01",
+      "sentByAdminId": "usr_student_alex",
+      "text": "Hey Student Beta, testing search-to-chat flow!",
+      "readBy": [
+        "usr_student_alex"
+      ],
+      "deletedFor": [],
+      "deletedForEveryone": false,
+      "_id": "bc94c66752e1a39c836bcabd",
+      "id": "bc94c66752e1a39c836bcabd",
+      "createdAt": "2026-10-03T07:57:28.015Z",
+      "updatedAt": "2026-10-03T07:57:28.015Z"
+    },
+    {
+      "conversationId": "88822f95119d36469b33116e",
+      "senderId": "usr_student_alex",
+      "senderName": "Apex Institute of Technology",
+      "senderRole": "College Admin",
+      "senderAvatar": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "collegeId": "col_apex_tech_01",
+      "sentByAdminId": "usr_student_alex",
+      "text": "",
+      "sharedEventId": "c3497ad6fbaa9aba34854ccb",
+      "readBy": [
+        "usr_student_alex"
+      ],
+      "deletedFor": [],
+      "deletedForEveryone": false,
+      "_id": "984d0fe3f03455b531be52e9",
+      "id": "984d0fe3f03455b531be52e9",
+      "createdAt": "2026-10-03T07:57:28.020Z",
+      "updatedAt": "2026-10-03T07:57:28.020Z"
     }
   ],
   "conversationPreferences": [
     {
       "userId": "usr_student_alex",
       "conversationId": "88822f95119d36469b33116e",
-      "muted": true,
+      "muted": false,
       "hidden": false,
       "_id": "18334eeacb37d7e47cc11335",
       "id": "18334eeacb37d7e47cc11335",
       "createdAt": "2026-10-01T08:49:29.815Z",
-      "updatedAt": "2026-10-01T08:51:58.096Z"
+      "updatedAt": "2026-10-03T07:57:28.018Z"
     }
   ],
   "adminActivityLogs": [
@@ -4905,6 +5418,230 @@
       "id": "cd123dfe940d91d49d9abb75",
       "createdAt": "2026-10-01T08:51:58.070Z",
       "updatedAt": "2026-10-01T08:51:58.070Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "superadmin",
+      "actionType": "INVITE_ADMIN",
+      "details": "@Dr. Eleanor Vance sent an Admin invitation to @suresh",
+      "targetType": "User",
+      "targetId": "e9560105e93fa99a682097a6",
+      "targetTitle": "Suresh",
+      "timestamp": "2026-10-03T07:34:36.517Z",
+      "_id": "f818afab275c6d3bc8b71a02",
+      "id": "f818afab275c6d3bc8b71a02",
+      "createdAt": "2026-10-03T07:34:36.517Z",
+      "updatedAt": "2026-10-03T07:34:36.517Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "e9560105e93fa99a682097a6",
+      "adminName": "Suresh",
+      "adminUsername": "",
+      "actionType": "ACCEPT_INVITE",
+      "details": "@Suresh accepted the College Admin role for Apex Institute of Technology.",
+      "targetType": "CollegeAdminMembership",
+      "targetId": "c9210135381dc578163667fa",
+      "targetTitle": "Suresh",
+      "timestamp": "2026-10-03T07:35:03.916Z",
+      "_id": "bbca114091822d47143e5ab8",
+      "id": "bbca114091822d47143e5ab8",
+      "createdAt": "2026-10-03T07:35:03.916Z",
+      "updatedAt": "2026-10-03T07:35:03.916Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated profile for admin Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "0c58bb3df0690bcaf76f6856",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.884Z",
+      "_id": "9a8b96fd5bfdbd0264ed6049",
+      "id": "9a8b96fd5bfdbd0264ed6049",
+      "createdAt": "2026-10-03T07:57:27.884Z",
+      "updatedAt": "2026-10-03T07:57:27.884Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Removed: manageMessages.",
+      "targetType": "AdminMembership",
+      "targetId": "0c58bb3df0690bcaf76f6856",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.890Z",
+      "_id": "9afa350be134d109421f50c0",
+      "id": "9afa350be134d109421f50c0",
+      "createdAt": "2026-10-03T07:57:27.890Z",
+      "updatedAt": "2026-10-03T07:57:27.890Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Added: manageMessages; Removed: manageAttendance, issueCertificates.",
+      "targetType": "AdminMembership",
+      "targetId": "0c58bb3df0690bcaf76f6856",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.894Z",
+      "_id": "facc20a1f4c997cc93e7c898",
+      "id": "facc20a1f4c997cc93e7c898",
+      "createdAt": "2026-10-03T07:57:27.894Z",
+      "updatedAt": "2026-10-03T07:57:27.894Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "DISABLE_ADMIN",
+      "details": "@Dr. Eleanor Vance disabled Admin access for Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "0c58bb3df0690bcaf76f6856",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.901Z",
+      "_id": "09cfbae6d2455621c10b3f46",
+      "id": "09cfbae6d2455621c10b3f46",
+      "createdAt": "2026-10-03T07:57:27.901Z",
+      "updatedAt": "2026-10-03T07:57:27.901Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "ENABLE_ADMIN",
+      "details": "@Dr. Eleanor Vance re-enabled Admin access for Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "0c58bb3df0690bcaf76f6856",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.919Z",
+      "_id": "099ca748c5e553b21dd6ccc1",
+      "id": "099ca748c5e553b21dd6ccc1",
+      "createdAt": "2026-10-03T07:57:27.919Z",
+      "updatedAt": "2026-10-03T07:57:27.919Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "REMOVE_ADMIN",
+      "details": "@Dr. Eleanor Vance removed admin membership for Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "0c58bb3df0690bcaf76f6856",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.924Z",
+      "_id": "6d81a5bfc155d951db37f2ff",
+      "id": "6d81a5bfc155d951db37f2ff",
+      "createdAt": "2026-10-03T07:57:27.924Z",
+      "updatedAt": "2026-10-03T07:57:27.924Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "superadmin",
+      "actionType": "INVITE_ADMIN",
+      "details": "@Dr. Eleanor Vance sent an Admin invitation to @alexanderchen",
+      "targetType": "User",
+      "targetId": "usr_student_alex",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.934Z",
+      "_id": "f7ff9163102be33be4b84bdd",
+      "id": "f7ff9163102be33be4b84bdd",
+      "createdAt": "2026-10-03T07:57:27.934Z",
+      "updatedAt": "2026-10-03T07:57:27.934Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_student_alex",
+      "adminName": "Alexander Chen",
+      "adminUsername": "",
+      "actionType": "ACCEPT_INVITE",
+      "details": "@Alexander Chen accepted the College Admin role for Apex Institute of Technology.",
+      "targetType": "CollegeAdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.938Z",
+      "_id": "ddf8b6fe669f014df413ef96",
+      "id": "ddf8b6fe669f014df413ef96",
+      "createdAt": "2026-10-03T07:57:27.938Z",
+      "updatedAt": "2026-10-03T07:57:27.938Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "admin",
+      "actionType": "UPDATE_EVENT",
+      "details": "Super Admin reviewed collegiate activity and verified audit logs.",
+      "targetType": "Event",
+      "targetId": "c3497ad6fbaa9aba34854ccb",
+      "targetTitle": "Symposium",
+      "timestamp": "2026-10-03T07:57:27.941Z",
+      "_id": "5fb25ee96d0e1faa7aa21f35",
+      "id": "5fb25ee96d0e1faa7aa21f35",
+      "createdAt": "2026-10-03T07:57:27.941Z",
+      "updatedAt": "2026-10-03T07:57:27.941Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Removed: issueCertificates.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.979Z",
+      "_id": "12d8743c346ccf651dd0d597",
+      "id": "12d8743c346ccf651dd0d597",
+      "createdAt": "2026-10-03T07:57:27.979Z",
+      "updatedAt": "2026-10-03T07:57:27.979Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Removed: manageMessages.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.987Z",
+      "_id": "ceb95335580660fb52fb11a2",
+      "id": "ceb95335580660fb52fb11a2",
+      "createdAt": "2026-10-03T07:57:27.987Z",
+      "updatedAt": "2026-10-03T07:57:27.987Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Added: issueCertificates, manageMessages.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-03T07:57:27.993Z",
+      "_id": "55931b3da55792c83c59e01b",
+      "id": "55931b3da55792c83c59e01b",
+      "createdAt": "2026-10-03T07:57:27.993Z",
+      "updatedAt": "2026-10-03T07:57:27.993Z"
     }
   ],
   "credentialPosts": []
