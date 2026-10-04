@@ -10,6 +10,7 @@ import {
   login,
   getCurrentUser,
   refreshToken,
+  quickSwitch,
 } from '../controllers/authController';
 import { getPublicStats } from '../controllers/statsController';
 import {
@@ -69,6 +70,8 @@ import {
   getStudentProfile,
   updateStudentProfile,
   searchStudents,
+  checkUsernameAvailability,
+  getStudentResume,
 } from '../controllers/studentController';
 import {
   getColleges,
@@ -87,9 +90,11 @@ import {
 import {
   getPlacementPosts,
   createPlacementPost,
+  updatePlacementPost,
   deletePlacementPost,
   getInfrastructurePosts,
   createInfrastructurePost,
+  updateInfrastructurePost,
   deleteInfrastructurePost,
 } from '../controllers/postController';
 import {
@@ -113,6 +118,10 @@ import {
 import {
   getUserNotifications,
   markNotificationAsRead,
+  clearAllNotifications,
+  deleteNotification,
+  deleteSelectedNotifications,
+  markSelectedNotificationsAsRead,
 } from '../controllers/notificationController';
 import {
   createReminder,
@@ -147,6 +156,7 @@ apiRouter.post('/auth/register/student', studentRegister);
 apiRouter.post('/auth/register/college', collegeRegister);
 apiRouter.post('/auth/verify-email', verifyEmail);
 apiRouter.post('/auth/login', login);
+apiRouter.post('/auth/quick-switch', quickSwitch);
 apiRouter.get('/auth/me', authenticate, getCurrentUser);
 apiRouter.post('/auth/refresh-token', refreshToken);
 
@@ -227,9 +237,11 @@ apiRouter.post('/certificates/feed/:id/like', authenticate, toggleLikeCredential
 apiRouter.delete('/certificates/feed/:id', authenticate, deleteCredentialPost);
 
 // 7. Students profile routes
+apiRouter.get('/students/username/check', optionalAuthenticate, checkUsernameAvailability);
+apiRouter.get('/students/:id/resume', optionalAuthenticate, getStudentResume);
 apiRouter.get('/students/me', authenticate, getStudentProfile);
 apiRouter.get('/students/search', searchStudents);
-apiRouter.get('/students/:id', getStudentProfile);
+apiRouter.get('/students/:id', optionalAuthenticate, getStudentProfile);
 apiRouter.put('/students/profile', authenticate, updateStudentProfile);
 
 // 8. Colleges routes
@@ -254,10 +266,12 @@ apiRouter.get('/social/student/:studentId/connected-colleges', getStudentConnect
 // 10. Placement & Infrastructure Posts
 apiRouter.get('/placements', getPlacementPosts);
 apiRouter.post('/placements', authenticate, requireAdminPermission('managePlacements'), createPlacementPost);
+apiRouter.put('/placements/:id', authenticate, requireAdminPermission('managePlacements'), updatePlacementPost);
 apiRouter.delete('/placements/:id', authenticate, requireAdminPermission('managePlacements'), deletePlacementPost);
 
 apiRouter.get('/infrastructure', getInfrastructurePosts);
 apiRouter.post('/infrastructure', authenticate, requireAdminPermission('manageInfrastructure'), createInfrastructurePost);
+apiRouter.put('/infrastructure/:id', authenticate, requireAdminPermission('manageInfrastructure'), updateInfrastructurePost);
 apiRouter.delete('/infrastructure/:id', authenticate, requireAdminPermission('manageInfrastructure'), deleteInfrastructurePost);
 
 // 11. Admin Management, Invitations & Activity
@@ -283,7 +297,11 @@ apiRouter.post('/admins/pin/reset', authenticate, resetAdminPinWithOtp);
 
 // 12. Notifications & Reminders
 apiRouter.get('/notifications', authenticate, getUserNotifications);
+apiRouter.patch('/notifications/batch/read', authenticate, markSelectedNotificationsAsRead);
 apiRouter.patch('/notifications/:id/read', authenticate, markNotificationAsRead);
+apiRouter.delete('/notifications/batch', authenticate, deleteSelectedNotifications);
+apiRouter.delete('/notifications', authenticate, clearAllNotifications);
+apiRouter.delete('/notifications/:id', authenticate, deleteNotification);
 apiRouter.post('/reminders', authenticate, createReminder);
 apiRouter.put('/reminders/:id', authenticate, updateReminder);
 apiRouter.delete('/reminders/:id', authenticate, deleteReminder);

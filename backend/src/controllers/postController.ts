@@ -80,6 +80,47 @@ export async function deletePlacementPost(req: AuthenticatedRequest, res: Respon
   }
 }
 
+export async function updatePlacementPost(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    const post = await PlacementPost.findById(id);
+    if (!post) return res.status(404).json({ success: false, message: 'Placement post not found' });
+
+    if (user?.collegeId !== post.collegeId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const {
+      title,
+      company,
+      packageLPA,
+      placementStatistics,
+      message,
+      mediaUrl,
+      mediaType,
+      date,
+    } = req.body;
+
+    const updated = await PlacementPost.findByIdAndUpdate(id, {
+      $set: {
+        ...(title && { title }),
+        ...(company && { company }),
+        ...(packageLPA !== undefined && { packageLPA }),
+        ...(placementStatistics !== undefined && { placementStatistics }),
+        ...(message && { message }),
+        ...(mediaUrl !== undefined && { mediaUrl }),
+        ...(mediaType && { mediaType }),
+        ...(date && { date }),
+      },
+    });
+
+    return res.json({ success: true, message: 'Placement post updated successfully', post: updated });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 // --- INFRASTRUCTURE POSTS ---
 export async function getInfrastructurePosts(req: Request, res: Response) {
   try {
@@ -152,3 +193,41 @@ export async function deleteInfrastructurePost(req: AuthenticatedRequest, res: R
     return res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function updateInfrastructurePost(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    const post = await InfrastructurePost.findById(id);
+    if (!post) return res.status(404).json({ success: false, message: 'Facility post not found' });
+
+    if (user?.collegeId !== post.collegeId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const {
+      facilityTitle,
+      facilityType,
+      description,
+      googleMapsLink,
+      mediaUrl,
+      mediaType,
+    } = req.body;
+
+    const updated = await InfrastructurePost.findByIdAndUpdate(id, {
+      $set: {
+        ...(facilityTitle && { facilityTitle }),
+        ...(facilityType && { facilityType }),
+        ...(description && { description }),
+        ...(googleMapsLink !== undefined && { googleMapsLink }),
+        ...(mediaUrl !== undefined && { mediaUrl }),
+        ...(mediaType && { mediaType }),
+      },
+    });
+
+    return res.json({ success: true, message: 'Facility post updated successfully', post: updated });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
@@ -216,9 +216,56 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Enforce route protection ONLY on protected/private routes after auth restoration finishes
+  // Track current user to detect account switches & role transitions (Requirements 1, 2, 3)
+  const currentUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentId = user?._id || (user as any)?.id || null;
+    if (currentUserIdRef.current !== null && currentId !== currentUserIdRef.current) {
+      // Clear stale selection contexts
+      setSelectedCollegeId(null);
+      setSelectedStudentId(null);
+      setSelectedEventId(null);
+      setSelectedConversationId(null);
+      setNavHistory([]);
+      localStorage.removeItem('eventhub_active_college');
+
+      // Start cleanly at role-specific home
+      if (currentId) {
+        setActiveTab('home');
+        updateUrl('home');
+      } else {
+        setActiveTab('landing');
+        updateUrl('landing');
+      }
+    }
+    currentUserIdRef.current = currentId;
+  }, [user?._id, (user as any)?.id, user?.role]);
+
+  // Enforce route protection and ensure starting from role-specific Home on authenticated app reload (Requirement 3)
+  const initialAuthDoneRef = useRef(false);
   useEffect(() => {
     if (authLoading) return;
+
+    if (!initialAuthDoneRef.current) {
+      initialAuthDoneRef.current = true;
+      if (isAuthenticated) {
+        if (activeTab !== 'verify') {
+          setSelectedCollegeId(null);
+          setSelectedStudentId(null);
+          setSelectedEventId(null);
+          setSelectedConversationId(null);
+          setNavHistory([]);
+          setActiveTab('home');
+          updateUrl('home');
+        }
+      } else if (!isPublicRoute(activeTab)) {
+        setActiveTab('landing');
+        if (window.location.pathname !== '/' && window.location.pathname !== '/landing') {
+          window.history.replaceState(null, '', '/');
+        }
+      }
+      return;
+    }
 
     if (!isAuthenticated && !isPublicRoute(activeTab)) {
       setActiveTab('landing');

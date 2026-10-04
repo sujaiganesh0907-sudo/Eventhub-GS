@@ -132,6 +132,7 @@ export const EditCollegeProfileModal: React.FC<EditCollegeProfileModalProps> = (
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="Enter institution name"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
@@ -144,6 +145,7 @@ export const EditCollegeProfileModal: React.FC<EditCollegeProfileModalProps> = (
               type="text"
               value={contactNumber}
               onChange={(e) => setContactNumber(e.target.value)}
+              placeholder="Enter contact phone"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
@@ -158,7 +160,7 @@ export const EditCollegeProfileModal: React.FC<EditCollegeProfileModalProps> = (
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="City, State"
+              placeholder="Enter campus location"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
@@ -171,7 +173,7 @@ export const EditCollegeProfileModal: React.FC<EditCollegeProfileModalProps> = (
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://..."
+              placeholder="Enter official website URL"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
@@ -185,6 +187,7 @@ export const EditCollegeProfileModal: React.FC<EditCollegeProfileModalProps> = (
             rows={3}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
+            placeholder="Enter about institution description..."
             className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
           />
         </div>

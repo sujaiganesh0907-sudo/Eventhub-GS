@@ -186,6 +186,16 @@ export function syncPersistDBNow() {
   }
 }
 
+process.on('beforeExit', syncPersistDBNow);
+process.on('SIGINT', () => {
+  syncPersistDBNow();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  syncPersistDBNow();
+  process.exit(0);
+});
+
 export function generateId(): string {
   return crypto.randomBytes(12).toString('hex');
 }

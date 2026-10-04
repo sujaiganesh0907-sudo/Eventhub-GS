@@ -667,3 +667,91 @@ export async function refreshToken(req: Request, res: Response) {
     return res.status(401).json({ success: false, message: 'Invalid refresh token' });
   }
 }
+
+/**
+ * 8. Quick Switch Account for Testing & Evaluation
+ * Switches between Suresh Student and College Super Admin without exposing passwords
+ */
+export async function quickSwitch(req: Request, res: Response) {
+  try {
+    const { target } = req.body;
+    let targetEmail = '';
+    if (target === 'student') {
+      targetEmail = 'sureshmanikkavasagam123@gmail.com';
+    } else if (target === 'college-super') {
+      targetEmail = 'admin@apextech.edu';
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid quick switch target. Allowed: student, college-super' });
+    }
+
+    const user = await User.findOne({ email: targetEmail });
+    if (!user) {
+      return res.status(404).json({ success: false, message: `Account for ${targetEmail} not found.` });
+    }
+
+    const tokens = generateTokens(user);
+
+    let studentProfile = null;
+    let college = null;
+
+    if (user.role === 'Student') {
+      studentProfile = await StudentProfile.findOne({
+        $or: [{ userId: user._id }, { email: user.email }],
+      });
+      if (!studentProfile) {
+        studentProfile = await StudentProfile.create({
+          userId: user._id,
+          fullName: user.fullName || 'Suresh',
+          username: 'sureshm',
+          email: user.email,
+          collegeName: 'Apex Institute of Technology',
+          targetCollegeId: 'col_apex_tech_01',
+          phoneNumber: '+91 98765 43210',
+          department: 'Computer Science & Engineering',
+          yearOfStudy: '3rd Year',
+          skills: ['TypeScript', 'React', 'Node.js', 'Python'],
+          achievements: ['1st Place - Apex Annual Code Sprint 2025', 'Verified EVENTHUB Student'],
+          profileVisibility: 'Everyone',
+          messagePrivacy: 'Everyone',
+          resumePrivacy: 'Colleges only',
+          groupAddPrivacy: 'Everyone',
+          followersCount: 15,
+          followingCount: 12,
+          connectionsCount: 3,
+        });
+      } else if (!studentProfile.userId || studentProfile.userId !== user._id) {
+        studentProfile.userId = user._id;
+        await StudentProfile.findByIdAndUpdate(studentProfile._id, { userId: user._id });
+      }
+    } else if (user.collegeId) {
+      college = await College.findById(user.collegeId);
+    }
+
+    const adminMembershipsCount = await CollegeAdminMembership.countDocuments({
+      userId: user._id,
+      status: 'Active',
+    });
+    const hasAdminMemberships =
+      adminMembershipsCount > 0 || user.role === 'College Super Admin' || user.role === 'College Admin';
+
+    return res.json({
+      success: true,
+      message: `Switched to ${user.fullName}`,
+      tokens,
+      user: {
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        fullName: user.fullName,
+        collegeId: user.collegeId,
+      },
+      studentProfile,
+      college,
+      hasAdminMemberships,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+

@@ -7,6 +7,7 @@ interface FileUploadProps {
   helperText?: string;
   value?: string;
   onChange: (fileUrl: string) => void;
+  onFileInfoChange?: (info: { fileUrl: string; fileType: string; originalName: string; size: number }) => void;
   accept?: string;
   maxSizeMB?: number;
   showPreview?: boolean;
@@ -17,7 +18,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   helperText,
   value,
   onChange,
-  accept = 'image/jpeg,image/png,image/webp,application/pdf',
+  onFileInfoChange,
+  accept = 'image/jpeg,image/png,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,.doc,.docx',
   maxSizeMB = 15,
   showPreview = true,
 }) => {
@@ -41,11 +43,25 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const res = await api.uploadFile(file);
       if (res.success && res.fileUrl) {
         onChange(res.fileUrl);
+        const lowerName = (res.originalName || file.name).toLowerCase();
+        let detectedType = 'image';
+        if (lowerName.endsWith('.pdf')) detectedType = 'pdf';
+        else if (lowerName.endsWith('.docx')) detectedType = 'docx';
+        else if (lowerName.endsWith('.doc')) detectedType = 'doc';
+
+        if (onFileInfoChange) {
+          onFileInfoChange({
+            fileUrl: res.fileUrl,
+            fileType: detectedType,
+            originalName: res.originalName || file.name,
+            size: file.size,
+          });
+        }
       } else {
-        setError('Upload failed. Please try again.');
+        setError('Upload failed. Please check network connection and try again.');
       }
     } catch (err: any) {
-      setError(err.message || 'Error uploading file.');
+      setError(err.message || 'Error uploading file. Please try again.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -56,10 +72,20 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     onChange('');
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (onFileInfoChange) {
+      onFileInfoChange({
+        fileUrl: '',
+        fileType: '',
+        originalName: '',
+        size: 0,
+      });
+    }
   };
 
-  const isPdf = value?.toLowerCase().endsWith('.pdf');
-  const isImage = value && !isPdf;
+  const lowerVal = (value || '').toLowerCase();
+  const isPdf = lowerVal.endsWith('.pdf') || lowerVal.includes('.pdf');
+  const isDoc = lowerVal.endsWith('.docx') || lowerVal.endsWith('.doc') || lowerVal.includes('.docx') || lowerVal.includes('.doc');
+  const isImage = value && !isPdf && !isDoc;
 
   return (
     <div className="w-full space-y-2">
@@ -80,18 +106,34 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                     }}
                   />
                 </div>
-              ) : (
+              ) : isPdf ? (
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-[var(--surface)] border border-[var(--border-color)]">
-                  <FileText className="w-8 h-8 text-[var(--primary-color)]" />
-                  <div className="grow">
-                    <p className="text-sm font-medium text-[var(--text-primary)]">PDF Document Uploaded</p>
+                  <FileText className="w-8 h-8 text-[var(--primary-color)] shrink-0" />
+                  <div className="grow min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">PDF Document Uploaded</p>
                     <a
                       href={value}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-[var(--primary-color)] hover:underline"
+                      className="text-xs text-[var(--primary-color)] hover:underline block truncate mt-0.5"
                     >
-                      View / Download file
+                      View / Download PDF file
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-[var(--surface)] border border-[var(--border-color)]">
+                  <FileText className="w-8 h-8 text-blue-600 shrink-0" />
+                  <div className="grow min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Word Document (DOC / DOCX) Uploaded</p>
+                    <a
+                      href={value}
+                      target="_blank"
+                      rel="noreferrer"
+                      download
+                      className="text-xs text-[var(--primary-color)] hover:underline block truncate mt-0.5"
+                    >
+                      Download Document
                     </a>
                   </div>
                 </div>
@@ -158,7 +200,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         className="hidden"
       />
 
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      {error && (
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-600 font-medium mt-1">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              fileInputRef.current?.click();
+            }}
+            className="text-[11px] font-bold text-red-700 underline hover:no-underline ml-2 shrink-0 cursor-pointer"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
     </div>
   );
 };

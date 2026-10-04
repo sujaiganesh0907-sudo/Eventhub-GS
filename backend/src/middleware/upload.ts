@@ -34,10 +34,10 @@ const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterC
   ];
 
   const ext = path.extname(file.originalname).toLowerCase();
-  if (allowedMimeTypes.includes(file.mimetype) || ext === '.docx') {
+  if (allowedMimeTypes.includes(file.mimetype) || ext === '.docx' || ext === '.doc') {
     cb(null, true);
   } else {
-    cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: JPG, PNG, WEBP, PDF, MP4, DOCX`));
+    cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: JPG, PNG, WEBP, PDF, DOC, DOCX, MP4`));
   }
 };
 

@@ -203,11 +203,47 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
     if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
     const { eventId, search, paymentStatus, attended } = req.query;
+    const targetCollegeId =
+      (req.headers['x-college-id'] as string) ||
+      (req.query.collegeId as string) ||
+      user.collegeId;
 
     const filter: any = {};
 
-    // Allow student organizers to access registrations for events they created
-    if (user.role === 'Student') {
+    // Check if user is operating as an authorized College Administrator
+    let isAuthorizedCollegeAdmin = false;
+    if (targetCollegeId) {
+      if (user.role === 'College Super Admin' && user.collegeId === targetCollegeId) {
+        isAuthorizedCollegeAdmin = true;
+      } else {
+        const membership = await CollegeAdminMembership.findOne({
+          collegeId: targetCollegeId,
+          userId: user._id,
+          status: 'Active',
+        });
+        if (membership) {
+          if (
+            membership.role === 'College Super Admin' ||
+            membership.permissions.includes('manageRegistrations') ||
+            membership.permissions.includes('ALL_PERMISSIONS') ||
+            membership.permissions.includes('manageAttendance')
+          ) {
+            isAuthorizedCollegeAdmin = true;
+          } else {
+            return res.status(403).json({
+              success: false,
+              message: "Access denied. You lack the 'manageRegistrations' permission for this institution.",
+            });
+          }
+        }
+      }
+    }
+
+    if (isAuthorizedCollegeAdmin && targetCollegeId) {
+      filter.collegeId = targetCollegeId;
+      if (eventId) filter.eventId = eventId;
+    } else if (user.role === 'Student') {
+      // Student organizer viewing registrations for their own event
       if (!eventId) {
         return res.status(400).json({ success: false, message: 'Event ID is required' });
       }
@@ -217,25 +253,7 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
       }
       filter.eventId = eventId;
     } else {
-      if (!user.collegeId) return res.status(403).json({ success: false, message: 'College account required' });
-
-      // Permission check for College Admin
-      if (user.role === 'College Admin') {
-        const membership = await CollegeAdminMembership.findOne({
-          collegeId: user.collegeId,
-          userId: user._id,
-          status: 'Active',
-        });
-        if (!membership || (!membership.permissions.includes('manageRegistrations') && !membership.permissions.includes('ALL_PERMISSIONS'))) {
-          return res.status(403).json({
-            success: false,
-            message: "Access denied. You lack the 'manageRegistrations' permission for this institution.",
-          });
-        }
-      }
-
-      filter.collegeId = user.collegeId;
-      if (eventId) filter.eventId = eventId;
+      return res.status(403).json({ success: false, message: 'College administrator privileges required.' });
     }
 
     if (paymentStatus) filter.paymentStatus = paymentStatus;

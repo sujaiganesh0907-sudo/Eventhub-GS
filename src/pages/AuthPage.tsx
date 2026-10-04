@@ -460,7 +460,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               >
                 <User className="w-3.5 h-3.5 text-[var(--primary-color)] shrink-0" />
                 <div className="truncate">
-                  <span className="block font-bold">Alex Chen</span>
+                  <span className="block font-bold">Suresh</span>
                   <span className="text-[10px] text-[var(--text-muted)]">Verified Student</span>
                 </div>
               </button>

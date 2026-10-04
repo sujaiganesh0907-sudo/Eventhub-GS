@@ -45,8 +45,8 @@
       "isEmailVerified": true,
       "id": "usr_student_alex",
       "createdAt": "2026-09-24T13:38:09.699Z",
-      "updatedAt": "2026-10-03T07:57:27.762Z",
-      "adminPinHash": "$2b$10$3lDDBj46xzq7AusW/.3juu9QI8mtMh2zP6eA5QqB6Ssda6or12xEG"
+      "updatedAt": "2026-10-04T07:12:32.241Z",
+      "adminPinHash": "$2b$10$MktubclbTFiPiZlcG7/Q5uHR4kPvxDMp8SvAFDCMK7.sB.mx1UjqO"
     },
     {
       "email": "sureshmanikkavasagam123@gmail.com",
@@ -57,8 +57,9 @@
       "_id": "e9560105e93fa99a682097a6",
       "id": "e9560105e93fa99a682097a6",
       "createdAt": "2026-09-24T15:16:29.112Z",
-      "updatedAt": "2026-10-03T07:35:20.690Z",
-      "adminPinHash": "$2b$10$ecFW1vxILijTEl55.YrXtOj4qaWipjUkMiZcBXwumZ4Znhdm4PXVu"
+      "updatedAt": "2026-10-04T07:34:38.666Z",
+      "adminPinHash": "$2b$10$ecFW1vxILijTEl55.YrXtOj4qaWipjUkMiZcBXwumZ4Znhdm4PXVu",
+      "themePreference": "neutral-slate"
     },
     {
       "email": "sureshmanikkavasakam@gmail.com",
@@ -174,7 +175,7 @@
       "_id": "d64333f639c7fdf3cbc7dcd2",
       "id": "d64333f639c7fdf3cbc7dcd2",
       "createdAt": "2026-09-24T15:16:29.112Z",
-      "updatedAt": "2026-10-03T07:31:58.172Z",
+      "updatedAt": "2026-10-04T07:34:38.833Z",
       "bio": "I am a Computer Science Engineering student specializing in Cyber Security, with a strong interest in cybersecurity, cloud computing, and software development. I enjoy building practical projects, exploring new technologies, and continuously improving my technical and problem-solving skills. I am passionate about gaining real-world experience and developing secure, useful technology solutions.",
       "location": "Erode",
       "profilePhoto": "/uploads/media/upload-1791012676822-989051059.jpg",
@@ -390,13 +391,13 @@
       ],
       "status": "Active",
       "invitedBy": "Dr. Eleanor Vance",
-      "invitedAt": "2026-10-03T07:57:27.934Z",
+      "invitedAt": "2026-10-04T07:12:32.405Z",
       "addedBy": "Dr. Eleanor Vance",
-      "_id": "a56b92cfaac96da7b5da0761",
-      "id": "a56b92cfaac96da7b5da0761",
-      "createdAt": "2026-10-03T07:57:27.934Z",
-      "updatedAt": "2026-10-03T07:57:27.993Z",
-      "acceptedAt": "2026-10-03T07:57:27.938Z"
+      "_id": "cdf944176565d257d71ae922",
+      "id": "cdf944176565d257d71ae922",
+      "createdAt": "2026-10-04T07:12:32.405Z",
+      "updatedAt": "2026-10-04T07:12:32.446Z",
+      "acceptedAt": "2026-10-04T07:12:32.409Z"
     }
   ],
   "events": [
@@ -761,7 +762,7 @@
       "updatedAt": "2026-09-24T13:38:09.700Z"
     },
     {
-      "title": "Apex Tech Symposium 1791014247967",
+      "title": "Apex Tech Symposium 1791097952420",
       "poster": "https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80",
       "hostCollegeId": "col_apex_tech_01",
       "hostCollegeName": "Apex Institute of Technology",
@@ -850,25 +851,25 @@
       "creatorUserId": "usr_student_alex",
       "targetCollegeId": "col_apex_tech_01",
       "status": "Published",
-      "viewsCount": 5,
+      "viewsCount": 6,
       "attendanceCount": 1,
-      "certificatesIssuedCount": 7,
+      "certificatesIssuedCount": 8,
       "_id": "c3497ad6fbaa9aba34854ccb",
       "id": "c3497ad6fbaa9aba34854ccb",
       "createdAt": "2026-09-24T14:52:40.061Z",
-      "updatedAt": "2026-10-03T07:57:32.014Z",
+      "updatedAt": "2026-10-04T07:12:36.037Z",
       "$inc": {
         "certificatesIssuedCount": 1
       },
       "attendanceFinalized": true,
-      "attendanceFinalizedAt": "2026-10-03T07:57:28.184Z",
+      "attendanceFinalizedAt": "2026-10-04T07:12:32.627Z",
       "attendanceFinalizedBy": "usr_col_apex_admin",
       "certificateTemplate": {
-        "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1791014248038.docx",
+        "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1791097952487.docx",
         "fileName": "template.docx",
-        "version": 6,
+        "version": 7,
         "status": "Active",
-        "uploadedAt": "2026-10-03T07:57:28.039Z",
+        "uploadedAt": "2026-10-04T07:12:32.488Z",
         "uploadedBy": "Dr. Eleanor Vance",
         "detectedPlaceholders": [
           "student_name",
@@ -882,6 +883,24 @@
         },
         "isActivated": true,
         "history": [
+          {
+            "version": 6,
+            "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1791014248038.docx",
+            "fileName": "template.docx",
+            "uploadedAt": "2026-10-03T07:57:28.039Z",
+            "uploadedBy": "Dr. Eleanor Vance",
+            "detectedPlaceholders": [
+              "student_name",
+              "event_name",
+              "college_name"
+            ],
+            "mappings": {
+              "student_name": "student.fullName",
+              "event_name": "event.title",
+              "college_name": "college.name"
+            },
+            "status": "Archived"
+          },
           {
             "version": 5,
             "fileUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1790844718118.docx",
@@ -983,7 +1002,7 @@
           }
         ]
       },
-      "certificateTemplateUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1791014248038.docx",
+      "certificateTemplateUrl": "/uploads/templates/template-c3497ad6fbaa9aba34854ccb-1791097952487.docx",
       "certificateTemplateName": "template.docx"
     },
     {
@@ -1971,10 +1990,10 @@
       "_id": "13fe5d1614504ae0233b9b5b",
       "id": "13fe5d1614504ae0233b9b5b",
       "createdAt": "2026-09-25T09:17:27.943Z",
-      "updatedAt": "2026-10-03T07:57:32.013Z",
+      "updatedAt": "2026-10-04T07:12:36.037Z",
       "qrCodeUrl": "data:image/png;base64,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",
       "certificateStatus": "Sent",
-      "attendedAt": "2026-10-03T07:57:28.155Z",
+      "attendedAt": "2026-10-04T07:12:32.602Z",
       "attendanceMethod": "QR_SCAN",
       "certificateId": "EH-CERT-2026-3324BB",
       "certificateFileUrl": "/uploads/certificates/EH-CERT-2026-3324BB.pdf",
@@ -2008,11 +2027,11 @@
       "method": "QR_SCAN",
       "markedByUserId": "usr_col_apex_admin",
       "status": "Present",
-      "markedAt": "2026-10-03T07:57:28.155Z",
+      "markedAt": "2026-10-04T07:12:32.602Z",
       "_id": "a22b6566bdf8c6d566d60460",
       "id": "a22b6566bdf8c6d566d60460",
       "createdAt": "2026-10-01T08:46:48.527Z",
-      "updatedAt": "2026-10-03T07:57:28.155Z"
+      "updatedAt": "2026-10-04T07:12:32.602Z"
     }
   ],
   "certificates": [
@@ -2213,18 +2232,6 @@
       "updatedAt": "2026-10-03T07:37:54.952Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "EVENT_APPROVAL",
-      "title": "Event Proposal Approved!",
-      "message": "Your event proposal \"Autonomous Drone Obstacle Challenge 2026\" was approved by Apex Institute of Technology and is now live!",
-      "link": "/events/c3497ad6fbaa9aba34854ccb",
-      "read": false,
-      "_id": "2ce914a7fb49e1a2305af5c9",
-      "id": "2ce914a7fb49e1a2305af5c9",
-      "createdAt": "2026-09-24T14:52:40.173Z",
-      "updatedAt": "2026-09-24T14:52:40.173Z"
-    },
-    {
       "recipientUserId": "usr_col_horizon_admin",
       "type": "EVENT_APPROVAL",
       "title": "New Student Event Proposal",
@@ -2235,18 +2242,6 @@
       "id": "a5653d0dfb1e08f519d2908d",
       "createdAt": "2026-09-24T15:22:07.230Z",
       "updatedAt": "2026-09-24T15:22:07.230Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "REGISTRATION",
-      "title": "Registration Confirmed!",
-      "message": "Your registration for \"Autonomous Drone Obstacle Challenge 2026\" is confirmed. Your Registration ID is EH-2026-6FA165.",
-      "link": "/student/ticket/EH-2026-6FA165",
-      "read": false,
-      "_id": "e24b8d0b4654378b97433378",
-      "id": "e24b8d0b4654378b97433378",
-      "createdAt": "2026-09-25T09:17:28.083Z",
-      "updatedAt": "2026-09-25T09:17:28.083Z"
     },
     {
       "recipientUserId": "usr_col_apex_admin",
@@ -2273,48 +2268,6 @@
       "updatedAt": "2026-09-25T09:17:28.083Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "REMINDER",
-      "title": "Event Reminder Scheduled",
-      "message": "Reminder set for \"Autonomous Drone Obstacle Challenge 2026\" on 11/20/2026 at 07:00 AM.",
-      "link": "/events",
-      "read": false,
-      "metadata": {
-        "eventId": "c3497ad6fbaa9aba34854ccb",
-        "reminderId": "b61ac24eeec2c7ce04f356e2",
-        "eventTitle": "Autonomous Drone Obstacle Challenge 2026",
-        "eventDate": "2026-11-20",
-        "venue": "Main Sports Complex Arena"
-      },
-      "_id": "fe7428aeefebcbd8445b1fd7",
-      "id": "fe7428aeefebcbd8445b1fd7",
-      "createdAt": "2026-09-25T09:17:28.093Z",
-      "updatedAt": "2026-09-25T09:17:28.093Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "a098f75ad452bed076dea9d8",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "createEvents",
-          "manageAttendance",
-          "issueCertificates",
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "652d057818b42775a8c858af",
-      "id": "652d057818b42775a8c858af",
-      "createdAt": "2026-10-01T08:44:21.569Z",
-      "updatedAt": "2026-10-01T08:44:21.569Z"
-    },
-    {
       "recipientUserId": "usr_col_apex_admin",
       "type": "ADMIN_ACTION",
       "title": "Admin Invitation Accepted",
@@ -2329,116 +2282,6 @@
       "id": "f165b4a696c2dd875b69efc8",
       "createdAt": "2026-10-01T08:44:21.575Z",
       "updatedAt": "2026-10-03T07:37:54.953Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "a098f75ad452bed076dea9d8",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "cd5583ca6c8c85a8aeecab00",
-      "id": "cd5583ca6c8c85a8aeecab00",
-      "createdAt": "2026-10-01T08:44:24.691Z",
-      "updatedAt": "2026-10-01T08:44:24.691Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "a098f75ad452bed076dea9d8",
-        "added": [
-          "manageMessages"
-        ],
-        "removed": [
-          "manageAttendance",
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "e34072cb5a6b4ffc7c2fb228",
-      "id": "e34072cb5a6b4ffc7c2fb228",
-      "createdAt": "2026-10-01T08:44:24.697Z",
-      "updatedAt": "2026-10-01T08:44:24.697Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Disabled",
-      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "a098f75ad452bed076dea9d8"
-      },
-      "read": false,
-      "_id": "b841991ad8d0999e4fd30a64",
-      "id": "b841991ad8d0999e4fd30a64",
-      "createdAt": "2026-10-01T08:44:24.704Z",
-      "updatedAt": "2026-10-01T08:44:24.704Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Restored",
-      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "a098f75ad452bed076dea9d8"
-      },
-      "read": false,
-      "_id": "9286aaf5bfc3546837cdf0fa",
-      "id": "9286aaf5bfc3546837cdf0fa",
-      "createdAt": "2026-10-01T08:44:24.708Z",
-      "updatedAt": "2026-10-01T08:44:24.708Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Revoked",
-      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "action": "admin-access-revoked"
-      },
-      "read": false,
-      "_id": "dc8803fe3c5121e9b534764b",
-      "id": "dc8803fe3c5121e9b534764b",
-      "createdAt": "2026-10-01T08:44:24.712Z",
-      "updatedAt": "2026-10-01T08:44:24.712Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "fd5976964820f60e86dae3ba",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "createEvents",
-          "manageAttendance",
-          "issueCertificates",
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "d4db79f4a7a5972beca92889",
-      "id": "d4db79f4a7a5972beca92889",
-      "createdAt": "2026-10-01T08:44:24.724Z",
-      "updatedAt": "2026-10-01T08:44:24.724Z"
     },
     {
       "recipientUserId": "usr_col_apex_admin",
@@ -2457,202 +2300,6 @@
       "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "fd5976964820f60e86dae3ba",
-        "added": [],
-        "removed": [
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "d7008887c35153ee34ae581c",
-      "id": "d7008887c35153ee34ae581c",
-      "createdAt": "2026-10-01T08:44:24.749Z",
-      "updatedAt": "2026-10-01T08:44:24.749Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "fd5976964820f60e86dae3ba",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "53f18b9c6f0ef6630b1bd8ad",
-      "id": "53f18b9c6f0ef6630b1bd8ad",
-      "createdAt": "2026-10-01T08:44:24.756Z",
-      "updatedAt": "2026-10-01T08:44:24.756Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "fd5976964820f60e86dae3ba",
-        "added": [
-          "issueCertificates",
-          "manageMessages"
-        ],
-        "removed": []
-      },
-      "read": false,
-      "_id": "034653353ad589d33b432ecf",
-      "id": "034653353ad589d33b432ecf",
-      "createdAt": "2026-10-01T08:44:24.764Z",
-      "updatedAt": "2026-10-01T08:44:24.764Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ATTENDANCE",
-      "title": "Attendance Confirmed!",
-      "message": "Your check-in for \"Autonomous Drone Obstacle Challenge 2026\" was marked as Present (Scanned Pass).",
-      "link": "/events",
-      "read": false,
-      "_id": "3d134e3818d840d46c11eeb1",
-      "id": "3d134e3818d840d46c11eeb1",
-      "createdAt": "2026-10-01T08:46:48.528Z",
-      "updatedAt": "2026-10-01T08:46:48.528Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "fd5976964820f60e86dae3ba",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "35129f0ab9124b00f8b98ccc",
-      "id": "35129f0ab9124b00f8b98ccc",
-      "createdAt": "2026-10-01T08:47:42.578Z",
-      "updatedAt": "2026-10-01T08:47:42.578Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "fd5976964820f60e86dae3ba",
-        "added": [
-          "manageMessages"
-        ],
-        "removed": [
-          "manageAttendance",
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "375012c38f14306cf497acc5",
-      "id": "375012c38f14306cf497acc5",
-      "createdAt": "2026-10-01T08:47:42.585Z",
-      "updatedAt": "2026-10-01T08:47:42.585Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Disabled",
-      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "fd5976964820f60e86dae3ba"
-      },
-      "read": false,
-      "_id": "06a89810403163d3ed551370",
-      "id": "06a89810403163d3ed551370",
-      "createdAt": "2026-10-01T08:47:42.604Z",
-      "updatedAt": "2026-10-01T08:47:42.604Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Restored",
-      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "fd5976964820f60e86dae3ba"
-      },
-      "read": false,
-      "_id": "6a9822dcb19b80aa2b0f201e",
-      "id": "6a9822dcb19b80aa2b0f201e",
-      "createdAt": "2026-10-01T08:47:42.609Z",
-      "updatedAt": "2026-10-01T08:47:42.609Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Revoked",
-      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "action": "admin-access-revoked"
-      },
-      "read": false,
-      "_id": "521026ff7237d6b06139a861",
-      "id": "521026ff7237d6b06139a861",
-      "createdAt": "2026-10-01T08:47:42.615Z",
-      "updatedAt": "2026-10-01T08:47:42.615Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "CERTIFICATE",
-      "title": "Participation Certificate Issued!",
-      "message": "Your participation certificate for \"Autonomous Drone Obstacle Challenge 2026\" is now available in your Student Profile.",
-      "link": "/profile?tab=certificates",
-      "read": false,
-      "metadata": {
-        "certificateId": "EH-CERT-2026-3324BB",
-        "eventId": "c3497ad6fbaa9aba34854ccb"
-      },
-      "_id": "3443435f86b7cf36246f8fa3",
-      "id": "3443435f86b7cf36246f8fa3",
-      "createdAt": "2026-10-01T08:47:46.262Z",
-      "updatedAt": "2026-10-01T08:47:46.262Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "14820ea27aebecbbfaa51d65",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "createEvents",
-          "manageAttendance",
-          "issueCertificates",
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "8004978892443c24abe241a6",
-      "id": "8004978892443c24abe241a6",
-      "createdAt": "2026-10-01T08:47:46.267Z",
-      "updatedAt": "2026-10-01T08:47:46.267Z"
-    },
-    {
       "recipientUserId": "usr_col_apex_admin",
       "type": "ADMIN_ACTION",
       "title": "Admin Invitation Accepted",
@@ -2667,64 +2314,6 @@
       "id": "17e4de0547ecc340772f48d2",
       "createdAt": "2026-10-01T08:47:46.271Z",
       "updatedAt": "2026-10-03T07:37:54.953Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "14820ea27aebecbbfaa51d65",
-        "added": [],
-        "removed": [
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "ffe624861ca2d41d02a46b4d",
-      "id": "ffe624861ca2d41d02a46b4d",
-      "createdAt": "2026-10-01T08:47:46.303Z",
-      "updatedAt": "2026-10-01T08:47:46.303Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "14820ea27aebecbbfaa51d65",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "719f78828f81e64e79ed36b4",
-      "id": "719f78828f81e64e79ed36b4",
-      "createdAt": "2026-10-01T08:47:46.315Z",
-      "updatedAt": "2026-10-01T08:47:46.315Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "14820ea27aebecbbfaa51d65",
-        "added": [
-          "issueCertificates",
-          "manageMessages"
-        ],
-        "removed": []
-      },
-      "read": false,
-      "_id": "4187f50192e54242983a6524",
-      "id": "4187f50192e54242983a6524",
-      "createdAt": "2026-10-01T08:47:46.334Z",
-      "updatedAt": "2026-10-01T08:47:46.334Z"
     },
     {
       "recipientUserId": "aafd16de800892fbe16c2722",
@@ -2759,148 +2348,6 @@
       "updatedAt": "2026-10-01T08:47:46.367Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "CERTIFICATE",
-      "title": "Participation Certificate Issued!",
-      "message": "Your participation certificate for \"Apex Tech Symposium 1790844466287\" is now available in your Student Profile.",
-      "link": "/profile?tab=certificates",
-      "read": false,
-      "metadata": {
-        "certificateId": "EH-CERT-2026-3324BB",
-        "eventId": "c3497ad6fbaa9aba34854ccb"
-      },
-      "_id": "1617297a8bbf90f1291c6169",
-      "id": "1617297a8bbf90f1291c6169",
-      "createdAt": "2026-10-01T08:47:49.664Z",
-      "updatedAt": "2026-10-01T08:47:49.664Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "CERTIFICATE",
-      "title": "Participation Certificate Issued!",
-      "message": "Your participation certificate for \"Apex Tech Symposium 1790844466287\" is now available in your Student Profile.",
-      "link": "/profile?tab=certificates",
-      "read": false,
-      "metadata": {
-        "certificateId": "EH-CERT-2026-3324BB",
-        "eventId": "c3497ad6fbaa9aba34854ccb"
-      },
-      "_id": "5ec4ac79c8227711b1c63cab",
-      "id": "5ec4ac79c8227711b1c63cab",
-      "createdAt": "2026-10-01T08:48:44.704Z",
-      "updatedAt": "2026-10-01T08:48:44.704Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "14820ea27aebecbbfaa51d65",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "31dbdc1f6f6fcf5f015df8fe",
-      "id": "31dbdc1f6f6fcf5f015df8fe",
-      "createdAt": "2026-10-01T08:49:29.652Z",
-      "updatedAt": "2026-10-01T08:49:29.652Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "14820ea27aebecbbfaa51d65",
-        "added": [
-          "manageMessages"
-        ],
-        "removed": [
-          "manageAttendance",
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "31b3a6d716b7e85c2841a75a",
-      "id": "31b3a6d716b7e85c2841a75a",
-      "createdAt": "2026-10-01T08:49:29.667Z",
-      "updatedAt": "2026-10-01T08:49:29.667Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Disabled",
-      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "14820ea27aebecbbfaa51d65"
-      },
-      "read": false,
-      "_id": "bf6149c0a602574a5c8a482c",
-      "id": "bf6149c0a602574a5c8a482c",
-      "createdAt": "2026-10-01T08:49:29.678Z",
-      "updatedAt": "2026-10-01T08:49:29.678Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Restored",
-      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "14820ea27aebecbbfaa51d65"
-      },
-      "read": false,
-      "_id": "7dd0edc83b5f235140f2e659",
-      "id": "7dd0edc83b5f235140f2e659",
-      "createdAt": "2026-10-01T08:49:29.683Z",
-      "updatedAt": "2026-10-01T08:49:29.683Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Revoked",
-      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "action": "admin-access-revoked"
-      },
-      "read": false,
-      "_id": "8e1f697311c1cab71533b098",
-      "id": "8e1f697311c1cab71533b098",
-      "createdAt": "2026-10-01T08:49:29.687Z",
-      "updatedAt": "2026-10-01T08:49:29.687Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "65755b209676ae311918f542",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "createEvents",
-          "manageAttendance",
-          "issueCertificates",
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "b0fdbe914267413c2f9fabfa",
-      "id": "b0fdbe914267413c2f9fabfa",
-      "createdAt": "2026-10-01T08:49:29.713Z",
-      "updatedAt": "2026-10-01T08:49:29.713Z"
-    },
-    {
       "recipientUserId": "usr_col_apex_admin",
       "type": "ADMIN_ACTION",
       "title": "Admin Invitation Accepted",
@@ -2915,64 +2362,6 @@
       "id": "4d7e055361feb9d23f0959d5",
       "createdAt": "2026-10-01T08:49:29.720Z",
       "updatedAt": "2026-10-03T07:37:54.953Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "65755b209676ae311918f542",
-        "added": [],
-        "removed": [
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "51067253d0cfdbfe45a3c14f",
-      "id": "51067253d0cfdbfe45a3c14f",
-      "createdAt": "2026-10-01T08:49:29.769Z",
-      "updatedAt": "2026-10-01T08:49:29.769Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "65755b209676ae311918f542",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "ba6f609eeaab20483b507e99",
-      "id": "ba6f609eeaab20483b507e99",
-      "createdAt": "2026-10-01T08:49:29.777Z",
-      "updatedAt": "2026-10-01T08:49:29.777Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "65755b209676ae311918f542",
-        "added": [
-          "issueCertificates",
-          "manageMessages"
-        ],
-        "removed": []
-      },
-      "read": false,
-      "_id": "273bcdc2e9e1cb88f99943bf",
-      "id": "273bcdc2e9e1cb88f99943bf",
-      "createdAt": "2026-10-01T08:49:29.787Z",
-      "updatedAt": "2026-10-01T08:49:29.787Z"
     },
     {
       "recipientUserId": "aafd16de800892fbe16c2722",
@@ -3023,144 +2412,6 @@
       "updatedAt": "2026-10-01T08:49:29.819Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "ATTENDANCE",
-      "title": "Attendance Confirmed!",
-      "message": "Your check-in for \"Apex Tech Symposium 1790844569734\" was marked as Present (Scanned Pass).",
-      "link": "/events",
-      "read": false,
-      "_id": "088e707b252d45d630fcab88",
-      "id": "088e707b252d45d630fcab88",
-      "createdAt": "2026-10-01T08:49:29.890Z",
-      "updatedAt": "2026-10-01T08:49:29.890Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "CERTIFICATE",
-      "title": "Participation Certificate Issued!",
-      "message": "Your participation certificate for \"Apex Tech Symposium 1790844569734\" is now available in your Student Profile.",
-      "link": "/profile?tab=certificates",
-      "read": false,
-      "metadata": {
-        "certificateId": "EH-CERT-2026-3324BB",
-        "eventId": "c3497ad6fbaa9aba34854ccb"
-      },
-      "_id": "83a63c9e3fbc35363e9ae63b",
-      "id": "83a63c9e3fbc35363e9ae63b",
-      "createdAt": "2026-10-01T08:49:33.468Z",
-      "updatedAt": "2026-10-01T08:49:33.468Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "65755b209676ae311918f542",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "bb9933d8f387c740a9d6eb07",
-      "id": "bb9933d8f387c740a9d6eb07",
-      "createdAt": "2026-10-01T08:50:21.070Z",
-      "updatedAt": "2026-10-01T08:50:21.070Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "65755b209676ae311918f542",
-        "added": [
-          "manageMessages"
-        ],
-        "removed": [
-          "manageAttendance",
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "0d6820897fe80a2e6d326858",
-      "id": "0d6820897fe80a2e6d326858",
-      "createdAt": "2026-10-01T08:50:21.077Z",
-      "updatedAt": "2026-10-01T08:50:21.077Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Disabled",
-      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "65755b209676ae311918f542"
-      },
-      "read": false,
-      "_id": "d187053dd73119fdac045ab5",
-      "id": "d187053dd73119fdac045ab5",
-      "createdAt": "2026-10-01T08:50:21.088Z",
-      "updatedAt": "2026-10-01T08:50:21.088Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Restored",
-      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "65755b209676ae311918f542"
-      },
-      "read": false,
-      "_id": "bfab5a777aa884222a85cc2e",
-      "id": "bfab5a777aa884222a85cc2e",
-      "createdAt": "2026-10-01T08:50:21.092Z",
-      "updatedAt": "2026-10-01T08:50:21.092Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Revoked",
-      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "action": "admin-access-revoked"
-      },
-      "read": false,
-      "_id": "38fe5556c7d1439f485b732c",
-      "id": "38fe5556c7d1439f485b732c",
-      "createdAt": "2026-10-01T08:50:21.096Z",
-      "updatedAt": "2026-10-01T08:50:21.096Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "2f6aa8f984b9e63d643b9eae",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "createEvents",
-          "manageAttendance",
-          "issueCertificates",
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "41e832772e332a321dd2229b",
-      "id": "41e832772e332a321dd2229b",
-      "createdAt": "2026-10-01T08:50:21.116Z",
-      "updatedAt": "2026-10-01T08:50:21.116Z"
-    },
-    {
       "recipientUserId": "usr_col_apex_admin",
       "type": "ADMIN_ACTION",
       "title": "Admin Invitation Accepted",
@@ -3175,64 +2426,6 @@
       "id": "689256f3147c4232b16ff6c4",
       "createdAt": "2026-10-01T08:50:21.119Z",
       "updatedAt": "2026-10-03T07:37:54.953Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "2f6aa8f984b9e63d643b9eae",
-        "added": [],
-        "removed": [
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "7c5989aff342ccf29a135560",
-      "id": "7c5989aff342ccf29a135560",
-      "createdAt": "2026-10-01T08:50:21.164Z",
-      "updatedAt": "2026-10-01T08:50:21.164Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "2f6aa8f984b9e63d643b9eae",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "ed8f00087839e13e1523b1d4",
-      "id": "ed8f00087839e13e1523b1d4",
-      "createdAt": "2026-10-01T08:50:21.176Z",
-      "updatedAt": "2026-10-01T08:50:21.176Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "2f6aa8f984b9e63d643b9eae",
-        "added": [
-          "issueCertificates",
-          "manageMessages"
-        ],
-        "removed": []
-      },
-      "read": false,
-      "_id": "de1c34ca5ff15be32d1c7a8d",
-      "id": "de1c34ca5ff15be32d1c7a8d",
-      "createdAt": "2026-10-01T08:50:21.185Z",
-      "updatedAt": "2026-10-01T08:50:21.185Z"
     },
     {
       "recipientUserId": "aafd16de800892fbe16c2722",
@@ -3283,144 +2476,6 @@
       "updatedAt": "2026-10-01T08:50:21.224Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "ATTENDANCE",
-      "title": "Attendance Confirmed!",
-      "message": "Your check-in for \"Apex Tech Symposium 1790844621138\" was marked as Present (Scanned Pass).",
-      "link": "/events",
-      "read": false,
-      "_id": "a01618c65da9f38106b91aee",
-      "id": "a01618c65da9f38106b91aee",
-      "createdAt": "2026-10-01T08:50:21.368Z",
-      "updatedAt": "2026-10-01T08:50:21.368Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "CERTIFICATE",
-      "title": "Participation Certificate Issued!",
-      "message": "Your participation certificate for \"Apex Tech Symposium 1790844621138\" is now available in your Student Profile.",
-      "link": "/profile?tab=certificates",
-      "read": false,
-      "metadata": {
-        "certificateId": "EH-CERT-2026-3324BB",
-        "eventId": "c3497ad6fbaa9aba34854ccb"
-      },
-      "_id": "9276fbc27aaf0c270cf0af33",
-      "id": "9276fbc27aaf0c270cf0af33",
-      "createdAt": "2026-10-01T08:50:25.025Z",
-      "updatedAt": "2026-10-01T08:50:25.025Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "2f6aa8f984b9e63d643b9eae",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "a22ed0c6aecc6b6cdc54e979",
-      "id": "a22ed0c6aecc6b6cdc54e979",
-      "createdAt": "2026-10-01T08:51:57.992Z",
-      "updatedAt": "2026-10-01T08:51:57.992Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "2f6aa8f984b9e63d643b9eae",
-        "added": [
-          "manageMessages"
-        ],
-        "removed": [
-          "manageAttendance",
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "3724cd6c4b19601825f8f3e2",
-      "id": "3724cd6c4b19601825f8f3e2",
-      "createdAt": "2026-10-01T08:51:57.998Z",
-      "updatedAt": "2026-10-01T08:51:57.998Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Disabled",
-      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "2f6aa8f984b9e63d643b9eae"
-      },
-      "read": false,
-      "_id": "8e300fc802913b3d8fb5bcb4",
-      "id": "8e300fc802913b3d8fb5bcb4",
-      "createdAt": "2026-10-01T08:51:58.005Z",
-      "updatedAt": "2026-10-01T08:51:58.005Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Restored",
-      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "2f6aa8f984b9e63d643b9eae"
-      },
-      "read": false,
-      "_id": "4fb85747d00b5947aa94e987",
-      "id": "4fb85747d00b5947aa94e987",
-      "createdAt": "2026-10-01T08:51:58.008Z",
-      "updatedAt": "2026-10-01T08:51:58.008Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Revoked",
-      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "action": "admin-access-revoked"
-      },
-      "read": false,
-      "_id": "6be141d96d582e3f740ca444",
-      "id": "6be141d96d582e3f740ca444",
-      "createdAt": "2026-10-01T08:51:58.012Z",
-      "updatedAt": "2026-10-01T08:51:58.012Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "0c58bb3df0690bcaf76f6856",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "createEvents",
-          "manageAttendance",
-          "issueCertificates",
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "167233588427047e44028653",
-      "id": "167233588427047e44028653",
-      "createdAt": "2026-10-01T08:51:58.022Z",
-      "updatedAt": "2026-10-01T08:51:58.022Z"
-    },
-    {
       "recipientUserId": "usr_col_apex_admin",
       "type": "ADMIN_ACTION",
       "title": "Admin Invitation Accepted",
@@ -3435,64 +2490,6 @@
       "id": "68e2e438e2a60a6402ff09b7",
       "createdAt": "2026-10-01T08:51:58.030Z",
       "updatedAt": "2026-10-03T07:37:54.953Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "0c58bb3df0690bcaf76f6856",
-        "added": [],
-        "removed": [
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "5850b922dd012d751f0738ac",
-      "id": "5850b922dd012d751f0738ac",
-      "createdAt": "2026-10-01T08:51:58.054Z",
-      "updatedAt": "2026-10-01T08:51:58.054Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "0c58bb3df0690bcaf76f6856",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "23f5642b60b44e24e78af391",
-      "id": "23f5642b60b44e24e78af391",
-      "createdAt": "2026-10-01T08:51:58.062Z",
-      "updatedAt": "2026-10-01T08:51:58.062Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "0c58bb3df0690bcaf76f6856",
-        "added": [
-          "issueCertificates",
-          "manageMessages"
-        ],
-        "removed": []
-      },
-      "read": false,
-      "_id": "a3f80eebb601a2878b9bee59",
-      "id": "a3f80eebb601a2878b9bee59",
-      "createdAt": "2026-10-01T08:51:58.070Z",
-      "updatedAt": "2026-10-01T08:51:58.070Z"
     },
     {
       "recipientUserId": "aafd16de800892fbe16c2722",
@@ -3543,85 +2540,6 @@
       "updatedAt": "2026-10-01T08:51:58.099Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "ATTENDANCE",
-      "title": "Attendance Confirmed!",
-      "message": "Your check-in for \"Apex Tech Symposium 1790844718044\" was marked as Present (Scanned Pass).",
-      "link": "/events",
-      "read": false,
-      "_id": "6a3693267fc463b61d2ce3b3",
-      "id": "6a3693267fc463b61d2ce3b3",
-      "createdAt": "2026-10-01T08:51:58.205Z",
-      "updatedAt": "2026-10-01T08:51:58.205Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "CERTIFICATE",
-      "title": "Participation Certificate Issued!",
-      "message": "Your participation certificate for \"Apex Tech Symposium 1790844718044\" is now available in your Student Profile.",
-      "link": "/profile?tab=certificates",
-      "read": false,
-      "metadata": {
-        "certificateId": "EH-CERT-2026-3324BB",
-        "eventId": "c3497ad6fbaa9aba34854ccb"
-      },
-      "_id": "db554bf7c439fb17627d0c3f",
-      "id": "db554bf7c439fb17627d0c3f",
-      "createdAt": "2026-10-01T08:52:01.235Z",
-      "updatedAt": "2026-10-01T08:52:01.235Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "EVENT_APPROVAL",
-      "title": "Event Proposal Approved!",
-      "message": "Your event proposal \"Apex Tech Symposium 1790844718044\" was approved by Apex Institute of Technology and is now live!",
-      "link": "/events/c3497ad6fbaa9aba34854ccb",
-      "read": false,
-      "_id": "7524ed1b011ea4acdc5b0ca3",
-      "id": "7524ed1b011ea4acdc5b0ca3",
-      "createdAt": "2026-10-03T07:33:57.434Z",
-      "updatedAt": "2026-10-03T07:33:57.434Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "EVENT_APPROVAL",
-      "title": "Event Proposal Approved!",
-      "message": "Your event proposal \"Apex Tech Symposium 1790844718044\" was approved by Apex Institute of Technology and is now live!",
-      "link": "/events/c3497ad6fbaa9aba34854ccb",
-      "read": false,
-      "_id": "a336bc60c23272ca04d86c93",
-      "id": "a336bc60c23272ca04d86c93",
-      "createdAt": "2026-10-03T07:34:01.384Z",
-      "updatedAt": "2026-10-03T07:34:01.384Z"
-    },
-    {
-      "recipientUserId": "e9560105e93fa99a682097a6",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "c9210135381dc578163667fa",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "manageEvents",
-          "manageAttendance",
-          "manageCertificates",
-          "viewAnalytics",
-          "manageRegistrations",
-          "manageInfrastructure",
-          "manageCollegeProfileContent",
-          "managePlacements"
-        ]
-      },
-      "read": true,
-      "_id": "1d9e9984b1b8a1ec91e6d663",
-      "id": "1d9e9984b1b8a1ec91e6d663",
-      "createdAt": "2026-10-03T07:34:36.517Z",
-      "updatedAt": "2026-10-03T07:35:04.056Z"
-    },
-    {
       "recipientUserId": "usr_col_apex_admin",
       "type": "ADMIN_ACTION",
       "title": "Admin Invitation Accepted",
@@ -3638,116 +2556,6 @@
       "updatedAt": "2026-10-03T07:37:54.953Z"
     },
     {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "0c58bb3df0690bcaf76f6856",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "8ac61de5619a1e0444552ca6",
-      "id": "8ac61de5619a1e0444552ca6",
-      "createdAt": "2026-10-03T07:57:27.890Z",
-      "updatedAt": "2026-10-03T07:57:27.890Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "0c58bb3df0690bcaf76f6856",
-        "added": [
-          "manageMessages"
-        ],
-        "removed": [
-          "manageAttendance",
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "282fb38bed09a21b562e2b25",
-      "id": "282fb38bed09a21b562e2b25",
-      "createdAt": "2026-10-03T07:57:27.894Z",
-      "updatedAt": "2026-10-03T07:57:27.894Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Disabled",
-      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "0c58bb3df0690bcaf76f6856"
-      },
-      "read": false,
-      "_id": "5f2fd3d466e86f65e2e400a4",
-      "id": "5f2fd3d466e86f65e2e400a4",
-      "createdAt": "2026-10-03T07:57:27.901Z",
-      "updatedAt": "2026-10-03T07:57:27.901Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Restored",
-      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "0c58bb3df0690bcaf76f6856"
-      },
-      "read": false,
-      "_id": "78e1f9bf8a7465107e950a84",
-      "id": "78e1f9bf8a7465107e950a84",
-      "createdAt": "2026-10-03T07:57:27.919Z",
-      "updatedAt": "2026-10-03T07:57:27.919Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Access Revoked",
-      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "action": "admin-access-revoked"
-      },
-      "read": false,
-      "_id": "f5d202e933c5a89d0333a5ee",
-      "id": "f5d202e933c5a89d0333a5ee",
-      "createdAt": "2026-10-03T07:57:27.924Z",
-      "updatedAt": "2026-10-03T07:57:27.924Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_INVITE",
-      "title": "College Admin Invitation",
-      "message": "Apex Institute of Technology invited you to become a College Admin.",
-      "metadata": {
-        "membershipId": "a56b92cfaac96da7b5da0761",
-        "collegeId": "col_apex_tech_01",
-        "collegeName": "Apex Institute of Technology",
-        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
-        "permissions": [
-          "createEvents",
-          "manageAttendance",
-          "issueCertificates",
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "9a7bd4823e7753e76315527a",
-      "id": "9a7bd4823e7753e76315527a",
-      "createdAt": "2026-10-03T07:57:27.934Z",
-      "updatedAt": "2026-10-03T07:57:27.934Z"
-    },
-    {
       "recipientUserId": "usr_col_apex_admin",
       "type": "ADMIN_ACTION",
       "title": "Admin Invitation Accepted",
@@ -3762,64 +2570,6 @@
       "id": "d68221244546cb9631da9f15",
       "createdAt": "2026-10-03T07:57:27.938Z",
       "updatedAt": "2026-10-03T07:57:27.938Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "a56b92cfaac96da7b5da0761",
-        "added": [],
-        "removed": [
-          "issueCertificates"
-        ]
-      },
-      "read": false,
-      "_id": "33ba003a3553ed0d1d3f0038",
-      "id": "33ba003a3553ed0d1d3f0038",
-      "createdAt": "2026-10-03T07:57:27.979Z",
-      "updatedAt": "2026-10-03T07:57:27.979Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "a56b92cfaac96da7b5da0761",
-        "added": [],
-        "removed": [
-          "manageMessages"
-        ]
-      },
-      "read": false,
-      "_id": "478b2b07614183096bc49f63",
-      "id": "478b2b07614183096bc49f63",
-      "createdAt": "2026-10-03T07:57:27.987Z",
-      "updatedAt": "2026-10-03T07:57:27.987Z"
-    },
-    {
-      "recipientUserId": "usr_student_alex",
-      "type": "ADMIN_ACTION",
-      "title": "Admin Permissions Updated",
-      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
-      "metadata": {
-        "collegeId": "col_apex_tech_01",
-        "membershipId": "a56b92cfaac96da7b5da0761",
-        "added": [
-          "issueCertificates",
-          "manageMessages"
-        ],
-        "removed": []
-      },
-      "read": false,
-      "_id": "2d54812c4718b356a8fd4b75",
-      "id": "2d54812c4718b356a8fd4b75",
-      "createdAt": "2026-10-03T07:57:27.993Z",
-      "updatedAt": "2026-10-03T07:57:27.993Z"
     },
     {
       "recipientUserId": "aafd16de800892fbe16c2722",
@@ -3871,31 +2621,263 @@
     },
     {
       "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "a56b92cfaac96da7b5da0761",
+        "added": [],
+        "removed": [
+          "manageMessages"
+        ]
+      },
+      "read": false,
+      "_id": "d07f25b83c6216628ae7a13f",
+      "id": "d07f25b83c6216628ae7a13f",
+      "createdAt": "2026-10-04T07:12:32.374Z",
+      "updatedAt": "2026-10-04T07:12:32.374Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: manageMessages; Removed: manageAttendance, issueCertificates.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "a56b92cfaac96da7b5da0761",
+        "added": [
+          "manageMessages"
+        ],
+        "removed": [
+          "manageAttendance",
+          "issueCertificates"
+        ]
+      },
+      "read": false,
+      "_id": "90d650bac86c4138cc8dc7f3",
+      "id": "90d650bac86c4138cc8dc7f3",
+      "createdAt": "2026-10-04T07:12:32.381Z",
+      "updatedAt": "2026-10-04T07:12:32.381Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Access Disabled",
+      "message": "Your Admin access for Apex Institute of Technology has been disabled.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "a56b92cfaac96da7b5da0761"
+      },
+      "read": false,
+      "_id": "4f7424a23e43a5deedcf1cdb",
+      "id": "4f7424a23e43a5deedcf1cdb",
+      "createdAt": "2026-10-04T07:12:32.388Z",
+      "updatedAt": "2026-10-04T07:12:32.388Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Access Restored",
+      "message": "Your Admin access for Apex Institute of Technology has been re-enabled.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "a56b92cfaac96da7b5da0761"
+      },
+      "read": false,
+      "_id": "d25ebbd98e4db7f7ddf4ee1c",
+      "id": "d25ebbd98e4db7f7ddf4ee1c",
+      "createdAt": "2026-10-04T07:12:32.392Z",
+      "updatedAt": "2026-10-04T07:12:32.392Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Access Revoked",
+      "message": "Your administrator access for Apex Institute of Technology has been revoked.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "collegeName": "Apex Institute of Technology",
+        "action": "admin-access-revoked"
+      },
+      "read": false,
+      "_id": "13ec7607de858314618c4584",
+      "id": "13ec7607de858314618c4584",
+      "createdAt": "2026-10-04T07:12:32.395Z",
+      "updatedAt": "2026-10-04T07:12:32.395Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_INVITE",
+      "title": "College Admin Invitation",
+      "message": "Apex Institute of Technology invited you to become a College Admin.",
+      "metadata": {
+        "membershipId": "cdf944176565d257d71ae922",
+        "collegeId": "col_apex_tech_01",
+        "collegeName": "Apex Institute of Technology",
+        "collegeLogo": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+        "permissions": [
+          "createEvents",
+          "manageAttendance",
+          "issueCertificates",
+          "manageMessages"
+        ]
+      },
+      "read": false,
+      "_id": "1359e2df9d07cb581232559a",
+      "id": "1359e2df9d07cb581232559a",
+      "createdAt": "2026-10-04T07:12:32.406Z",
+      "updatedAt": "2026-10-04T07:12:32.406Z"
+    },
+    {
+      "recipientUserId": "usr_col_apex_admin",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Invitation Accepted",
+      "message": "@Alexander Chen accepted your invitation to become an Admin for Apex Institute of Technology.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "adminUserId": "usr_student_alex",
+        "action": "manage-admins"
+      },
+      "read": false,
+      "_id": "f9b6f60fb04b0778e8d4685b",
+      "id": "f9b6f60fb04b0778e8d4685b",
+      "createdAt": "2026-10-04T07:12:32.409Z",
+      "updatedAt": "2026-10-04T07:12:32.409Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: issueCertificates.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "cdf944176565d257d71ae922",
+        "added": [],
+        "removed": [
+          "issueCertificates"
+        ]
+      },
+      "read": false,
+      "_id": "90cdc2f63a41fb8eedec8378",
+      "id": "90cdc2f63a41fb8eedec8378",
+      "createdAt": "2026-10-04T07:12:32.430Z",
+      "updatedAt": "2026-10-04T07:12:32.430Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Removed: manageMessages.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "cdf944176565d257d71ae922",
+        "added": [],
+        "removed": [
+          "manageMessages"
+        ]
+      },
+      "read": false,
+      "_id": "ba50191697161bb5b9ca3313",
+      "id": "ba50191697161bb5b9ca3313",
+      "createdAt": "2026-10-04T07:12:32.438Z",
+      "updatedAt": "2026-10-04T07:12:32.438Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
+      "type": "ADMIN_ACTION",
+      "title": "Admin Permissions Updated",
+      "message": "Your administrator permissions for Apex Institute of Technology have been updated. Added: issueCertificates, manageMessages.",
+      "metadata": {
+        "collegeId": "col_apex_tech_01",
+        "membershipId": "cdf944176565d257d71ae922",
+        "added": [
+          "issueCertificates",
+          "manageMessages"
+        ],
+        "removed": []
+      },
+      "read": false,
+      "_id": "90d0d5b563722753e84d6a1e",
+      "id": "90d0d5b563722753e84d6a1e",
+      "createdAt": "2026-10-04T07:12:32.446Z",
+      "updatedAt": "2026-10-04T07:12:32.446Z"
+    },
+    {
+      "recipientUserId": "aafd16de800892fbe16c2722",
+      "type": "EVENT_UPDATE",
+      "title": "New message from Apex Institute of Technology",
+      "message": "Collegiate message test with sentByAdminId tracking.",
+      "link": "/messages?conversationId=88822f95119d36469b33116e",
+      "read": false,
+      "metadata": {
+        "conversationId": "88822f95119d36469b33116e",
+        "senderId": "usr_student_alex"
+      },
+      "_id": "2706511de54873b5d9598333",
+      "id": "2706511de54873b5d9598333",
+      "createdAt": "2026-10-04T07:12:32.460Z",
+      "updatedAt": "2026-10-04T07:12:32.460Z"
+    },
+    {
+      "recipientUserId": "aafd16de800892fbe16c2722",
+      "type": "EVENT_UPDATE",
+      "title": "New message from Apex Institute of Technology",
+      "message": "Hey Student Beta, testing search-to-chat flow!",
+      "link": "/messages?conversationId=88822f95119d36469b33116e",
+      "read": false,
+      "metadata": {
+        "conversationId": "88822f95119d36469b33116e",
+        "senderId": "usr_student_alex"
+      },
+      "_id": "c1a7bc647f0c1324bdd23435",
+      "id": "c1a7bc647f0c1324bdd23435",
+      "createdAt": "2026-10-04T07:12:32.465Z",
+      "updatedAt": "2026-10-04T07:12:32.465Z"
+    },
+    {
+      "recipientUserId": "aafd16de800892fbe16c2722",
+      "type": "EVENT_UPDATE",
+      "title": "New message from Apex Institute of Technology",
+      "message": "Shared an event",
+      "link": "/messages?conversationId=88822f95119d36469b33116e",
+      "read": false,
+      "metadata": {
+        "conversationId": "88822f95119d36469b33116e",
+        "senderId": "usr_student_alex"
+      },
+      "_id": "eca1af472dae5ff4e91e2c2a",
+      "id": "eca1af472dae5ff4e91e2c2a",
+      "createdAt": "2026-10-04T07:12:32.470Z",
+      "updatedAt": "2026-10-04T07:12:32.470Z"
+    },
+    {
+      "recipientUserId": "usr_student_alex",
       "type": "ATTENDANCE",
       "title": "Attendance Confirmed!",
-      "message": "Your check-in for \"Apex Tech Symposium 1791014247967\" was marked as Present (Scanned Pass).",
+      "message": "Your check-in for \"Apex Tech Symposium 1791097952420\" was marked as Present (Scanned Pass).",
       "link": "/events",
       "read": false,
-      "_id": "7f4fcc1ac1f18f2399e520cf",
-      "id": "7f4fcc1ac1f18f2399e520cf",
-      "createdAt": "2026-10-03T07:57:28.156Z",
-      "updatedAt": "2026-10-03T07:57:28.156Z"
+      "_id": "b6dbc41557a7c9d24af2e24a",
+      "id": "b6dbc41557a7c9d24af2e24a",
+      "createdAt": "2026-10-04T07:12:32.603Z",
+      "updatedAt": "2026-10-04T07:12:32.603Z"
     },
     {
       "recipientUserId": "usr_student_alex",
       "type": "CERTIFICATE",
       "title": "Participation Certificate Issued!",
-      "message": "Your participation certificate for \"Apex Tech Symposium 1791014247967\" is now available in your Student Profile.",
+      "message": "Your participation certificate for \"Apex Tech Symposium 1791097952420\" is now available in your Student Profile.",
       "link": "/profile?tab=certificates",
       "read": false,
       "metadata": {
         "certificateId": "EH-CERT-2026-3324BB",
         "eventId": "c3497ad6fbaa9aba34854ccb"
       },
-      "_id": "b3863fadfb367484d313042d",
-      "id": "b3863fadfb367484d313042d",
-      "createdAt": "2026-10-03T07:57:32.014Z",
-      "updatedAt": "2026-10-03T07:57:32.014Z"
+      "_id": "ae4c72663301088968498e3e",
+      "id": "ae4c72663301088968498e3e",
+      "createdAt": "2026-10-04T07:12:36.037Z",
+      "updatedAt": "2026-10-04T07:12:36.037Z"
     }
   ],
   "reminders": [
@@ -3912,6 +2894,45 @@
       "id": "b61ac24eeec2c7ce04f356e2",
       "createdAt": "2026-09-25T09:17:28.093Z",
       "updatedAt": "2026-09-25T09:17:28.093Z"
+    },
+    {
+      "studentId": "d64333f639c7fdf3cbc7dcd2",
+      "studentUserId": "e9560105e93fa99a682097a6",
+      "eventId": "ev_robowars_2026",
+      "reminderType": "1_day_before",
+      "reminderTime": "2026-11-04T10:00:00.000Z",
+      "status": "Pending",
+      "notified": false,
+      "_id": "c33bcef171db7e40c4f690d0",
+      "id": "c33bcef171db7e40c4f690d0",
+      "createdAt": "2026-10-04T07:34:38.856Z",
+      "updatedAt": "2026-10-04T07:34:38.856Z"
+    },
+    {
+      "studentId": "d64333f639c7fdf3cbc7dcd2",
+      "studentUserId": "e9560105e93fa99a682097a6",
+      "eventId": "ev_designverse_2026",
+      "reminderType": "1_day_before",
+      "reminderTime": "2026-10-27T11:00:00.000Z",
+      "status": "Pending",
+      "notified": false,
+      "_id": "d9d992e3bc445e576000e34a",
+      "id": "d9d992e3bc445e576000e34a",
+      "createdAt": "2026-10-04T07:34:38.867Z",
+      "updatedAt": "2026-10-04T07:34:38.867Z"
+    },
+    {
+      "studentId": "d64333f639c7fdf3cbc7dcd2",
+      "studentUserId": "e9560105e93fa99a682097a6",
+      "eventId": "ev_hacktech_2026",
+      "reminderType": "1_day_before",
+      "reminderTime": "2026-10-14T09:00:00.000Z",
+      "status": "Pending",
+      "notified": false,
+      "_id": "2241eb43530bf553ef28312c",
+      "id": "2241eb43530bf553ef28312c",
+      "createdAt": "2026-10-04T07:34:38.871Z",
+      "updatedAt": "2026-10-04T07:34:38.871Z"
     }
   ],
   "otpVerifications": [
@@ -4027,16 +3048,16 @@
     },
     {
       "email": "alex.chen@student.edu",
-      "otpHash": "$2b$10$Vvx8FgzH7aF5XxhHKG/UhOJ0v1wgc1DoA1ckF4qemZM..yvpnocCu",
+      "otpHash": "$2b$10$HnNhDPfMIbGxTEGE4FSyCuhPvYGosuMoN4fzpPvWu5d/OtlxwN/YW",
       "purpose": "RESET_ADMIN_PIN",
-      "expiresAt": "2026-10-03T08:07:23.249Z",
+      "expiresAt": "2026-10-04T07:22:27.186Z",
       "resendAvailableAt": "2026-10-01T08:40:32.584Z",
       "verified": true,
       "attempts": 0,
       "_id": "845035f3dd38b4a4160fc709",
       "id": "845035f3dd38b4a4160fc709",
       "createdAt": "2026-10-01T08:40:32.584Z",
-      "updatedAt": "2026-10-03T07:57:27.763Z"
+      "updatedAt": "2026-10-04T07:12:32.241Z"
     }
   ],
   "conversations": [
@@ -4066,12 +3087,12 @@
       "lastMessage": {
         "text": "Shared an event",
         "senderId": "usr_student_alex",
-        "timestamp": "2026-10-03T07:57:28.020Z"
+        "timestamp": "2026-10-04T07:12:32.470Z"
       },
       "_id": "88822f95119d36469b33116e",
       "id": "88822f95119d36469b33116e",
       "createdAt": "2026-10-01T08:47:46.310Z",
-      "updatedAt": "2026-10-03T07:57:28.020Z"
+      "updatedAt": "2026-10-04T07:12:32.470Z"
     },
     {
       "participants": [
@@ -4124,6 +3145,32 @@
       "id": "c52fcfb12d3bc0493af843df",
       "createdAt": "2026-10-03T07:32:48.574Z",
       "updatedAt": "2026-10-03T07:32:48.574Z"
+    },
+    {
+      "participants": [
+        "usr_student_alex",
+        "e9560105e93fa99a682097a6"
+      ],
+      "participantDetails": [
+        {
+          "userId": "usr_student_alex",
+          "role": "Student",
+          "name": "Alexander Chen",
+          "username": "alexanderchen",
+          "avatar": "/uploads/media/upload-1790843817092-30960787.png"
+        },
+        {
+          "userId": "e9560105e93fa99a682097a6",
+          "role": "Student",
+          "name": "Suresh",
+          "username": "suresh",
+          "avatar": "/uploads/media/upload-1791012676822-989051059.jpg"
+        }
+      ],
+      "_id": "c894c4e5f2cbe1deedc0ebb3",
+      "id": "c894c4e5f2cbe1deedc0ebb3",
+      "createdAt": "2026-10-04T07:26:58.525Z",
+      "updatedAt": "2026-10-04T07:26:58.525Z"
     }
   ],
   "messages": [
@@ -4396,18 +3443,76 @@
       "id": "984d0fe3f03455b531be52e9",
       "createdAt": "2026-10-03T07:57:28.020Z",
       "updatedAt": "2026-10-03T07:57:28.020Z"
+    },
+    {
+      "conversationId": "88822f95119d36469b33116e",
+      "senderId": "usr_student_alex",
+      "senderName": "Apex Institute of Technology",
+      "senderRole": "College Admin",
+      "senderAvatar": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "collegeId": "col_apex_tech_01",
+      "sentByAdminId": "usr_student_alex",
+      "text": "Collegiate message test with sentByAdminId tracking.",
+      "readBy": [
+        "usr_student_alex"
+      ],
+      "deletedFor": [],
+      "deletedForEveryone": false,
+      "_id": "4b3763e72c18ce3ac7f70185",
+      "id": "4b3763e72c18ce3ac7f70185",
+      "createdAt": "2026-10-04T07:12:32.460Z",
+      "updatedAt": "2026-10-04T07:12:32.460Z"
+    },
+    {
+      "conversationId": "88822f95119d36469b33116e",
+      "senderId": "usr_student_alex",
+      "senderName": "Apex Institute of Technology",
+      "senderRole": "College Admin",
+      "senderAvatar": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "collegeId": "col_apex_tech_01",
+      "sentByAdminId": "usr_student_alex",
+      "text": "Hey Student Beta, testing search-to-chat flow!",
+      "readBy": [
+        "usr_student_alex"
+      ],
+      "deletedFor": [],
+      "deletedForEveryone": false,
+      "_id": "0b5ef4aca26f401089e18d8d",
+      "id": "0b5ef4aca26f401089e18d8d",
+      "createdAt": "2026-10-04T07:12:32.465Z",
+      "updatedAt": "2026-10-04T07:12:32.465Z"
+    },
+    {
+      "conversationId": "88822f95119d36469b33116e",
+      "senderId": "usr_student_alex",
+      "senderName": "Apex Institute of Technology",
+      "senderRole": "College Admin",
+      "senderAvatar": "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=300&auto=format&fit=crop&q=80",
+      "collegeId": "col_apex_tech_01",
+      "sentByAdminId": "usr_student_alex",
+      "text": "",
+      "sharedEventId": "c3497ad6fbaa9aba34854ccb",
+      "readBy": [
+        "usr_student_alex"
+      ],
+      "deletedFor": [],
+      "deletedForEveryone": false,
+      "_id": "1f50dd896ce98097b7a4036b",
+      "id": "1f50dd896ce98097b7a4036b",
+      "createdAt": "2026-10-04T07:12:32.470Z",
+      "updatedAt": "2026-10-04T07:12:32.470Z"
     }
   ],
   "conversationPreferences": [
     {
       "userId": "usr_student_alex",
       "conversationId": "88822f95119d36469b33116e",
-      "muted": false,
+      "muted": true,
       "hidden": false,
       "_id": "18334eeacb37d7e47cc11335",
       "id": "18334eeacb37d7e47cc11335",
       "createdAt": "2026-10-01T08:49:29.815Z",
-      "updatedAt": "2026-10-03T07:57:28.018Z"
+      "updatedAt": "2026-10-04T07:12:32.467Z"
     }
   ],
   "adminActivityLogs": [
@@ -5642,6 +4747,198 @@
       "id": "55931b3da55792c83c59e01b",
       "createdAt": "2026-10-03T07:57:27.993Z",
       "updatedAt": "2026-10-03T07:57:27.993Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated profile for admin Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.367Z",
+      "_id": "16e0f6ce10f6051f437ea141",
+      "id": "16e0f6ce10f6051f437ea141",
+      "createdAt": "2026-10-04T07:12:32.367Z",
+      "updatedAt": "2026-10-04T07:12:32.367Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Removed: manageMessages.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.374Z",
+      "_id": "0666d18bd79881fc7df5b4fa",
+      "id": "0666d18bd79881fc7df5b4fa",
+      "createdAt": "2026-10-04T07:12:32.374Z",
+      "updatedAt": "2026-10-04T07:12:32.374Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Added: manageMessages; Removed: manageAttendance, issueCertificates.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.380Z",
+      "_id": "ef362f8e3fd62c452f5d0375",
+      "id": "ef362f8e3fd62c452f5d0375",
+      "createdAt": "2026-10-04T07:12:32.380Z",
+      "updatedAt": "2026-10-04T07:12:32.380Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "DISABLE_ADMIN",
+      "details": "@Dr. Eleanor Vance disabled Admin access for Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.388Z",
+      "_id": "db4cb5b854cd8541265f20d0",
+      "id": "db4cb5b854cd8541265f20d0",
+      "createdAt": "2026-10-04T07:12:32.388Z",
+      "updatedAt": "2026-10-04T07:12:32.388Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "ENABLE_ADMIN",
+      "details": "@Dr. Eleanor Vance re-enabled Admin access for Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.392Z",
+      "_id": "1c6f979b27f1ef1ddb79a234",
+      "id": "1c6f979b27f1ef1ddb79a234",
+      "createdAt": "2026-10-04T07:12:32.392Z",
+      "updatedAt": "2026-10-04T07:12:32.392Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "REMOVE_ADMIN",
+      "details": "@Dr. Eleanor Vance removed admin membership for Alexander Chen.",
+      "targetType": "AdminMembership",
+      "targetId": "a56b92cfaac96da7b5da0761",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.395Z",
+      "_id": "105b828878c00b2c517944b2",
+      "id": "105b828878c00b2c517944b2",
+      "createdAt": "2026-10-04T07:12:32.396Z",
+      "updatedAt": "2026-10-04T07:12:32.396Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "superadmin",
+      "actionType": "INVITE_ADMIN",
+      "details": "@Dr. Eleanor Vance sent an Admin invitation to @alexanderchen",
+      "targetType": "User",
+      "targetId": "usr_student_alex",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.406Z",
+      "_id": "6b4d610e95bd6c56a935167e",
+      "id": "6b4d610e95bd6c56a935167e",
+      "createdAt": "2026-10-04T07:12:32.406Z",
+      "updatedAt": "2026-10-04T07:12:32.406Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_student_alex",
+      "adminName": "Alexander Chen",
+      "adminUsername": "",
+      "actionType": "ACCEPT_INVITE",
+      "details": "@Alexander Chen accepted the College Admin role for Apex Institute of Technology.",
+      "targetType": "CollegeAdminMembership",
+      "targetId": "cdf944176565d257d71ae922",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.409Z",
+      "_id": "82455e2545e38b1ec0e34642",
+      "id": "82455e2545e38b1ec0e34642",
+      "createdAt": "2026-10-04T07:12:32.409Z",
+      "updatedAt": "2026-10-04T07:12:32.409Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "admin",
+      "actionType": "UPDATE_EVENT",
+      "details": "Super Admin reviewed collegiate activity and verified audit logs.",
+      "targetType": "Event",
+      "targetId": "c3497ad6fbaa9aba34854ccb",
+      "targetTitle": "Symposium",
+      "timestamp": "2026-10-04T07:12:32.412Z",
+      "_id": "8bec5dd3a7438d5148a53e7a",
+      "id": "8bec5dd3a7438d5148a53e7a",
+      "createdAt": "2026-10-04T07:12:32.412Z",
+      "updatedAt": "2026-10-04T07:12:32.412Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Removed: issueCertificates.",
+      "targetType": "AdminMembership",
+      "targetId": "cdf944176565d257d71ae922",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.430Z",
+      "_id": "dc877352420216277f86a729",
+      "id": "dc877352420216277f86a729",
+      "createdAt": "2026-10-04T07:12:32.430Z",
+      "updatedAt": "2026-10-04T07:12:32.430Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Removed: manageMessages.",
+      "targetType": "AdminMembership",
+      "targetId": "cdf944176565d257d71ae922",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.438Z",
+      "_id": "375eeaf5716afb60005b9085",
+      "id": "375eeaf5716afb60005b9085",
+      "createdAt": "2026-10-04T07:12:32.438Z",
+      "updatedAt": "2026-10-04T07:12:32.438Z"
+    },
+    {
+      "collegeId": "col_apex_tech_01",
+      "adminUserId": "usr_col_apex_admin",
+      "adminName": "Dr. Eleanor Vance",
+      "adminUsername": "",
+      "actionType": "UPDATE_PERMISSIONS",
+      "details": "@Dr. Eleanor Vance updated permissions for Alexander Chen: Added: issueCertificates, manageMessages.",
+      "targetType": "AdminMembership",
+      "targetId": "cdf944176565d257d71ae922",
+      "targetTitle": "Alexander Chen",
+      "timestamp": "2026-10-04T07:12:32.446Z",
+      "_id": "c3387475463aa352ba426705",
+      "id": "c3387475463aa352ba426705",
+      "createdAt": "2026-10-04T07:12:32.446Z",
+      "updatedAt": "2026-10-04T07:12:32.446Z"
     }
   ],
   "credentialPosts": []

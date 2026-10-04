@@ -1,28 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { FileUpload } from '../common/FileUpload';
 import { api } from '../../services/api';
-import { AlertCircle, Check, Briefcase } from 'lucide-react';
+import { IPlacementPost } from '../../types';
+import { AlertCircle, Check, Briefcase, X } from 'lucide-react';
 
 interface AddPlacementPostModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (post: any) => void;
+  placementToEdit?: IPlacementPost | null;
 }
 
 export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  placementToEdit,
 }) => {
   const [title, setTitle] = useState('');
   const [company, setCompany] = useState('');
   const [packageLPA, setPackageLPA] = useState('');
   const [placementStatistics, setPlacementStatistics] = useState('');
   const [message, setMessage] = useState('');
-  const [mediaUrl, setMediaUrl] = useState('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&auto=format&fit=crop&q=80');
+  const [mediaUrl, setMediaUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (placementToEdit) {
+      setTitle(placementToEdit.title || '');
+      setCompany(placementToEdit.company || '');
+      setPackageLPA(placementToEdit.packageLPA || '');
+      setPlacementStatistics(placementToEdit.placementStatistics || '');
+      setMessage(placementToEdit.message || '');
+      setMediaUrl(placementToEdit.mediaUrl || '');
+    } else {
+      setTitle('');
+      setCompany('');
+      setPackageLPA('');
+      setPlacementStatistics('');
+      setMessage('');
+      setMediaUrl('');
+    }
+    setError(null);
+  }, [placementToEdit, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,23 +57,27 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
     setError(null);
 
     try {
-      const res = await api.post<any>('/placements', {
-        title,
-        company,
-        packageLPA,
-        placementStatistics,
-        message,
-        mediaUrl,
-      });
+      const payload = {
+        title: title.trim(),
+        company: company.trim(),
+        packageLPA: packageLPA.trim(),
+        placementStatistics: placementStatistics.trim(),
+        message: message.trim(),
+        mediaUrl: mediaUrl.trim(),
+      };
+
+      const res = placementToEdit
+        ? await api.put<any>(`/placements/${placementToEdit._id}`, payload)
+        : await api.post<any>('/placements', payload);
 
       if (res.success && res.post) {
         onSuccess(res.post);
         onClose();
       } else {
-        setError(res.message || 'Failed to publish placement update');
+        setError(res.message || 'Failed to save placement update');
       }
     } catch (err: any) {
-      setError(err.message || 'Error publishing placement announcement');
+      setError(err.message || 'Error saving placement announcement');
     } finally {
       setSubmitting(false);
     }
@@ -61,8 +87,12 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Publish Placement Announcement"
-      subtitle="Share campus recruitments, offers, and recruitment statistics"
+      title={placementToEdit ? 'Edit Placement Announcement' : 'Publish Placement Announcement'}
+      subtitle={
+        placementToEdit
+          ? 'Update hiring drive details, package, or media'
+          : 'Share campus recruitments, offers, and recruitment statistics'
+      }
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-2">
@@ -82,7 +112,7 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. 18 Students Selected at Microsoft R&D"
+            placeholder="Enter placement title"
             className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
           />
         </div>
@@ -97,7 +127,7 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
               required
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              placeholder="e.g. Google, Microsoft, Amazon"
+              placeholder="Enter recruiting company"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
@@ -110,7 +140,7 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
               type="text"
               value={packageLPA}
               onChange={(e) => setPackageLPA(e.target.value)}
-              placeholder="e.g. $145,000 / 34 LPA"
+              placeholder="Enter package compensation (e.g. 18 LPA)"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
@@ -124,7 +154,7 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
             type="text"
             value={placementStatistics}
             onChange={(e) => setPlacementStatistics(e.target.value)}
-            placeholder="e.g. 100% placement rate for 2026 CS Batch"
+            placeholder="Enter placement statistics"
             className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
           />
         </div>
@@ -138,17 +168,31 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
             required
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Congratulate students, outline hiring roles, and share recruitment drive highlights..."
+            placeholder="Enter announcement description and details..."
             className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
           />
         </div>
 
-        <FileUpload
-          label="Placement Photo / Banner"
-          helperText="Upload recruitment drive photo or congratulatory banner"
-          value={mediaUrl}
-          onChange={(url) => setMediaUrl(url)}
-        />
+        <div className="space-y-1.5">
+          <FileUpload
+            label="Placement Photo / Banner Media"
+            helperText="Upload recruitment drive photo or banner (JPG, PNG, WEBP)"
+            value={mediaUrl}
+            onChange={(url) => setMediaUrl(url)}
+            accept="image/jpeg,image/png,image/webp"
+          />
+          {mediaUrl && (
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setMediaUrl('')}
+                className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" /> Remove Image
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--border-color)]">
           <button
@@ -163,7 +207,8 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
             disabled={submitting}
             className="px-6 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
           >
-            <Check className="w-4 h-4" /> {submitting ? 'Publishing...' : 'Publish Update'}
+            <Check className="w-4 h-4" />{' '}
+            {submitting ? 'Saving...' : placementToEdit ? 'Save Changes' : 'Publish Announcement'}
           </button>
         </div>
       </form>

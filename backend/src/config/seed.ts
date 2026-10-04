@@ -93,6 +93,51 @@ async function ensureUsernamesAndCollections() {
     }
   }
 
+  // Ensure Suresh Student user and profile exist for Quick Switch and testing
+  let sureshUser = await User.findOne({ email: 'sureshmanikkavasagam123@gmail.com' });
+  if (!sureshUser) {
+    const passwordHash = await bcrypt.hash('Password123!', 10);
+    sureshUser = await User.create({
+      email: 'sureshmanikkavasagam123@gmail.com',
+      passwordHash,
+      role: 'Student',
+      fullName: 'Suresh',
+      isEmailVerified: true,
+    });
+  }
+
+  if (sureshUser) {
+    let sureshProfile = await StudentProfile.findOne({
+      $or: [{ userId: sureshUser._id }, { email: 'sureshmanikkavasagam123@gmail.com' }],
+    });
+
+    if (!sureshProfile) {
+      await StudentProfile.create({
+        userId: sureshUser._id,
+        fullName: 'Suresh',
+        username: 'sureshm',
+        email: 'sureshmanikkavasagam123@gmail.com',
+        collegeName: 'Apex Institute of Technology',
+        targetCollegeId: 'col_apex_tech_01',
+        phoneNumber: '+91 98765 43210',
+        department: 'Computer Science & Engineering',
+        yearOfStudy: '3rd Year',
+        bio: 'Enthusiastic full-stack builder and student at Apex Institute of Technology.',
+        skills: ['TypeScript', 'React', 'Node.js', 'Python'],
+        achievements: ['1st Place - Apex Annual Code Sprint 2025', 'Verified EVENTHUB Student'],
+        profileVisibility: 'Everyone',
+        messagePrivacy: 'Everyone',
+        resumePrivacy: 'Colleges only',
+        groupAddPrivacy: 'Everyone',
+        followersCount: 15,
+        followingCount: 12,
+        connectionsCount: 3,
+      });
+    } else if (!sureshProfile.userId || sureshProfile.userId !== sureshUser._id) {
+      await StudentProfile.findByIdAndUpdate(sureshProfile._id, { userId: sureshUser._id });
+    }
+  }
+
   // Ensure Nexus Engineering College Super Admin user exists for conversations/messaging
   const nexusAdminUser = await User.findById('usr_col_nexus_admin');
   if (!nexusAdminUser) {

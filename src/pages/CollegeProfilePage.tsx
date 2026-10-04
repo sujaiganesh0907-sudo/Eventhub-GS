@@ -278,27 +278,32 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
         </div>
 
         {/* Institution Info */}
-        <div className="px-6 pb-6 pt-0 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-4">
-            <div className="flex items-end gap-4">
+        <div className="px-4 sm:px-6 pb-6 pt-0 relative">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 -mt-12 sm:-mt-16 md:-mt-20 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
               <img
                 src={college.logo || DEFAULT_COLLEGE_LOGO}
                 alt={college.name}
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg"
+                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg shrink-0"
                 onError={(e) => {
                   (e.target as any).src = DEFAULT_COLLEGE_LOGO;
                 }}
               />
-              <div className="mb-2">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)]">
+              <div className="pt-1 sm:pt-0 sm:mb-2 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">
                     {college.name}
                   </h1>
+                  {college.username && (
+                    <span className="text-xs font-bold text-[var(--primary-color)] bg-[var(--primary-color)]/10 px-2 py-0.5 rounded-lg border border-[var(--primary-color)]/20">
+                      @{college.username.replace(/^@/, '')}
+                    </span>
+                  )}
                   {college.verificationStatus === 'Verified' && (
                     <span title="Accredited University"><ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" /></span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mt-1">
+                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mt-1 flex-wrap">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" /> {college.location || 'University Campus'}
                   </span>

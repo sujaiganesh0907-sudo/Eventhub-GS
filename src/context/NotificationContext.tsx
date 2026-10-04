@@ -12,12 +12,14 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   clearAll: () => Promise<void>;
+  clearSelected: (ids: string[]) => Promise<void>;
+  markSelectedAsRead: (ids: string[]) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, status } = useAuth();
   const [notifications, setNotifications] = useState<INotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
@@ -25,7 +27,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const initialFetchDone = useRef<boolean>(false);
 
   const fetchNotifications = async () => {
-    if (!user) {
+    const token = localStorage.getItem('eventhub_token');
+    if (!user || !isAuthenticated || status !== 'authenticated' || !token) {
       setNotifications([]);
       setUnreadCount(0);
       seenIdsRef.current.clear();
@@ -60,18 +63,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           });
         }
       }
-    } catch (err) {
-      console.warn('Failed to fetch notifications', err);
+    } catch (err: any) {
+      if (err?.status !== 401) {
+        console.warn('Failed to fetch notifications', err);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [user]);
+    if (status === 'authenticated' && user && localStorage.getItem('eventhub_token')) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000);
+      return () => clearInterval(interval);
+    } else {
+      setNotifications([]);
+      setUnreadCount(0);
+      seenIdsRef.current.clear();
+      initialFetchDone.current = false;
+    }
+  }, [user, isAuthenticated, status]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -108,6 +120,47 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const clearSelected = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    try {
+      const res = await api.delete<any>('/notifications/batch', {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      setNotifications((prev) => prev.filter((n) => !ids.includes(n._id)));
+      if (typeof res?.unreadCount === 'number') {
+        setUnreadCount(res.unreadCount);
+      } else {
+        setNotifications((prev) => {
+          setUnreadCount(prev.filter((n) => !n.read).length);
+          return prev;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to clear selected notifications', e);
+    }
+  };
+
+  const markSelectedAsRead = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    try {
+      const res = await api.patch<any>('/notifications/batch/read', { ids });
+      setNotifications((prev) =>
+        prev.map((n) => (ids.includes(n._id) ? { ...n, read: true } : n))
+      );
+      if (typeof res?.unreadCount === 'number') {
+        setUnreadCount(res.unreadCount);
+      } else {
+        setNotifications((prev) => {
+          setUnreadCount(prev.filter((n) => !n.read).length);
+          return prev;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to mark selected notifications read', e);
+    }
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -118,6 +171,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         markAsRead,
         markAllAsRead,
         clearAll,
+        clearSelected,
+        markSelectedAsRead,
       }}
     >
       {children}

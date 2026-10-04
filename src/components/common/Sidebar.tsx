@@ -166,25 +166,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => switchAccount('student')}
-              title="Switch to Student account"
-              className={`text-[10px] font-medium py-1 px-1.5 rounded-md border text-center transition-colors cursor-pointer ${
+              title="Switch to Suresh Student account"
+              className={`text-[10px] font-medium py-1 px-1.5 rounded-md border text-center transition-colors cursor-pointer truncate ${
                 user?.role === 'Student'
                   ? 'bg-[var(--primary-light)] border-[var(--primary-color)] text-[var(--primary-color)] font-bold'
                   : 'border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
               }`}
             >
-              Student
+              Suresh Student
             </button>
             <button
               onClick={() => switchAccount('college-super')}
               title="Switch to Apex College Super Admin"
-              className={`text-[10px] font-medium py-1 px-1.5 rounded-md border text-center transition-colors cursor-pointer ${
+              className={`text-[10px] font-medium py-1 px-1.5 rounded-md border text-center transition-colors cursor-pointer truncate ${
                 user?.role === 'College Super Admin'
                   ? 'bg-[var(--primary-light)] border-[var(--primary-color)] text-[var(--primary-color)] font-bold'
                   : 'border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
               }`}
             >
-              Super Admin
+              College Super Admin
             </button>
           </div>
         </div>

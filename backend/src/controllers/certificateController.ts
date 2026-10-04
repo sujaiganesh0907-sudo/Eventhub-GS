@@ -136,6 +136,9 @@ export async function addStudentCertificate(req: AuthenticatedRequest, res: Resp
       eventName,
       description,
       fileUrl,
+      coverUrl,
+      fileType,
+      originalFileName,
       credentialId,
       credentialUrl,
       visibility = 'Public',
@@ -153,10 +156,21 @@ export async function addStudentCertificate(req: AuthenticatedRequest, res: Resp
     const certCode = crypto.randomBytes(3).toString('hex').toUpperCase();
     const finalCertId = credentialId || `EH-AWARD-${new Date().getFullYear()}-${certCode}`;
 
+    // Detect file type if not explicitly provided
+    let detectedType = fileType;
+    if (!detectedType) {
+      const lower = fileUrl.toLowerCase();
+      if (lower.endsWith('.pdf')) detectedType = 'pdf';
+      else if (lower.endsWith('.doc')) detectedType = 'doc';
+      else if (lower.endsWith('.docx')) detectedType = 'docx';
+      else detectedType = 'image';
+    }
+
     const certificate = await Certificate.create({
       certificateId: finalCertId,
       title,
       studentId: studentProfile._id,
+      studentUserId: user._id,
       issuingOrganization,
       achievementType: achievementType as any,
       issueDate,
@@ -164,6 +178,11 @@ export async function addStudentCertificate(req: AuthenticatedRequest, res: Resp
       eventName: eventName || '',
       description: description || '',
       fileUrl,
+      coverUrl: coverUrl || undefined,
+      fileType: detectedType,
+      originalFileName: originalFileName || undefined,
+      isSelfUploaded: true,
+      isCollegeVerified: false,
       credentialUrl: credentialUrl || '',
       visibility: visibility as any,
       tags: Array.isArray(tags) ? tags : [tags].filter(Boolean),

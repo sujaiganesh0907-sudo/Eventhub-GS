@@ -47,6 +47,18 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
+    const token = localStorage.getItem('eventhub_token');
+    if (!user || !token) {
+      setLoading(false);
+      return;
+    }
+
+    const activeCollege = localStorage.getItem('eventhub_active_college') || college?._id || user.collegeId;
+    if (!activeCollege && user.role === 'Student') {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const [eventsRes, regsRes, reqsRes] = await Promise.all([
@@ -66,8 +78,10 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
   };
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (user && localStorage.getItem('eventhub_token')) {
+      fetchDashboardData();
+    }
+  }, [user, college]);
 
   const isPending = college?.verificationStatus === 'Pending';
   const isVerified = college?.verificationStatus === 'Verified';

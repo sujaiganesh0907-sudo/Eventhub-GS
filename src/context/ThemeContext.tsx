@@ -12,21 +12,19 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const THEME_OPTIONS: { id: ThemeMode; label: string; accentColor: string; bgPreview: string }[] = [
-  { id: 'classic-blue', label: 'Classic Blue', accentColor: '#2563eb', bgPreview: '#f8fafc' },
-  { id: 'light', label: 'Clean Light', accentColor: '#3b82f6', bgPreview: '#ffffff' },
-  { id: 'dark', label: 'Charcoal Dark', accentColor: '#60a5fa', bgPreview: '#0f172a' },
-  { id: 'midnight', label: 'Midnight Obsidian', accentColor: '#38bdf8', bgPreview: '#030712' },
-  { id: 'ocean', label: 'Deep Ocean', accentColor: '#0ea5e9', bgPreview: '#082f49' },
-  { id: 'emerald', label: 'Forest Emerald', accentColor: '#10b981', bgPreview: '#064e3b' },
-  { id: 'violet', label: 'Royal Violet', accentColor: '#8b5cf6', bgPreview: '#2e1065' },
-  { id: 'neutral', label: 'Minimal Neutral', accentColor: '#525252', bgPreview: '#f5f5f5' },
-  { id: 'system', label: 'System Automatic', accentColor: '#64748b', bgPreview: '#cbd5e1' },
+export const THEME_OPTIONS: { id: ThemeMode; label: string; accentColor: string; bgPreview: string; desc: string }[] = [
+  { id: 'classic-blue', label: 'Classic Blue', accentColor: '#2563eb', bgPreview: '#f8fafc', desc: 'Clean academic light theme with cobalt highlights' },
+  { id: 'neutral-slate', label: 'Neutral Slate', accentColor: '#3b82f6', bgPreview: '#0f172a', desc: 'Minimal high-contrast slate dark theme' },
+  { id: 'system', label: 'System Default', accentColor: '#64748b', bgPreview: '#cbd5e1', desc: 'Automatically matches your device display preference' },
 ];
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
-    return (localStorage.getItem('eventhub_theme') as ThemeMode) || 'classic-blue';
+    const saved = localStorage.getItem('eventhub_theme') as ThemeMode;
+    if (saved === 'dark' || saved === 'neutral-slate') return 'neutral-slate';
+    if (saved === 'light' || saved === 'classic-blue') return 'classic-blue';
+    if (saved === 'system') return 'system';
+    return 'classic-blue';
   });
 
   const [resolvedDark, setResolvedDark] = useState(false);
@@ -40,6 +38,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       'theme-light',
       'theme-dark',
       'theme-classic-blue',
+      'theme-neutral-slate',
       'theme-midnight',
       'theme-ocean',
       'theme-emerald',
@@ -50,10 +49,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let effectiveDark = false;
     if (theme === 'system') {
       effectiveDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.add(effectiveDark ? 'theme-dark' : 'theme-light');
+      root.classList.add(effectiveDark ? 'theme-dark' : 'theme-classic-blue');
+    } else if (theme === 'neutral-slate' || theme === 'dark') {
+      root.classList.add('theme-neutral-slate');
+      effectiveDark = true;
     } else {
-      root.classList.add(`theme-${theme}`);
-      effectiveDark = ['dark', 'midnight', 'ocean', 'emerald', 'violet'].includes(theme);
+      root.classList.add('theme-classic-blue');
+      effectiveDark = false;
     }
 
     if (effectiveDark) {
@@ -70,7 +72,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleDarkMode = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'classic-blue' : 'dark'));
+    setThemeState((prev) => (prev === 'neutral-slate' || prev === 'dark' ? 'classic-blue' : 'neutral-slate'));
   };
 
   return (

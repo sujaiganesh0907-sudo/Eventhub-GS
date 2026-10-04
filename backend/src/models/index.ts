@@ -11,6 +11,7 @@ export interface IUser {
   emailVerificationToken?: string;
   collegeId?: string; // If College Admin/Super Admin
   adminPinHash?: string; // Hashed 4-digit Admin Access PIN (never plain)
+  themePreference?: string; // Stored theme preference ('classic-blue', 'neutral-slate', 'system')
   createdAt: string;
   updatedAt: string;
 }
@@ -33,8 +34,15 @@ export interface IStudentProfile {
   coverPhoto?: string;
   skills: string[];
   achievements: string[];
-  profileVisibility?: 'Public' | 'Private';
-  messagePrivacy?: 'Everyone' | 'Following' | 'Connections' | 'Nobody';
+  profileVisibility?: 'Everyone' | 'EVENTHUB users' | 'Connections only' | 'Private' | 'Public';
+  messagePrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody' | 'Following' | 'Connections';
+  resumePrivacy?: 'Everyone' | 'Connections' | 'Colleges only' | 'Private';
+  groupAddPrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody / request only';
+  resumeFileUrl?: string;
+  resumeFileType?: string; // 'pdf' | 'doc' | 'docx' | 'image'
+  resumeOriginalName?: string;
+  resumeUploadedAt?: string;
+  resumeCoverUrl?: string;
   followersCount: number;
   followingCount: number;
   connectionsCount: number;
@@ -404,6 +412,10 @@ export interface ICertificate {
   description?: string;
   fileUrl: string; // Cloudinary or local PDF/Image URL
   docxFileUrl?: string; // DOCX personalized certificate URL
+  coverUrl?: string; // Cover image URL for PDF/DOC/DOCX certificates
+  fileType?: string; // 'pdf' | 'doc' | 'docx' | 'image'
+  originalFileName?: string;
+  isSelfUploaded?: boolean;
   cloudinaryPublicId?: string;
   credentialUrl?: string;
   visibility: 'Public' | 'Connections Only' | 'Private';

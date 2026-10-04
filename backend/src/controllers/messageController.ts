@@ -106,6 +106,32 @@ async function checkMessagePermission(senderUserId: string, targetUserId: string
       return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} does not accept direct messages.` };
     }
 
+    if (privacy === 'Connections only' || privacy === 'Connections') {
+      const senderProfile = await StudentProfile.findOne({ userId: senderUserId });
+      if (!senderProfile) {
+        return { allowed: false, reason: 'This user only accepts messages from connections.' };
+      }
+      // Check mutual connection (mutual follow or connection)
+      const [followsThem, theyFollow] = await Promise.all([
+        Follow.findOne({ followerStudentId: senderProfile._id, followingStudentId: targetProfile?._id }),
+        Follow.findOne({ followerStudentId: targetProfile?._id, followingStudentId: senderProfile._id }),
+      ]);
+      if (!followsThem || !theyFollow) {
+        return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} only accepts messages from mutual connections.` };
+      }
+    }
+
+    if (privacy === 'Same college only') {
+      const senderProfile = await StudentProfile.findOne({ userId: senderUserId });
+      const sameCollege =
+        (senderProfile?.collegeName && targetProfile?.collegeName && senderProfile.collegeName.toLowerCase().trim() === targetProfile.collegeName.toLowerCase().trim()) ||
+        (senderUser.collegeId && targetProfile?.targetCollegeId === senderUser.collegeId);
+
+      if (!sameCollege) {
+        return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} only accepts messages from students or faculty of the same college.` };
+      }
+    }
+
     if (privacy === 'Following') {
       // Target must be following the sender
       const senderProfile = await StudentProfile.findOne({ userId: senderUserId });
@@ -118,21 +144,6 @@ async function checkMessagePermission(senderUserId: string, targetUserId: string
       });
       if (!isFollowing) {
         return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} only accepts messages from people they follow.` };
-      }
-    }
-
-    if (privacy === 'Connections') {
-      const senderProfile = await StudentProfile.findOne({ userId: senderUserId });
-      if (!senderProfile) {
-        return { allowed: false, reason: 'This user only accepts messages from connections.' };
-      }
-      // Check mutual follow or shared college
-      const [followsThem, theyFollow] = await Promise.all([
-        Follow.findOne({ followerStudentId: senderProfile._id, followingStudentId: targetProfile?._id }),
-        Follow.findOne({ followerStudentId: targetProfile?._id, followingStudentId: senderProfile._id }),
-      ]);
-      if (!followsThem || !theyFollow) {
-        return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} only accepts messages from mutual connections.` };
       }
     }
   } else {

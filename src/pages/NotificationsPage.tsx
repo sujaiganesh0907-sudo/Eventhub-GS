@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -20,7 +20,12 @@ import {
   X,
   Loader2,
   Building2,
-  ExternalLink,
+  MessageSquare,
+  FileText,
+  Share2,
+  CheckSquare,
+  Square,
+  Filter,
 } from 'lucide-react';
 
 interface NotificationsPageProps {
@@ -29,18 +34,195 @@ interface NotificationsPageProps {
   onNavigateToTab?: (tab: string, meta?: any) => void;
 }
 
+export type NotificationCategory =
+  | 'All'
+  | 'College'
+  | 'Messages'
+  | 'Events'
+  | 'Admin Access'
+  | 'Student Requests'
+  | 'New Posts'
+  | 'Certificates'
+  | 'Attendance';
+
 export const NotificationsPage: React.FC<NotificationsPageProps> = ({
   onSelectEvent,
   onOpenManageAdmins,
   onNavigateToTab,
 }) => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll, fetchNotifications } =
-    useNotifications();
-  const { refreshProfile } = useAuth();
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    clearAll,
+    clearSelected,
+    markSelectedAsRead,
+    fetchNotifications,
+  } = useNotifications();
+  const { user, isCollege, refreshProfile } = useAuth();
 
+  // Selection mode states (Requirement 10)
+  const [isSelectMode, setIsSelectMode] = useState<boolean>(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBatchProcessing, setIsBatchProcessing] = useState<boolean>(false);
+
+  // Category filter state (Requirement 11)
+  const [activeCategory, setActiveCategory] = useState<NotificationCategory>('All');
+
+  // Admin invitation handling state
   const [actingInviteId, setActingInviteId] = useState<string | null>(null);
-  const [inviteFeedback, setInviteFeedback] = useState<Record<string, { type: 'success' | 'error'; message: string }>>({});
+  const [inviteFeedback, setInviteFeedback] = useState<
+    Record<string, { type: 'success' | 'error'; message: string }>
+  >({});
 
+  // Categories list
+  const categories: NotificationCategory[] = [
+    'All',
+    ...(isCollege ? (['College'] as NotificationCategory[]) : []),
+    'Messages',
+    'Events',
+    'Admin Access',
+    ...(isCollege ? (['Student Requests'] as NotificationCategory[]) : []),
+    'New Posts',
+    'Certificates',
+    'Attendance',
+  ];
+
+  // Filter notifications by category using structured metadata (Requirement 11)
+  const filteredNotifications = useMemo(() => {
+    if (activeCategory === 'All') return notifications;
+
+    return notifications.filter((n) => {
+      const type = n.type || '';
+      const action = n.metadata?.action || '';
+      const metaType = n.metadata?.type || '';
+
+      switch (activeCategory) {
+        case 'College':
+          return (
+            type === 'ADMIN_ACTION' ||
+            type === 'ADMIN_INVITE' ||
+            Boolean(n.metadata?.collegeId) ||
+            type === 'proposal_approved' ||
+            type === 'proposal_rejected' ||
+            action === 'event-requests' ||
+            action === 'attendance'
+          );
+        case 'Messages':
+          return (
+            type === 'MESSAGE' ||
+            type === 'NEW_MESSAGE' ||
+            Boolean(n.metadata?.conversationId)
+          );
+        case 'Events':
+          return (
+            type === 'EVENT_UPDATE' ||
+            type === 'proposal_approved' ||
+            type === 'proposal_rejected' ||
+            type === 'event_reminder' ||
+            type === 'registration_confirmed' ||
+            type === 'ticket_generated' ||
+            Boolean(n.metadata?.eventId) ||
+            Boolean(n.eventId)
+          );
+        case 'Admin Access':
+          return (
+            type === 'ADMIN_INVITE' ||
+            type === 'ADMIN_ACTION' ||
+            action === 'manage-admins'
+          );
+        case 'Student Requests':
+          return (
+            type === 'STUDENT_REQUEST' ||
+            action === 'event-requests' ||
+            Boolean(n.link?.includes('tab=requests'))
+          );
+        case 'New Posts':
+          return (
+            type === 'NEW_POST' ||
+            action === 'post' ||
+            metaType === 'placement' ||
+            metaType === 'infrastructure'
+          );
+        case 'Certificates':
+          return (
+            type === 'CERTIFICATE' ||
+            type === 'certificate_issued' ||
+            Boolean(n.metadata?.certificateId) ||
+            Boolean(n.link?.includes('tab=certificates'))
+          );
+        case 'Attendance':
+          return (
+            type === 'ATTENDANCE' ||
+            type === 'attendance_marked' ||
+            action === 'attendance'
+          );
+        default:
+          return true;
+      }
+    });
+  }, [notifications, activeCategory]);
+
+  // Toggle selection for an individual notification
+  const handleToggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Select all or deselect all in current view
+  const handleToggleSelectAll = () => {
+    if (selectedIds.size === filteredNotifications.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredNotifications.map((n) => n._id)));
+    }
+  };
+
+  // Cancel selection mode
+  const handleCancelSelection = () => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  // Clear selected notifications
+  const handleClearSelected = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsBatchProcessing(true);
+      const ids = Array.from(selectedIds);
+      await clearSelected(ids);
+      setSelectedIds(new Set());
+      setIsSelectMode(false);
+    } catch (err) {
+      console.error('Failed to clear selected', err);
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  };
+
+  // Mark selected notifications read
+  const handleMarkSelectedRead = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsBatchProcessing(true);
+      const ids = Array.from(selectedIds);
+      await markSelectedAsRead(ids);
+      setSelectedIds(new Set());
+      setIsSelectMode(false);
+    } catch (err) {
+      console.error('Failed to mark selected read', err);
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  };
+
+  // Handle invitation accept
   const handleAcceptInvitation = async (e: React.MouseEvent, n: any) => {
     e.stopPropagation();
     const membershipId = n.metadata?.membershipId;
@@ -76,6 +258,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     }
   };
 
+  // Handle invitation decline
   const handleRejectInvitation = async (e: React.MouseEvent, n: any) => {
     e.stopPropagation();
     const membershipId = n.metadata?.membershipId;
@@ -110,6 +293,97 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     }
   };
 
+  // Deep link routing (Requirement 12)
+  const handleNotificationClick = (n: any) => {
+    if (isSelectMode) {
+      // In select mode, clicking card toggles selection
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(n._id)) next.delete(n._id);
+        else next.add(n._id);
+        return next;
+      });
+      return;
+    }
+
+    if (!n.read) markAsRead(n._id);
+
+    // 1. Direct message notification -> open conversation
+    if (n.metadata?.conversationId && onNavigateToTab) {
+      onNavigateToTab('messages', { conversationId: n.metadata.conversationId });
+      return;
+    }
+
+    // 2. Admin invite: dedicated accept/decline action on card
+    if (n.type === 'ADMIN_INVITE') return;
+
+    // 3. Admin accepted/rejected/role updated -> Manage Admins
+    if (
+      (n.type === 'ADMIN_ACTION' || n.metadata?.action === 'manage-admins') &&
+      n.metadata?.collegeId &&
+      onOpenManageAdmins
+    ) {
+      onOpenManageAdmins(n.metadata.collegeId);
+      return;
+    }
+
+    // 4. Student Event Proposal/Request -> Requests tab in events
+    if (
+      (n.metadata?.action === 'event-requests' || n.link?.includes('tab=requests')) &&
+      onNavigateToTab
+    ) {
+      onNavigateToTab('events', { tab: 'requests', eventId: n.metadata?.eventId || n.eventId });
+      return;
+    }
+
+    // 5. Attendance Finalized / Attendance check-in -> correct event attendance
+    if (n.metadata?.action === 'attendance' && onNavigateToTab) {
+      onNavigateToTab('events', { tab: 'attendance', eventId: n.metadata?.eventId || n.eventId });
+      return;
+    }
+
+    // 6. Certificate issued / generated -> Certificate Details in Profile
+    if (
+      (n.type === 'CERTIFICATE' ||
+        n.metadata?.certificateId ||
+        n.link?.includes('tab=certificates')) &&
+      onNavigateToTab
+    ) {
+      onNavigateToTab('profile', { tab: 'certificates', certificateId: n.metadata?.certificateId });
+      return;
+    }
+
+    // 7. Event details (Approved, Event Update, Connected College Event, Reminder)
+    const targetEventId =
+      n.eventId ||
+      n.metadata?.eventId ||
+      (n.link?.startsWith('/events/') ? n.link.split('/')[2] : null);
+    if (targetEventId && onSelectEvent) {
+      onSelectEvent(targetEventId);
+      return;
+    }
+
+    // 8. Placement / Facility Post -> Relevant college post view
+    if (
+      (n.metadata?.type === 'placement' || n.metadata?.type === 'infrastructure') &&
+      onNavigateToTab
+    ) {
+      onNavigateToTab('colleges', {
+        collegeId: n.metadata?.collegeId,
+        tab: n.metadata?.type === 'placement' ? 'placements' : 'facilities',
+      });
+      return;
+    }
+
+    // 9. General link fallback
+    if (n.link && onNavigateToTab) {
+      if (n.link.startsWith('/events')) onNavigateToTab('events');
+      else if (n.link.startsWith('/profile')) onNavigateToTab('profile');
+      else if (n.link.startsWith('/messages')) onNavigateToTab('messages');
+      else if (n.link.startsWith('/colleges')) onNavigateToTab('colleges');
+    }
+  };
+
   const getIconForType = (type: string) => {
     switch (type) {
       case 'ADMIN_INVITE':
@@ -120,8 +394,10 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
       case 'registration_confirmed':
         return <Ticket className="w-5 h-5 text-blue-500" />;
       case 'attendance_marked':
+      case 'ATTENDANCE':
         return <UserCheck className="w-5 h-5 text-emerald-500" />;
       case 'certificate_issued':
+      case 'CERTIFICATE':
         return <Award className="w-5 h-5 text-amber-500" />;
       case 'event_reminder':
         return <Calendar className="w-5 h-5 text-indigo-500" />;
@@ -130,55 +406,138 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
       case 'proposal_rejected':
       case 'event_cancelled':
         return <AlertTriangle className="w-5 h-5 text-red-500" />;
+      case 'MESSAGE':
+      case 'NEW_MESSAGE':
+        return <MessageSquare className="w-5 h-5 text-blue-500" />;
       default:
         return <Bell className="w-5 h-5 text-[var(--primary-color)]" />;
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+    <div className="max-w-5xl mx-auto space-y-6 pb-16">
+      {/* Header with Title and Global Action Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--border-color)] pb-4 gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-[var(--text-primary)]">
             Notification Center
           </h1>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-            Event updates, admin invitations, verified entry pass alerts, and collegiate awards
+            Event updates, administrative notices, pass alerts, and collegiate credentials
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllAsRead}
-              className="px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <CheckCheck className="w-3.5 h-3.5 text-blue-500" /> Mark all read
-            </button>
-          )}
-          {notifications.length > 0 && (
-            <button
-              onClick={clearAll}
-              className="px-3 py-1.5 rounded-xl border border-red-500/20 hover:bg-red-500/10 text-xs font-semibold text-red-600 flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Clear
-            </button>
+        {/* Global Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {!isSelectMode ? (
+            <>
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsSelectMode(true)}
+                  className="px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-[var(--primary-color)]" /> Select
+                </button>
+              )}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllAsRead}
+                  className="px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <CheckCheck className="w-3.5 h-3.5 text-blue-500" /> Mark all read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="px-3 py-1.5 rounded-xl border border-red-500/20 hover:bg-red-500/10 text-xs font-semibold text-red-600 flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Clear All
+                </button>
+              )}
+            </>
+          ) : (
+            /* Select Mode Toolbar (Requirement 10) */
+            <div className="flex flex-wrap items-center gap-2 animate-in fade-in">
+              <button
+                type="button"
+                onClick={handleToggleSelectAll}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+              >
+                {selectedIds.size === filteredNotifications.length ? 'Deselect All' : 'Select All'}
+              </button>
+
+              <button
+                type="button"
+                disabled={selectedIds.size === 0 || isBatchProcessing}
+                onClick={handleMarkSelectedRead}
+                className="px-3 py-1.5 rounded-xl border border-[var(--primary-color)] bg-[var(--primary-light)] text-xs font-semibold text-[var(--primary-color)] flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" /> Mark Read ({selectedIds.size})
+              </button>
+
+              <button
+                type="button"
+                disabled={selectedIds.size === 0 || isBatchProcessing}
+                onClick={handleClearSelected}
+                className="px-3 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs font-semibold text-red-600 flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Clear Selected ({selectedIds.size})
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCancelSelection}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" /> Cancel
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      {notifications.length === 0 ? (
+      {/* College Notification Categories Filter Bar (Requirement 11) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <Filter className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 mr-1" />
+        {categories.map((cat) => {
+          const isActive = activeCategory === cat;
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                isActive
+                  ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                  : 'bg-[var(--surface)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+              }`}
+            >
+              {cat}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Notification List / Empty States */}
+      {filteredNotifications.length === 0 ? (
         <div className="p-16 text-center border border-[var(--border-color)] rounded-2xl bg-[var(--surface)] space-y-2">
           <Bell className="w-8 h-8 mx-auto text-[var(--text-muted)]" />
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">No notifications</h3>
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">
+            {activeCategory === 'All' ? 'No notifications' : `No ${activeCategory} notifications`}
+          </h3>
           <p className="text-xs text-[var(--text-muted)]">
-            You're all caught up! New reminders, college admin invitations, and event alerts will appear here.
+            {activeCategory === 'All'
+              ? "You're all caught up! New reminders, college invitations, and event alerts will appear here."
+              : `No activity found under the "${activeCategory}" filter category.`}
           </p>
         </div>
       ) : (
         <div className="border border-[var(--border-color)] rounded-2xl overflow-hidden divide-y divide-[var(--border-color)] bg-[var(--surface)] shadow-xs">
-          {notifications.map((n) => {
+          {filteredNotifications.map((n) => {
             const isInvite = n.type === 'ADMIN_INVITE';
             const membershipId = n.metadata?.membershipId;
             const isActing = actingInviteId && actingInviteId === membershipId;
@@ -186,77 +545,53 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
             const permissions: string[] = n.metadata?.permissions || [];
             const collegeLogo = n.metadata?.collegeLogo || DEFAULT_COLLEGE_LOGO;
             const collegeName = n.metadata?.collegeName;
+            const isSelected = selectedIds.has(n._id);
 
             return (
               <div
                 key={n._id}
-                onClick={() => {
-                  if (!n.read) markAsRead(n._id);
-
-                  // 1. Direct message notification
-                  if (n.metadata?.conversationId && onNavigateToTab) {
-                    onNavigateToTab('messages', { conversationId: n.metadata.conversationId });
-                    return;
-                  }
-
-                  // 2. Admin invite: already has dedicated in-card action buttons
-                  if (isInvite) return;
-
-                  // 3. Admin accepted/rejected -> Manage Admins
-                  if ((n.type === 'ADMIN_ACTION' || n.metadata?.action === 'manage-admins') && n.metadata?.collegeId && onOpenManageAdmins) {
-                    onOpenManageAdmins(n.metadata.collegeId);
-                    return;
-                  }
-
-                  // 4. Student Event Request -> Requests tab in events
-                  if ((n.metadata?.action === 'event-requests' || n.link?.includes('tab=requests')) && onNavigateToTab) {
-                    onNavigateToTab('events', { tab: 'requests', eventId: n.metadata?.eventId || n.eventId });
-                    return;
-                  }
-
-                  // 5. Attendance Finalized / Attendance marked
-                  if (n.metadata?.action === 'attendance' && onNavigateToTab) {
-                    onNavigateToTab('events', { tab: 'attendance', eventId: n.metadata?.eventId || n.eventId });
-                    return;
-                  }
-
-                  // 6. Certificate issued -> Certificate Details in Profile
-                  if ((n.type === 'CERTIFICATE' || n.metadata?.certificateId || n.link?.includes('tab=certificates')) && onNavigateToTab) {
-                    onNavigateToTab('profile', { tab: 'certificates', certificateId: n.metadata?.certificateId });
-                    return;
-                  }
-
-                  // 7. Event details (Approved, Event Update, Connected College Event, Reminder)
-                  const targetEventId = n.eventId || n.metadata?.eventId || (n.link?.startsWith('/events/') ? n.link.split('/')[2] : null);
-                  if (targetEventId && onSelectEvent) {
-                    onSelectEvent(targetEventId);
-                    return;
-                  }
-
-                  // 8. General link fallback
-                  if (n.link && onNavigateToTab) {
-                    if (n.link.startsWith('/events')) onNavigateToTab('events');
-                    else if (n.link.startsWith('/profile')) onNavigateToTab('profile');
-                    else if (n.link.startsWith('/messages')) onNavigateToTab('messages');
-                    else if (n.link.startsWith('/colleges')) onNavigateToTab('colleges');
-                  }
-                }}
-                className={`p-4 flex flex-col gap-3 transition-colors cursor-pointer ${
-                  n.read ? 'bg-[var(--surface)] hover:bg-[var(--surface-subtle)]' : 'bg-[var(--primary-light)]/40 hover:bg-[var(--primary-light)]/60'
+                onClick={() => handleNotificationClick(n)}
+                className={`p-4 flex flex-col gap-3 transition-colors cursor-pointer relative ${
+                  isSelected
+                    ? 'bg-blue-500/10 border-l-4 border-[var(--primary-color)]'
+                    : n.read
+                    ? 'bg-[var(--surface)] hover:bg-[var(--surface-subtle)]'
+                    : 'bg-[var(--primary-light)]/40 hover:bg-[var(--primary-light)]/60'
                 }`}
               >
                 <div className="flex items-start gap-3.5">
+                  {/* Select Mode Checkbox */}
+                  {isSelectMode && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleSelect(n._id, e)}
+                      className="mt-2 text-[var(--primary-color)] cursor-pointer shrink-0"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-[var(--primary-color)]" />
+                      ) : (
+                        <Square className="w-5 h-5 text-[var(--text-muted)]" />
+                      )}
+                    </button>
+                  )}
+
+                  {/* Icon */}
                   <div className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-color)] shrink-0 shadow-xs">
                     {getIconForType(n.type)}
                   </div>
 
+                  {/* Text Content */}
                   <div className="grow min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <h4 className="text-xs font-bold text-[var(--text-primary)] truncate">
                         {n.title}
                       </h4>
                       <span className="text-[10px] text-[var(--text-muted)] shrink-0">
-                        {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(n.createdAt).toLocaleDateString()}
+                        {new Date(n.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}{' '}
+                        · {new Date(n.createdAt).toLocaleDateString()}
                       </span>
                     </div>
 
@@ -265,12 +600,12 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
                     </p>
                   </div>
 
-                  {!n.read && (
+                  {!n.read && !isSelectMode && (
                     <span className="w-2 h-2 rounded-full bg-[var(--primary-color)] shrink-0 mt-2" />
                   )}
                 </div>
 
-                {/* SPECIAL CARD: COLLEGE ADMIN INVITATION (Requirement 3 & 4) */}
+                {/* SPECIAL CARD: COLLEGE ADMIN INVITATION */}
                 {isInvite && (
                   <div className="ml-12 p-3.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 space-y-3">
                     <div className="flex items-center justify-between gap-3">

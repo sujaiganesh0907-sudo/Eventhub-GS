@@ -33,6 +33,9 @@ export async function globalSearch(req: AuthenticatedRequest, res: Response) {
       const allStudents = await StudentProfile.find().limit(50).exec();
       studentsResult = allStudents
         .filter((s) => {
+          if (type === 'messages' && req.user && s.userId === req.user._id) {
+            return false; // Prevent messaging oneself
+          }
           const matchName = s.fullName && s.fullName.toLowerCase().includes(query);
           const matchUsername = s.username && s.username.toLowerCase().includes(cleanQuery);
           const matchCollege = s.collegeName && s.collegeName.toLowerCase().includes(query);
@@ -57,6 +60,11 @@ export async function globalSearch(req: AuthenticatedRequest, res: Response) {
       const allColleges = await College.find().limit(50).exec();
       collegesResult = allColleges
         .filter((c) => {
+          if (type === 'messages' && req.user) {
+            if (c.superAdminId === req.user._id || c._id === req.user.collegeId) {
+              return false; // Don't show own college to message oneself
+            }
+          }
           const matchName = c.name && c.name.toLowerCase().includes(query);
           const matchUsername = c.username && c.username.toLowerCase().includes(cleanQuery);
           const matchLocation = c.location && c.location.toLowerCase().includes(query);
@@ -72,6 +80,7 @@ export async function globalSearch(req: AuthenticatedRequest, res: Response) {
           logo: c.logo || '',
           verificationStatus: c.verificationStatus,
           isVerified: c.verificationStatus === 'Verified',
+          superAdminId: c.superAdminId,
         }));
     }
 

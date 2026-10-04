@@ -201,6 +201,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   // Start or open conversation with a target user/college (Requirement 10: messages works through search)
   const handleStartChatWithUser = async (targetId: string, itemType: 'student' | 'college') => {
     try {
+      if (itemType === 'student' && (targetId === user?._id || targetId === user?.id)) {
+        return;
+      }
       const payload = itemType === 'student' ? { targetStudentId: targetId } : { targetCollegeId: targetId };
       const res = await api.post<any>('/messages/conversations', payload);
       if (res.success && res.conversation) {
@@ -474,13 +477,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               )}
 
               {/* Matching Students */}
-              {remoteSearchResults.students.length > 0 && (
+              {remoteSearchResults.students.filter(
+                (s) => s.userId !== user?._id && s.userId !== user?.id && s._id !== user?._id
+              ).length > 0 && (
                 <div className="p-2 space-y-1">
                   <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
                     <User className="w-3 h-3 text-[var(--primary-color)]" />
-                    <span>Students ({remoteSearchResults.students.length})</span>
+                    <span>Students ({remoteSearchResults.students.filter(
+                      (s) => s.userId !== user?._id && s.userId !== user?.id && s._id !== user?._id
+                    ).length})</span>
                   </div>
-                  {remoteSearchResults.students.map((student) => (
+                  {remoteSearchResults.students
+                    .filter((s) => s.userId !== user?._id && s.userId !== user?.id && s._id !== user?._id)
+                    .map((student) => (
                     <div
                       key={student._id || student.userId}
                       onClick={() => {
@@ -517,13 +526,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               )}
 
               {/* Matching Colleges */}
-              {remoteSearchResults.colleges.length > 0 && (
+              {remoteSearchResults.colleges.filter(
+                (c) => c.superAdminId !== user?._id && c._id !== user?.collegeId
+              ).length > 0 && (
                 <div className="p-2 space-y-1">
                   <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
                     <Building2 className="w-3 h-3 text-blue-500" />
-                    <span>Colleges ({remoteSearchResults.colleges.length})</span>
+                    <span>Colleges ({remoteSearchResults.colleges.filter(
+                      (c) => c.superAdminId !== user?._id && c._id !== user?.collegeId
+                    ).length})</span>
                   </div>
-                  {remoteSearchResults.colleges.map((col) => (
+                  {remoteSearchResults.colleges
+                    .filter((c) => c.superAdminId !== user?._id && c._id !== user?.collegeId)
+                    .map((col) => (
                     <div
                       key={col._id}
                       onClick={() => {

@@ -148,9 +148,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     localStorage.removeItem('eventhub_token');
     localStorage.removeItem('eventhub_refresh');
+    localStorage.removeItem('eventhub_active_college');
     setUser(null);
     setStudentProfile(null);
     setCollege(null);
+    setHasAdminMemberships(false);
     setStatus('unauthenticated');
   };
 
@@ -163,9 +165,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const switchAccount = async (target: 'student' | 'college-super') => {
-    let email = 'alex.chen@student.edu';
-    if (target === 'college-super') email = 'admin@apextech.edu';
-    await login(email, 'Password123!');
+    localStorage.removeItem('eventhub_active_college');
+    const res = await api.post<any>('/auth/quick-switch', { target });
+    if (res.success && res.tokens?.accessToken) {
+      localStorage.setItem('eventhub_token', res.tokens.accessToken);
+      if (res.tokens.refreshToken) {
+        localStorage.setItem('eventhub_refresh', res.tokens.refreshToken);
+      }
+      setUser(res.user);
+      setStudentProfile(res.studentProfile || null);
+      setCollege(res.college || null);
+      setHasAdminMemberships(Boolean(res.hasAdminMemberships));
+      setStatus('authenticated');
+    } else {
+      throw new Error(res.message || 'Failed to switch account');
+    }
   };
 
   const isAuthenticated = status === 'authenticated' && !!user;

@@ -1,13 +1,9 @@
 export type ThemeMode =
-  | 'light'
-  | 'dark'
-  | 'system'
   | 'classic-blue'
-  | 'midnight'
-  | 'ocean'
-  | 'emerald'
-  | 'violet'
-  | 'neutral';
+  | 'neutral-slate'
+  | 'system'
+  | 'light'
+  | 'dark';
 
 export type UserRole = 'Student' | 'College Super Admin' | 'College Admin';
 
@@ -38,8 +34,16 @@ export interface IStudentProfile {
   coverPhoto?: string;
   skills: string[];
   achievements: string[];
-  profileVisibility?: 'Public' | 'Private';
-  messagePrivacy?: 'Everyone' | 'Following' | 'Connections' | 'Nobody';
+  profileVisibility?: 'Everyone' | 'EVENTHUB users' | 'Connections only' | 'Private' | 'Public';
+  messagePrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody' | 'Following' | 'Connections';
+  resumePrivacy?: 'Everyone' | 'Connections' | 'Colleges only' | 'Private';
+  groupAddPrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody / request only';
+  resumeFileUrl?: string;
+  resumeFileType?: string;
+  resumeOriginalName?: string;
+  resumeUploadedAt?: string;
+  resumeCoverUrl?: string;
+  canAccessResume?: boolean;
   isPrivateRestricted?: boolean;
   isFollowing?: boolean;
   followersCount: number;
@@ -318,6 +322,10 @@ export interface ICertificate {
   description?: string;
   fileUrl: string;
   docxFileUrl?: string;
+  coverUrl?: string;
+  fileType?: string;
+  originalFileName?: string;
+  isSelfUploaded?: boolean;
   credentialUrl?: string;
   visibility: 'Public' | 'Connections Only' | 'Private';
   tags: string[];

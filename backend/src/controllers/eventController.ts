@@ -500,9 +500,29 @@ export async function getStudentMyEvents(req: AuthenticatedRequest, res: Respons
 export async function getCollegeEvents(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
-    if (!user || !user.collegeId) return res.status(403).json({ success: false, message: 'College account required' });
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const events = await Event.find({ hostCollegeId: user.collegeId }).sort({ createdAt: -1 }).exec();
+    const targetCollegeId =
+      (req.headers['x-college-id'] as string) ||
+      (req.query.collegeId as string) ||
+      user.collegeId;
+
+    if (!targetCollegeId) {
+      return res.status(403).json({ success: false, message: 'College account required' });
+    }
+
+    if (user.collegeId !== targetCollegeId) {
+      const membership = await CollegeAdminMembership.findOne({
+        collegeId: targetCollegeId,
+        userId: user._id,
+        status: 'Active',
+      });
+      if (!membership) {
+        return res.status(403).json({ success: false, message: 'Access forbidden. Active college administration required.' });
+      }
+    }
+
+    const events = await Event.find({ hostCollegeId: targetCollegeId }).sort({ createdAt: -1 }).exec();
     return res.json({ success: true, events: events.map(enrichEvent) });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
@@ -512,10 +532,30 @@ export async function getCollegeEvents(req: AuthenticatedRequest, res: Response)
 export async function getCollegeStudentRequests(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
-    if (!user || !user.collegeId) return res.status(403).json({ success: false, message: 'College account required' });
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const targetCollegeId =
+      (req.headers['x-college-id'] as string) ||
+      (req.query.collegeId as string) ||
+      user.collegeId;
+
+    if (!targetCollegeId) {
+      return res.status(403).json({ success: false, message: 'College account required' });
+    }
+
+    if (user.collegeId !== targetCollegeId) {
+      const membership = await CollegeAdminMembership.findOne({
+        collegeId: targetCollegeId,
+        userId: user._id,
+        status: 'Active',
+      });
+      if (!membership) {
+        return res.status(403).json({ success: false, message: 'Access forbidden. Active college administration required.' });
+      }
+    }
 
     const requests = await Event.find({
-      $or: [{ hostCollegeId: user.collegeId }, { targetCollegeId: user.collegeId }],
+      $or: [{ hostCollegeId: targetCollegeId }, { targetCollegeId: targetCollegeId }],
       creatorRole: 'Student',
     }).sort({ createdAt: -1 }).exec();
 

@@ -23,6 +23,7 @@ import { IssueCertificateModal } from '../components/certificate/IssueCertificat
 import { ReshareCertificateModal } from '../components/certificate/ReshareCertificateModal';
 import { PublicVerificationModal } from '../components/certificate/PublicVerificationModal';
 import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
+import { ResumeModal } from '../components/profile/ResumeModal';
 import {
   DEFAULT_STUDENT_AVATAR,
   DEFAULT_STUDENT_COVER,
@@ -57,6 +58,8 @@ import {
   Lock,
   Upload,
   ChevronRight,
+  FileText,
+  Trash2,
 } from 'lucide-react';
 
 interface StudentProfilePageProps {
@@ -81,7 +84,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const [profile, setProfile] = useState<IStudentProfile | null>(
     !studentId && studentProfile ? studentProfile : null
   );
-  const isOwnProfile = !studentId || (profile && profile._id === studentProfile?._id) || (user && profile && profile.userId === user._id);
+  const isOwnProfile = Boolean(!studentId || (profile && profile._id === studentProfile?._id) || (user && profile && profile.userId === user._id));
 
   const [isFollowingTarget, setIsFollowingTarget] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -99,6 +102,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
 
   // Modals state
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
   const [showAddCertModal, setShowAddCertModal] = useState(false);
   const [editingCert, setEditingCert] = useState<ICertificate | null>(null);
   const [selectedCert, setSelectedCert] = useState<ICertificate | null>(null);
@@ -497,12 +501,16 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
       {/* SECTION 1: Digital Student ID Banner Card */}
       <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs">
         {/* Cover Photo */}
-        <div className="h-44 sm:h-56 w-full bg-slate-900 relative overflow-hidden">
+        <div className="h-44 sm:h-56 md:h-64 w-full bg-slate-900 relative overflow-hidden">
           <img
             src={profile?.coverPhoto || DEFAULT_STUDENT_COVER}
             alt="Profile Cover"
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as any).src = DEFAULT_STUDENT_COVER;
+            }}
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
           {/* Back button when viewing other student */}
           {!isOwnProfile && onBack && (
             <button
@@ -524,20 +532,22 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         </div>
 
         {/* Profile Card Info */}
-        <div className="px-6 pb-6 pt-0 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-4">
-            <div className="flex items-end gap-4">
-              <img
-                src={profile?.profilePhoto || DEFAULT_STUDENT_AVATAR}
-                alt={profile?.fullName || 'Student'}
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg shrink-0"
-                onError={(e) => {
-                  (e.target as any).src = DEFAULT_STUDENT_AVATAR;
-                }}
-              />
-              <div className="mb-2">
+        <div className="px-4 sm:px-6 pb-6 pt-0 relative">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 -mt-12 sm:-mt-16 md:-mt-20 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
+              <div className="relative shrink-0">
+                <img
+                  src={profile?.profilePhoto || DEFAULT_STUDENT_AVATAR}
+                  alt={profile?.fullName || 'Student'}
+                  className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg shrink-0"
+                  onError={(e) => {
+                    (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                  }}
+                />
+              </div>
+              <div className="pt-1 sm:pt-0 sm:mb-2 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)]">
+                  <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">
                     {profile?.fullName || user?.fullName}
                   </h1>
                   {profile?.username && (
@@ -549,14 +559,14 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                     <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" />
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
-                  <Building2 className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                  {profile?.collegeName || 'Apex Institute of Technology'}
+                <p className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1.5 mt-1">
+                  <Building2 className="w-3.5 h-3.5 text-[var(--primary-color)] shrink-0" />
+                  <span className="truncate">{profile?.collegeName || 'Apex Institute of Technology'}</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap pt-1 sm:pt-0">
               {/* If viewing another student: Follow & Message buttons */}
               {!isOwnProfile && (
                 <>
@@ -740,6 +750,119 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
               </div>
             </div>
           )}
+
+          {/* SECTION: RESUME CARD (Requirements 7, 8, 9, 10, 11) */}
+          <div className="pt-4 mt-2 border-t border-[var(--border-color)]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                Resume & Professional Document
+              </span>
+              {isOwnProfile && profile?.resumeFileUrl && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(true)}
+                  className="text-xs font-bold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit className="w-3 h-3" /> Edit Resume
+                </button>
+              )}
+            </div>
+
+            {profile?.resumeFileUrl ? (
+              profile.canAccessResume === false ? (
+                /* Privacy Restricted Card */
+                <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/70 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center shrink-0">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-[var(--text-primary)]">Resume is Private</h4>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      This student has set their resume privacy to {profile.resumePrivacy || 'Colleges only'}.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                /* Clean Resume Profile Card */
+                <div
+                  onClick={() => setShowResumeModal(true)}
+                  className="group p-3 sm:p-4 rounded-2xl border border-[var(--border-color)] hover:border-[var(--primary-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-all cursor-pointer shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {/* Cover Thumbnail or Professional Document Placeholder */}
+                    <div className="w-14 h-18 sm:w-16 sm:h-20 rounded-xl overflow-hidden border border-[var(--border-color)] bg-slate-900 shrink-0 relative flex items-center justify-center shadow-xs">
+                      {profile.resumeCoverUrl ? (
+                        <img
+                          src={profile.resumeCoverUrl}
+                          alt="Resume Cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-400 space-y-1 p-1 text-center">
+                          <FileText className="w-6 h-6 text-blue-400" />
+                          <span className="text-[9px] font-black uppercase text-slate-300">
+                            {profile.resumeFileType || 'CV'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] transition-colors truncate">
+                          {profile.resumeOriginalName || `${profile.fullName || 'Student'} Resume`}
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-md bg-[var(--primary-light)] text-[var(--primary-color)] text-[10px] font-extrabold uppercase shrink-0">
+                          {profile.resumeFileType || 'PDF'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-1.5 flex-wrap">
+                        <Clock className="w-3 h-3" />
+                        Updated {profile.resumeUploadedAt ? new Date(profile.resumeUploadedAt).toLocaleDateString() : 'Recently'}
+                        <span className="text-slate-400">·</span>
+                        <Shield className="w-3 h-3 text-blue-500" />
+                        <span>Visible to {profile.resumePrivacy || 'Colleges only'}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowResumeModal(true);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> View Resume
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : isOwnProfile ? (
+              <div
+                onClick={() => setShowEditModal(true)}
+                className="p-4 rounded-2xl border-2 border-dashed border-[var(--border-color)] hover:border-[var(--primary-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] transition-all cursor-pointer flex items-center justify-between gap-3 group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--surface)] text-[var(--primary-color)] border border-[var(--border-color)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[var(--text-primary)]">Upload your Resume</h4>
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      PDF, DOC, DOCX, or Image (max 15MB) to share with collegiate recruiters
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-[var(--primary-color)] flex items-center gap-1">
+                  Upload <ChevronRight className="w-4 h-4" />
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -826,7 +949,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   >
                     <div className="aspect-video w-full rounded-xl overflow-hidden bg-slate-900 border border-[var(--border-color)] relative">
                       <img
-                        src={cert.fileUrl}
+                        src={cert.coverUrl || cert.fileUrl}
                         alt={cert.title}
                         className="w-full h-full object-cover group-hover:scale-103 transition-transform"
                         onError={(e) => {
@@ -872,7 +995,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   </div>
 
                   {/* Card Actions */}
-                  <div className="pt-2.5 border-t border-[var(--border-color)] flex items-center justify-between gap-1.5">
+                  <div className="pt-2.5 border-t border-[var(--border-color)] flex items-center justify-between gap-1.5 flex-wrap">
                     <button
                       type="button"
                       onClick={() => setSelectedCert(cert)}
@@ -899,6 +1022,31 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                       >
                         <Share2 className="w-3 h-3" /> Reshare
                       </button>
+                    )}
+
+                    {/* Self-uploaded certificate edit and delete buttons (Requirement 13 & 15) */}
+                    {isOwnProfile && !cert.isCollegeVerified && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCert(cert);
+                            setShowAddCertModal(true);
+                          }}
+                          className="py-1.5 px-2 rounded-lg border border-[var(--border-color)] text-amber-600 hover:bg-amber-500/10 text-[11px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Edit self-uploaded certificate"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCertificate(cert._id)}
+                          className="py-1.5 px-2 rounded-lg border border-[var(--border-color)] text-red-600 hover:bg-red-500/10 text-[11px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          title="Delete self-uploaded certificate"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1677,6 +1825,31 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             )}
           </div>
         </Modal>
+      )}
+
+      {/* Resume View Modal (Requirements 8, 9, 10, 11) */}
+      {showResumeModal && profile?.resumeFileUrl && (
+        <ResumeModal
+          isOpen={showResumeModal}
+          onClose={() => setShowResumeModal(false)}
+          resume={{
+            fileUrl: profile.resumeFileUrl,
+            fileType: profile.resumeFileType,
+            originalName: profile.resumeOriginalName,
+            uploadedAt: profile.resumeUploadedAt,
+            coverUrl: profile.resumeCoverUrl,
+          }}
+          studentName={profile.fullName || 'Student'}
+          isOwner={isOwnProfile}
+          privacySetting={profile.resumePrivacy || 'Colleges only'}
+          onCoverUpdated={(newCoverUrl) => {
+            setProfile((prev) => (prev ? { ...prev, resumeCoverUrl: newCoverUrl } : prev));
+            if (isOwnProfile && updateStudentProfileLocal) {
+              updateStudentProfileLocal({ resumeCoverUrl: newCoverUrl });
+            }
+          }}
+          onOpenEditModal={() => setShowEditModal(true)}
+        />
       )}
     </div>
   );
