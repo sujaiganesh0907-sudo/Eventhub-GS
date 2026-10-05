@@ -2,15 +2,36 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import apiRouter from './backend/src/routes/index';
-import { seedDatabaseIfEmpty } from './backend/src/config/seed';
-import { processDueReminders } from './backend/src/controllers/reminderController';
 
-const PORT = Number(process.env.PORT) || 3000;
-const isProd = process.env.NODE_ENV === 'production';
+// Load backend environment variables BEFORE importing backend modules
+dotenv.config({
+  path: path.resolve(process.cwd(), 'backend', '.env'),
+});
 
 async function startServer() {
+  // Import backend modules only after environment variables are loaded
+  const { default: apiRouter } = await import('./backend/src/routes/index');
+  const { seedDatabaseIfEmpty } = await import('./backend/src/config/seed');
+  const { processDueReminders } = await import(
+    './backend/src/controllers/reminderController'
+  );
+
+  const PORT = Number(process.env.PORT) || 3000;
+  const isProd = process.env.NODE_ENV === 'production';
+
+  const hasCloudinaryConfig = Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+
+  if (hasCloudinaryConfig) {
+    console.log('Cloudinary configuration detected');
+  } else {
+    console.log('Cloudinary configuration missing - local fallback enabled');
+  }
   const app = express();
 
   // Ensure public uploads directory exists
