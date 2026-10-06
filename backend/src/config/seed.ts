@@ -138,6 +138,40 @@ async function ensureUsernamesAndCollections() {
     }
   }
 
+  // Ensure Apex Institute of Technology college and Super Admin exist for Quick Switch
+  let apexCollege = await College.findOne({ officialEmail: 'admin@apextech.edu' });
+  if (!apexCollege) {
+    apexCollege = await College.create({
+      _id: 'col_apex_tech_01',
+      name: 'Apex Institute of Technology',
+      username: 'apextech',
+      officialEmail: 'admin@apextech.edu',
+      officialDomain: 'apextech.edu',
+      contactNumber: '+1 (555) 234-5678',
+      location: 'Silicon Metro, Tech Corridor',
+      bio: 'Premier institution dedicated to excellence in computing, engineering research, and entrepreneurial student ventures.',
+      website: 'https://apextech.edu',
+      verificationStatus: 'Verified',
+      superAdminId: 'usr_col_apex_admin',
+      messagePrivacy: 'Everyone',
+      connectionsCount: 142,
+    });
+  }
+
+  let apexAdminUser = await User.findOne({ email: 'admin@apextech.edu' });
+  if (!apexAdminUser) {
+    const passwordHash = await bcrypt.hash('Admin@123', 10);
+    apexAdminUser = await User.create({
+      _id: 'usr_col_apex_admin',
+      email: 'admin@apextech.edu',
+      passwordHash,
+      role: 'College Super Admin',
+      fullName: 'Dr. Arthur Vance',
+      isEmailVerified: true,
+      collegeId: 'col_apex_tech_01',
+    });
+  }
+
   // Ensure Nexus Engineering College Super Admin user exists for conversations/messaging
   const nexusAdminUser = await User.findById('usr_col_nexus_admin');
   if (!nexusAdminUser) {

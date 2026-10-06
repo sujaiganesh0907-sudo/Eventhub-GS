@@ -36,14 +36,17 @@ interface NotificationsPageProps {
 
 export type NotificationCategory =
   | 'All'
-  | 'College'
-  | 'Messages'
   | 'Events'
-  | 'Admin Access'
-  | 'Student Requests'
-  | 'New Posts'
+  | 'Registrations'
   | 'Certificates'
-  | 'Attendance';
+  | 'Connections / Social'
+  | 'Messages'
+  | 'Reminders'
+  | 'System'
+  | 'Event Management'
+  | 'Attendance'
+  | 'Admin Activity'
+  | 'College Updates';
 
 export const NotificationsPage: React.FC<NotificationsPageProps> = ({
   onSelectEvent,
@@ -76,93 +79,125 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
     Record<string, { type: 'success' | 'error'; message: string }>
   >({});
 
-  // Categories list
-  const categories: NotificationCategory[] = [
-    'All',
-    ...(isCollege ? (['College'] as NotificationCategory[]) : []),
-    'Messages',
-    'Events',
-    'Admin Access',
-    ...(isCollege ? (['Student Requests'] as NotificationCategory[]) : []),
-    'New Posts',
-    'Certificates',
-    'Attendance',
-  ];
+  // Requirements 6 & 7: Distinct Student vs College Notification Filters
+  const categories: NotificationCategory[] = isCollege
+    ? [
+        'All',
+        'Event Management',
+        'Registrations',
+        'Attendance',
+        'Certificates',
+        'Admin Activity',
+        'Messages',
+        'College Updates',
+        'System',
+      ]
+    : [
+        'All',
+        'Events',
+        'Registrations',
+        'Certificates',
+        'Connections / Social',
+        'Messages',
+        'Reminders',
+        'System',
+      ];
 
-  // Filter notifications by category using structured metadata (Requirement 11)
+  // Filter notifications by category using structured metadata (Requirements 6 & 7)
   const filteredNotifications = useMemo(() => {
     if (activeCategory === 'All') return notifications;
 
     return notifications.filter((n) => {
-      const type = n.type || '';
+      const type = (n.type || '').toUpperCase();
       const action = n.metadata?.action || '';
       const metaType = n.metadata?.type || '';
 
-      switch (activeCategory) {
-        case 'College':
-          return (
-            type === 'ADMIN_ACTION' ||
-            type === 'ADMIN_INVITE' ||
-            Boolean(n.metadata?.collegeId) ||
-            type === 'proposal_approved' ||
-            type === 'proposal_rejected' ||
-            action === 'event-requests' ||
-            action === 'attendance'
-          );
-        case 'Messages':
-          return (
-            type === 'MESSAGE' ||
-            type === 'NEW_MESSAGE' ||
-            Boolean(n.metadata?.conversationId)
-          );
-        case 'Events':
-          return (
-            type === 'EVENT_UPDATE' ||
-            type === 'proposal_approved' ||
-            type === 'proposal_rejected' ||
-            type === 'event_reminder' ||
-            type === 'registration_confirmed' ||
-            type === 'ticket_generated' ||
-            Boolean(n.metadata?.eventId) ||
-            Boolean(n.eventId)
-          );
-        case 'Admin Access':
-          return (
-            type === 'ADMIN_INVITE' ||
-            type === 'ADMIN_ACTION' ||
-            action === 'manage-admins'
-          );
-        case 'Student Requests':
-          return (
-            type === 'STUDENT_REQUEST' ||
-            action === 'event-requests' ||
-            Boolean(n.link?.includes('tab=requests'))
-          );
-        case 'New Posts':
-          return (
-            type === 'NEW_POST' ||
-            action === 'post' ||
-            metaType === 'placement' ||
-            metaType === 'infrastructure'
-          );
-        case 'Certificates':
-          return (
-            type === 'CERTIFICATE' ||
-            type === 'certificate_issued' ||
-            Boolean(n.metadata?.certificateId) ||
-            Boolean(n.link?.includes('tab=certificates'))
-          );
-        case 'Attendance':
-          return (
-            type === 'ATTENDANCE' ||
-            type === 'attendance_marked' ||
-            action === 'attendance'
-          );
-        default:
-          return true;
+      if (isCollege) {
+        switch (activeCategory) {
+          case 'Event Management':
+            return (
+              type.includes('EVENT') ||
+              type === 'STUDENT_REQUEST' ||
+              action === 'event-requests' ||
+              Boolean(n.metadata?.eventId)
+            );
+          case 'Registrations':
+            return type.includes('REGISTRATION') || Boolean(n.metadata?.registrationId);
+          case 'Attendance':
+            return type.includes('ATTENDANCE') || action === 'attendance';
+          case 'Certificates':
+            return type.includes('CERTIFICATE') || Boolean(n.metadata?.certificateId);
+          case 'Admin Activity':
+            return type.includes('ADMIN') || action === 'manage-admins';
+          case 'Messages':
+            return type.includes('MESSAGE') || Boolean(n.metadata?.conversationId);
+          case 'College Updates':
+            return type.includes('POST') || metaType === 'placement' || metaType === 'infrastructure';
+          case 'System':
+            return (
+              type === 'SYSTEM' ||
+              (!type.includes('EVENT') &&
+                !type.includes('REGISTRATION') &&
+                !type.includes('ATTENDANCE') &&
+                !type.includes('CERTIFICATE') &&
+                !type.includes('ADMIN') &&
+                !type.includes('MESSAGE'))
+            );
+          default:
+            return true;
+        }
+      } else {
+        // Student filters
+        switch (activeCategory) {
+          case 'Events':
+            return (
+              type.includes('EVENT') ||
+              type === 'proposal_approved' ||
+              type === 'proposal_rejected' ||
+              Boolean(n.metadata?.eventId) ||
+              Boolean(n.eventId)
+            );
+          case 'Registrations':
+            return (
+              type.includes('REGISTRATION') ||
+              type.includes('TICKET') ||
+              type.includes('PAYMENT') ||
+              Boolean(n.metadata?.registrationId)
+            );
+          case 'Certificates':
+            return (
+              type.includes('CERTIFICATE') ||
+              type === 'certificate_issued' ||
+              Boolean(n.metadata?.certificateId)
+            );
+          case 'Connections / Social':
+            return (
+              type.includes('FOLLOW') ||
+              type.includes('CONNECTION') ||
+              Boolean(n.metadata?.followerId) ||
+              Boolean(n.metadata?.studentId)
+            );
+          case 'Messages':
+            return type.includes('MESSAGE') || Boolean(n.metadata?.conversationId);
+          case 'Reminders':
+            return type.includes('REMINDER');
+          case 'System':
+            return (
+              type === 'SYSTEM' ||
+              (!type.includes('EVENT') &&
+                !type.includes('REGISTRATION') &&
+                !type.includes('CERTIFICATE') &&
+                !type.includes('MESSAGE') &&
+                !type.includes('REMINDER') &&
+                !type.includes('FOLLOW') &&
+                !type.includes('CONNECTION'))
+            );
+          default:
+            return true;
+        }
       }
     });
-  }, [notifications, activeCategory]);
+  }, [notifications, activeCategory, isCollege]);
 
   // Toggle selection for an individual notification
   const handleToggleSelect = (id: string, e: React.MouseEvent) => {

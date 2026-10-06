@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Event, College, StudentProfile, Notification, IEvent, User, EventRegistration, Certificate, CollegeAdminMembership } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { updateEventGroupLifecycle } from '../services/eventGroupService';
 
 function calculateDeadlineStatus(deadlineStr: string): 'Open' | 'Closing Soon' | 'Closed' {
   if (!deadlineStr) return 'Open';
@@ -682,8 +683,16 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
     const isCreator = event.creatorUserId === user._id;
     const isHostCollege = isCollegeStaff && (event.hostCollegeId === user.collegeId || event.targetCollegeId === user.collegeId);
 
-    // Permission rules:
-    // Student can only edit before college approval (status !== 'Published')
+    // Permission and lifecycle rules (Requirements 15, 16, 17, 18, 19)
+    if (event.status === 'Completed' || event.status === 'Cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: `${event.status} events cannot be modified.`,
+      });
+    }
+
+    const body = req.body;
+
     if (isStudent) {
       if (!isCreator) {
         return res.status(403).json({ success: false, message: 'You can only edit events you created.' });
@@ -691,7 +700,13 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
       if (event.status === 'Published') {
         return res.status(403).json({
           success: false,
-          message: 'Approved events can no longer be edited by students. Contact the host college administrator.',
+          message: 'Published events cannot be edited by students. Contact the host college administrator.',
+        });
+      }
+      if (event.status === 'Pending Approval' && !body.submitForReview) {
+        return res.status(400).json({
+          success: false,
+          message: 'Events currently pending administrative review cannot be modified until the review is completed.',
         });
       }
     } else if (isCollegeStaff) {
@@ -702,7 +717,19 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    const body = req.body;
+    // Determine target status
+    let nextStatus = event.status;
+    if (isStudent) {
+      if (body.submitForReview || body.resubmit) {
+        nextStatus = 'Pending Approval';
+      }
+    } else if (isCollegeStaff && body.status) {
+      nextStatus = body.status;
+    }
+
+    // When Published, protect critical fields (hostCollege, payment structure, registration type)
+    const isPublished = event.status === 'Published';
+
     const updated = await Event.findByIdAndUpdate(
       id,
       {
@@ -726,11 +753,11 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
           ...(body.googleMapsLink !== undefined && { googleMapsLink: body.googleMapsLink }),
           ...(body.meetingPlatform !== undefined && { meetingPlatform: body.meetingPlatform }),
           ...(body.meetingLink !== undefined && { meetingLink: body.meetingLink }),
-          ...(body.registrationType && { registrationType: body.registrationType }),
+          ...(!isPublished && body.registrationType && { registrationType: body.registrationType }),
           ...(body.minTeamSize !== undefined && { minTeamSize: Number(body.minTeamSize) }),
           ...(body.maxTeamSize !== undefined && { maxTeamSize: Number(body.maxTeamSize) }),
-          ...(body.isFree !== undefined && { isFree: Boolean(body.isFree) }),
-          ...(body.registrationFee !== undefined && { registrationFee: Number(body.registrationFee) }),
+          ...(!isPublished && body.isFree !== undefined && { isFree: Boolean(body.isFree) }),
+          ...(!isPublished && body.registrationFee !== undefined && { registrationFee: Number(body.registrationFee) }),
           ...(body.capacity !== undefined && { capacity: Number(body.capacity) }),
           ...(body.educationLevel && { educationLevel: body.educationLevel }),
           ...(body.departments && { departments: body.departments }),
@@ -747,11 +774,17 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
           ...(body.primaryCoordinator && { primaryCoordinator: body.primaryCoordinator }),
           ...(body.secondaryCoordinator !== undefined && { secondaryCoordinator: body.secondaryCoordinator }),
           ...(body.customDetails && { customDetails: body.customDetails }),
-          ...(body.registrationQuestions && { registrationQuestions: body.registrationQuestions }),
-          ...(body.status && !isStudent && { status: body.status }),
+          ...(!isPublished && body.registrationQuestions && { registrationQuestions: body.registrationQuestions }),
+          ...(body.changesRequestedComment !== undefined && { changesRequestedComment: body.changesRequestedComment }),
+          status: nextStatus,
         },
       }
     );
+
+    // PART 5C: Propagate event lifecycle changes to associated Event Group
+    if (nextStatus === 'Completed' || nextStatus === 'Cancelled') {
+      await updateEventGroupLifecycle(id, nextStatus);
+    }
 
     return res.json({
       success: true,
@@ -798,6 +831,10 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
     }
 
     await Event.findByIdAndDelete(id);
+
+    // PART 5C: Mark linked Event Group as Cancelled/Archived
+    await updateEventGroupLifecycle(id, 'Cancelled');
+
     return res.json({ success: true, message: 'Event deleted successfully.' });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

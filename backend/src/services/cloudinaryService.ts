@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 // Configure Cloudinary if credentials are present
-const isCloudinaryConfigured = Boolean(
+export const isCloudinaryConfigured = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
   process.env.CLOUDINARY_API_SECRET

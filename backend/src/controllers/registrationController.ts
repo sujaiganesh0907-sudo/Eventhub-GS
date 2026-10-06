@@ -12,6 +12,10 @@ import {
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { generateTicketQR } from '../services/qrService';
+import {
+  addStudentToEventGroup,
+  removeStudentFromEventGroup,
+} from '../services/eventGroupService';
 
 export async function registerForEvent(req: AuthenticatedRequest, res: Response) {
   try {
@@ -122,6 +126,9 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
       const { qrDataUrl } = await generateTicketQR(registration);
       await EventRegistration.findByIdAndUpdate(registration._id, { qrCodeUrl: qrDataUrl });
       await Event.updateOne({ _id: event._id }, { $inc: { registeredCount: 1 } });
+
+      // PART 5C: Automatically add confirmed student to Event Group
+      await addStudentToEventGroup(event._id, user._id);
 
       // Notify student
       await Notification.create({
@@ -355,6 +362,81 @@ export async function getRegistrationTicket(req: AuthenticatedRequest, res: Resp
         customResponses: registration.customResponses || {},
         qrCodeUrl,
       },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * Cancel Registration (Part 5C: Removes student from Event Group automatically)
+ */
+export async function cancelRegistration(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const reg = (await EventRegistration.findOne({ registrationId: id })) || (await EventRegistration.findById(id));
+    if (!reg) return res.status(404).json({ success: false, message: 'Registration not found' });
+
+    const isOwner = reg.studentUserId === user._id;
+    let isCollegeAdmin = false;
+    if (user.collegeId && user.collegeId === reg.collegeId) {
+      if (user.role === 'College Super Admin' || user.role === 'College Admin') {
+        isCollegeAdmin = true;
+      }
+    }
+
+    if (!isOwner && !isCollegeAdmin) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to cancel this registration' });
+    }
+
+    if (reg.status === 'Cancelled') {
+      return res.status(400).json({ success: false, message: 'Registration is already cancelled' });
+    }
+
+    await EventRegistration.findByIdAndUpdate(reg._id, { status: 'Cancelled' });
+    await Event.updateOne({ _id: reg.eventId }, { $inc: { registeredCount: -1 } });
+
+    // Revoke Event Group access immediately (Requirement 7)
+    await removeStudentFromEventGroup(reg.eventId, reg.studentUserId);
+
+    return res.json({
+      success: true,
+      message: 'Registration cancelled successfully and event group access revoked.',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * Reject Registration (College Admin action)
+ */
+export async function rejectRegistration(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const { reason = 'Cancelled by administrator' } = req.body;
+    const reg = (await EventRegistration.findOne({ registrationId: id })) || (await EventRegistration.findById(id));
+    if (!reg) return res.status(404).json({ success: false, message: 'Registration not found' });
+
+    if (user.collegeId !== reg.collegeId && user.role !== 'College Super Admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await EventRegistration.findByIdAndUpdate(reg._id, { status: 'Rejected' });
+    await Event.updateOne({ _id: reg.eventId }, { $inc: { registeredCount: -1 } });
+
+    // Revoke Event Group access immediately (Requirement 7)
+    await removeStudentFromEventGroup(reg.eventId, reg.studentUserId);
+
+    return res.json({
+      success: true,
+      message: 'Registration rejected and event group access revoked.',
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

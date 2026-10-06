@@ -34,7 +34,7 @@ export interface SendOtpOptions {
   email: string;
   otp: string;
   recipientName?: string;
-  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'RESET_ADMIN_PIN';
+  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'RESET_ADMIN_PIN' | 'PASSWORD_RESET' | 'MFA_LOGIN' | 'MFA_SETUP' | string;
 }
 
 export async function sendOtpEmail(options: SendOtpOptions): Promise<{ success: boolean; error?: string }> {
@@ -48,6 +48,10 @@ export async function sendOtpEmail(options: SendOtpOptions): Promise<{ success: 
     const title =
       purpose === 'RESET_ADMIN_PIN'
         ? 'Reset Your Admin Access PIN'
+        : purpose === 'PASSWORD_RESET'
+        ? 'Reset Your Account Password'
+        : purpose === 'MFA_LOGIN' || purpose === 'MFA_SETUP'
+        ? 'Your Multi-Factor Security Code'
         : purpose === 'STUDENT_REGISTRATION'
         ? 'Verify Your Student Account'
         : 'Verify Your Official College Account';

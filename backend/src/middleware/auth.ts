@@ -27,6 +27,14 @@ export function verifyRefreshToken(token: string) {
   return jwt.verify(token, REFRESH_SECRET) as any;
 }
 
+export function verifyAccessToken(token: string) {
+  try {
+    return jwt.verify(token, JWT_SECRET) as any;
+  } catch {
+    return null;
+  }
+}
+
 export async function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;

@@ -548,6 +548,7 @@ const AppContent: React.FC = () => {
           {isAuthenticated && activeTab === 'messages' && (
             <MessagesPage
               initialConversationId={selectedConversationId}
+              initialGroupId={selectedConversationId && selectedConversationId.startsWith('group_') ? selectedConversationId.replace('group_', '') : undefined}
               onViewEvent={(eventId) => handleViewEvent(eventId)}
               onViewStudent={(studentId) => handleViewStudent(studentId)}
               onViewCollege={(collegeId) => handleViewCollege(collegeId)}

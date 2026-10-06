@@ -14,6 +14,7 @@ export interface IUser {
   role: UserRole;
   fullName: string;
   collegeId?: string;
+  mfaEnabled?: boolean;
 }
 
 export interface IStudentProfile {
@@ -451,9 +452,13 @@ export interface IMessage {
   _id: string;
   id?: string;
   conversationId: string;
+  groupId?: string;
+  isAnnouncement?: boolean;
+  isPinned?: boolean;
   senderId: string;
   senderName: string;
   senderRole: string;
+  senderAvatar?: string;
   text: string;
   attachmentUrl?: string;
   attachmentType?: 'image' | 'file';
@@ -489,7 +494,10 @@ export interface IMessage {
   readBy: string[];
   seenAt?: string;
   deletedFor?: string[];
+  deletedForUserIds?: string[];
   deletedForEveryone?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -526,5 +534,32 @@ export interface IGlobalSearchEvent {
   eventMode: string;
   isFree: boolean;
   registrationFee?: number;
+}
+
+export interface IGroup {
+  _id: string;
+  id?: string;
+  name: string;
+  description: string;
+  category?: string;
+  type?: 'Custom' | 'Event' | string;
+  imageUrl?: string;
+  coverUrl?: string;
+  collegeId?: string;
+  eventId?: string;
+  hostCollegeId?: string;
+  visibility?: 'Public' | 'Private' | 'Invite Only' | 'Event Participants Only' | string;
+  groupPrivacy?: string;
+  approvalRequired?: boolean;
+  verifiedOnly?: boolean;
+  maxMembers?: number;
+  ownerId: string;
+  membersCount: number;
+  lifecycleStatus?: 'Active' | 'Completed' | 'Cancelled' | 'Archived' | string;
+  isReadOnly?: boolean;
+  isMember?: boolean;
+  myRole?: 'Owner' | 'Admin' | 'Member' | null;
+  createdAt: string;
+  updatedAt: string;
 }
 

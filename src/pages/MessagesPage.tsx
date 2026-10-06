@@ -11,18 +11,22 @@ import {
   Check,
   CheckCheck,
   Building2,
-  Calendar,
   User,
   ShieldCheck,
   Loader2,
   MessageSquare,
-  ExternalLink,
   X,
+  AlertCircle,
+  CheckCircle2,
+  Users,
+  Pin,
+  Megaphone,
+  Info,
+  LogOut,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { IConversation, IMessage, IEvent } from '../types';
-import { ActionMenu } from '../components/common/ActionMenu';
+import { IConversation, IMessage, IGroup } from '../types';
 import {
   DEFAULT_STUDENT_AVATAR,
   DEFAULT_COLLEGE_LOGO,
@@ -38,6 +42,7 @@ import { SearchHistoryDropdown } from '../components/common/SearchHistoryDropdow
 
 interface MessagesPageProps {
   initialConversationId?: string | null;
+  initialGroupId?: string | null;
   asCollegeId?: string;
   collegeName?: string;
   collegeLogo?: string;
@@ -49,6 +54,7 @@ interface MessagesPageProps {
 
 export const MessagesPage: React.FC<MessagesPageProps> = ({
   initialConversationId,
+  initialGroupId,
   asCollegeId,
   collegeName,
   collegeLogo,
@@ -59,28 +65,95 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 }) => {
   const { user } = useAuth();
 
+  // Navigation tab: 'chats' (Direct) vs 'groups' (Group Chat)
+  const [activeTab, setActiveTab] = useState<'chats' | 'groups'>(() => {
+    if (initialGroupId) return 'groups';
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('group');
+      if (p) return 'groups';
+    }
+    return 'chats';
+  });
+
+  // Direct conversations state
   const [conversations, setConversations] = useState<IConversation[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(initialConversationId || null);
   const [activeConversation, setActiveConversation] = useState<IConversation | null>(null);
+
+  // Groups state (Part 5B & 5C)
+  const [groups, setGroups] = useState<IGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() => {
+    if (initialGroupId) return initialGroupId;
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('group');
+      if (p) return p;
+    }
+    return null;
+  });
+  const [activeGroup, setActiveGroup] = useState<any | null>(null);
+  const [pinnedMessages, setPinnedMessages] = useState<IMessage[]>([]);
+  const [isAnnouncementMode, setIsAnnouncementMode] = useState(false);
+  const [showGroupInfoModal, setShowGroupInfoModal] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
+
+  // Shared message list state
   const [messages, setMessages] = useState<IMessage[]>([]);
 
-  // Search in conversation list (Requirements 7, 9, 10)
+  // Search in conversation / group list
   const [convSearch, setConvSearch] = useState('');
   const [loadingList, setLoadingList] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
 
-  // Remote Search for Students & Colleges (Messages Search: Requirements 7 & 10)
+  // Remote Search for Students & Colleges
   const [remoteSearchResults, setRemoteSearchResults] = useState<{ students: any[]; colleges: any[] }>({
     students: [],
     colleges: [],
   });
   const [searchingRemote, setSearchingRemote] = useState(false);
 
-  // Instagram-like Messages Search History (Requirement 9)
+  // Search History
   const [msgHistory, setMsgHistory] = useState<string[]>([]);
   const [showMsgHistory, setShowMsgHistory] = useState(false);
   const msgSearchRef = useRef<HTMLDivElement>(null);
+
+  // Message input state
+  const [inputText, setInputText] = useState('');
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+  // Action Menu & Confirmation Modal State
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'for-everyone' | 'for-me' | 'conversation' | 'leave-group';
+    messageId?: string;
+    convId?: string;
+    groupId?: string;
+  }>({
+    isOpen: false,
+    type: 'for-me',
+  });
+
+  // In-App Toast Feedback
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
     setMsgHistory(getSearchHistory('messages'));
@@ -91,66 +164,126 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       if (msgSearchRef.current && !msgSearchRef.current.contains(e.target as Node)) {
         setShowMsgHistory(false);
       }
+      if (activeMenuMsgId && !(e.target as HTMLElement).closest('.message-action-menu-container')) {
+        setActiveMenuMsgId(null);
+      }
     };
     document.addEventListener('mousedown', handleOutside);
     return () => document.removeEventListener('mousedown', handleOutside);
-  }, []);
-
-  // Message input state (clean composer, no dedicated emoji button per Requirement 11)
-  const [inputText, setInputText] = useState('');
-  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
-  const [uploadingAttachment, setUploadingAttachment] = useState(false);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Auto scroll to bottom
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, [activeMenuMsgId]);
 
   // 1. Fetch Conversations
   const fetchConversations = async () => {
     try {
       setLoadingList(true);
-      const res = await api.get<any>('/messages/conversations');
+      const url = asCollegeId ? `/messages/conversations?asCollegeId=${asCollegeId}` : '/messages/conversations';
+      const res = await api.get<any>(url);
       if (res.success) {
         setConversations(res.conversations || []);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load conversations', err);
     } finally {
       setLoadingList(false);
     }
   };
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
-
-  // Sync initial conversation ID if provided
-  useEffect(() => {
-    if (initialConversationId) {
-      setSelectedConvId(initialConversationId);
+  // 2. Fetch User Groups (Part 5B)
+  const fetchGroups = async () => {
+    try {
+      setLoadingList(true);
+      const res = await api.get<any>('/groups?myGroups=true');
+      if (res.success) {
+        setGroups(res.groups || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to load groups', err);
+    } finally {
+      setLoadingList(false);
     }
-  }, [initialConversationId]);
+  };
 
-  // 2. Fetch Messages for selected conversation
+  useEffect(() => {
+    if (activeTab === 'chats') {
+      fetchConversations();
+    } else {
+      fetchGroups();
+    }
+  }, [activeTab, asCollegeId]);
+
+  useEffect(() => {
+    if (initialGroupId) {
+      setActiveTab('groups');
+      setSelectedGroupId(initialGroupId);
+      setSelectedConvId(null);
+    } else if (initialConversationId) {
+      if (initialConversationId.startsWith('group_')) {
+        const gId = initialConversationId.replace('group_', '');
+        setActiveTab('groups');
+        setSelectedGroupId(gId);
+        setSelectedConvId(null);
+      } else {
+        setActiveTab('chats');
+        setSelectedGroupId(null);
+        setSelectedConvId(initialConversationId);
+      }
+    } else {
+      const urlGroup = new URLSearchParams(window.location.search).get('group');
+      if (urlGroup) {
+        setActiveTab('groups');
+        setSelectedGroupId(urlGroup);
+        setSelectedConvId(null);
+      }
+    }
+  }, [initialConversationId, initialGroupId]);
+
+  // 3. Fetch Direct Messages
   const fetchMessages = async (convId: string) => {
     try {
       setLoadingMessages(true);
       const res = await api.get<any>(`/messages/conversations/${convId}`);
       if (res.success) {
         setActiveConversation(res.conversation || null);
+        setActiveGroup(null);
         setMessages(res.messages || []);
-        // Update unread count locally in conversations list
         setConversations((prev) =>
           prev.map((c) => (c._id === convId ? { ...c, unreadCount: 0 } : c))
         );
+      } else {
+        showToast(res.message || 'Unable to load conversation messages.', 'error');
       }
-    } catch (err) {
-      console.error('Failed to load messages', err);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to load conversation.', 'error');
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  // 4. Fetch Group Messages (Part 5B)
+  const fetchGroupMessages = async (groupId: string) => {
+    try {
+      setLoadingMessages(true);
+      const [msgRes, groupRes] = await Promise.all([
+        api.get<any>(`/groups/${groupId}/messages`),
+        api.get<any>(`/groups/${groupId}`),
+      ]);
+
+      if (groupRes.success) {
+        setActiveGroup({
+          ...groupRes.group,
+          myRole: groupRes.currentUserRole,
+        });
+        setActiveConversation(null);
+      }
+
+      if (msgRes.success) {
+        setMessages(msgRes.messages || []);
+        setPinnedMessages(msgRes.pinnedMessages || []);
+      } else {
+        showToast(msgRes.message || 'Unable to load group messages.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to load group messages.', 'error');
     } finally {
       setLoadingMessages(false);
     }
@@ -158,18 +291,38 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
   useEffect(() => {
     if (selectedConvId) {
+      setSelectedGroupId(null);
       fetchMessages(selectedConvId);
-    } else {
-      setActiveConversation(null);
-      setMessages([]);
     }
   }, [selectedConvId]);
+
+  useEffect(() => {
+    if (selectedGroupId) {
+      setSelectedConvId(null);
+      fetchGroupMessages(selectedGroupId);
+    }
+  }, [selectedGroupId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // 3. Remote Search Students and Colleges when convSearch has text (Requirements 7 & 10)
+  // Load Group Members for Info Modal
+  const loadGroupMembers = async (groupId: string) => {
+    try {
+      setLoadingGroupMembers(true);
+      const res = await api.get<any>(`/groups/${groupId}/members`);
+      if (res.success) {
+        setGroupMembers(res.members || []);
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to load group members.', 'error');
+    } finally {
+      setLoadingGroupMembers(false);
+    }
+  };
+
+  // Remote Search
   useEffect(() => {
     const trimmed = convSearch.trim();
     if (!trimmed) {
@@ -189,7 +342,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           });
         }
       } catch (err) {
-        console.error('Remote search in messages error:', err);
+        console.error('Remote search error:', err);
       } finally {
         setSearchingRemote(false);
       }
@@ -198,36 +351,39 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return () => clearTimeout(timer);
   }, [convSearch]);
 
-  // Start or open conversation with a target user/college (Requirement 10: messages works through search)
+  // Start Chat with User / College
   const handleStartChatWithUser = async (targetId: string, itemType: 'student' | 'college') => {
     try {
       if (itemType === 'student' && (targetId === user?._id || targetId === user?.id)) {
+        showToast('Cannot start a conversation with yourself.', 'error');
         return;
       }
-      const payload = itemType === 'student' ? { targetStudentId: targetId } : { targetCollegeId: targetId };
+      const payload: any = itemType === 'student' ? { targetStudentId: targetId } : { targetCollegeId: targetId };
+      if (asCollegeId) {
+        payload.asCollegeId = asCollegeId;
+      }
+
       const res = await api.post<any>('/messages/conversations', payload);
       if (res.success && res.conversation) {
         setConvSearch('');
         setRemoteSearchResults({ students: [], colleges: [] });
-        // Add to list if new
+        setActiveTab('chats');
         setConversations((prev) => {
           const exists = prev.some((c) => c._id === res.conversation._id);
           return exists ? prev : [res.conversation, ...prev];
         });
         setSelectedConvId(res.conversation._id);
       } else {
-        alert(res.message || 'Cannot start conversation due to messaging privacy settings.');
+        showToast(res.message || 'Cannot start conversation due to messaging privacy settings.', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to start conversation');
+      showToast(err.message || 'Failed to start conversation.', 'error');
     }
   };
 
-  // 4. Send Message
+  // Send Message (Direct or Group)
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!selectedConvId) return;
-
     const trimmed = inputText.trim();
     if (!trimmed && !attachmentPreview) return;
 
@@ -235,7 +391,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       setSending(true);
       let finalAttachmentUrl = attachmentPreview;
 
-      // If there's an image file waiting to upload
       if (attachmentFile) {
         setUploadingAttachment(true);
         const formData = new FormData();
@@ -249,36 +404,62 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         setUploadingAttachment(false);
       }
 
-      const res = await api.post<any>(`/messages/conversations/${selectedConvId}`, {
-        text: trimmed,
-        attachmentUrl: finalAttachmentUrl || undefined,
-        attachmentType: finalAttachmentUrl ? 'image' : undefined,
-      });
+      if (selectedGroupId) {
+        // Group Message Send (Part 5B)
+        const res = await api.post<any>(`/groups/${selectedGroupId}/messages`, {
+          text: trimmed,
+          attachmentUrl: finalAttachmentUrl || undefined,
+          attachmentType: finalAttachmentUrl ? 'image' : undefined,
+          isAnnouncement: isAnnouncementMode,
+        });
 
-      if (res.success && res.message) {
-        setMessages((prev) => [...prev, res.message]);
-        setInputText('');
-        setAttachmentPreview(null);
-        setAttachmentFile(null);
+        if (res.success && res.message) {
+          setMessages((prev) => [...prev, res.message]);
+          setInputText('');
+          setAttachmentPreview(null);
+          setAttachmentFile(null);
+          setIsAnnouncementMode(false);
+        } else {
+          showToast(res.message || 'Failed to deliver group message.', 'error');
+        }
+      } else if (selectedConvId) {
+        // Direct Message Send
+        const payload: any = {
+          text: trimmed,
+          attachmentUrl: finalAttachmentUrl || undefined,
+          attachmentType: finalAttachmentUrl ? 'image' : undefined,
+        };
+        if (asCollegeId) {
+          payload.asCollegeId = asCollegeId;
+        }
 
-        // Update last message in list
-        setConversations((prev) =>
-          prev.map((c) =>
-            c._id === selectedConvId
-              ? {
-                  ...c,
-                  lastMessage: {
-                    text: trimmed || 'Shared an attachment',
-                    senderId: user?._id || '',
-                    timestamp: new Date().toISOString(),
-                  },
-                }
-              : c
-          )
-        );
+        const res = await api.post<any>(`/messages/conversations/${selectedConvId}`, payload);
+        if (res.success && res.message) {
+          setMessages((prev) => [...prev, res.message]);
+          setInputText('');
+          setAttachmentPreview(null);
+          setAttachmentFile(null);
+
+          setConversations((prev) =>
+            prev.map((c) =>
+              c._id === selectedConvId
+                ? {
+                    ...c,
+                    lastMessage: {
+                      text: trimmed || 'Shared an attachment',
+                      senderId: user?._id || '',
+                      timestamp: new Date().toISOString(),
+                    },
+                  }
+                : c
+            )
+          );
+        } else {
+          showToast(res.message || 'Failed to deliver message.', 'error');
+        }
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to send message');
+      showToast(err.message || 'Failed to send message.', 'error');
     } finally {
       setSending(false);
       setUploadingAttachment(false);
@@ -290,7 +471,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        alert('Only image attachments are supported in direct messages.');
+        showToast('Only image attachments are supported in messages.', 'error');
         return;
       }
       setAttachmentFile(file);
@@ -302,85 +483,146 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   };
 
-  // 5. Delete Message (Own message = for everyone or for me; other = for me)
-  const handleDeleteMessage = async (messageId: string, isMine: boolean) => {
-    const forEveryone = isMine && window.confirm('Delete for everyone? Click Cancel to delete only for you.');
+  // Pin / Unpin Group Message (Part 5B)
+  const handleTogglePin = async (messageId: string, currentPinState?: boolean) => {
+    if (!selectedGroupId) return;
     try {
-      const res = await api.delete<any>(
-        `/messages/${messageId}?forEveryone=${forEveryone ? 'true' : 'false'}`
-      );
+      const res = await api.post<any>(`/groups/${selectedGroupId}/messages/${messageId}/pin`, {
+        pinned: !currentPinState,
+      });
       if (res.success) {
-        if (forEveryone) {
+        setMessages((prev) =>
+          prev.map((m) => (m._id === messageId ? { ...m, isPinned: res.isPinned } : m))
+        );
+        if (res.isPinned) {
+          const target = messages.find((m) => m._id === messageId);
+          if (target) setPinnedMessages((prev) => [...prev, { ...target, isPinned: true }]);
+        } else {
+          setPinnedMessages((prev) => prev.filter((m) => m._id !== messageId));
+        }
+        showToast(res.message);
+      } else {
+        showToast(res.message || 'Failed to update pin state.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to pin message.', 'error');
+    }
+  };
+
+  // Execute Confirmed Deletion / Leaving
+  const handleConfirmDelete = async () => {
+    const { type, messageId, convId, groupId } = deleteConfirmModal;
+    setDeleteConfirmModal({ isOpen: false, type: 'for-me' });
+
+    if (type === 'for-everyone' && messageId) {
+      try {
+        const res = await api.post<any>(`/messages/${messageId}/delete-for-everyone`, {});
+        if (res.success) {
           setMessages((prev) =>
             prev.map((m) =>
               m._id === messageId
-                ? { ...m, deletedForEveryone: true, text: 'This message was deleted' }
+                ? {
+                    ...m,
+                    deletedForEveryone: true,
+                    text: 'This message was deleted',
+                    attachmentUrl: undefined,
+                    sharedEvent: null,
+                    sharedStudent: null,
+                    sharedCollege: null,
+                  }
                 : m
             )
           );
+          showToast('Message deleted for everyone.');
         } else {
+          showToast(res.message || 'Failed to delete message for everyone.', 'error');
+        }
+      } catch (err: any) {
+        showToast(err.message || 'Error deleting message.', 'error');
+      }
+    } else if (type === 'for-me' && messageId) {
+      try {
+        const res = await api.post<any>(`/messages/${messageId}/delete-for-me`, {});
+        if (res.success) {
           setMessages((prev) => prev.filter((m) => m._id !== messageId));
+          showToast('Message removed from your view.');
+        } else {
+          showToast(res.message || 'Failed to remove message.', 'error');
         }
+      } catch (err: any) {
+        showToast(err.message || 'Error removing message.', 'error');
       }
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete message');
-    }
-  };
-
-  // 6. Delete/Hide Conversation
-  const handleDeleteConversation = async (convId: string) => {
-    if (!window.confirm('Delete conversation for you?')) return;
-    try {
-      const res = await api.delete<any>(`/messages/conversations/${convId}`);
-      if (res.success) {
-        setConversations((prev) => prev.filter((c) => c._id !== convId));
-        if (selectedConvId === convId) {
-          setSelectedConvId(null);
-          setActiveConversation(null);
-          setMessages([]);
+    } else if (type === 'conversation' && convId) {
+      try {
+        const res = await api.delete<any>(`/messages/conversations/${convId}`);
+        if (res.success) {
+          setConversations((prev) => prev.filter((c) => c._id !== convId));
+          if (selectedConvId === convId) {
+            setSelectedConvId(null);
+            setActiveConversation(null);
+            setMessages([]);
+          }
+          showToast('Conversation removed from your inbox.');
+        } else {
+          showToast(res.message || 'Failed to remove conversation.', 'error');
         }
+      } catch (err: any) {
+        showToast(err.message || 'Error deleting conversation.', 'error');
       }
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete conversation');
+    } else if (type === 'leave-group' && groupId) {
+      try {
+        const res = await api.post<any>(`/groups/${groupId}/leave`, {});
+        if (res.success) {
+          setGroups((prev) => prev.filter((g) => g._id !== groupId));
+          if (selectedGroupId === groupId) {
+            setSelectedGroupId(null);
+            setActiveGroup(null);
+            setMessages([]);
+            setShowGroupInfoModal(false);
+          }
+          showToast('You have left the group.');
+        } else {
+          showToast(res.message || 'Failed to leave group.', 'error');
+        }
+      } catch (err: any) {
+        showToast(err.message || 'Error leaving group.', 'error');
+      }
     }
   };
 
-  // 7. Toggle Mute Conversation
-  const handleToggleMute = async (convId: string) => {
-    try {
-      const res = await api.post<any>(`/messages/conversations/${convId}/mute`, {});
-      if (res.success) {
-        setActiveConversation((prev) => (prev ? { ...prev, isMuted: res.isMuted } : prev));
-        setConversations((prev) =>
-          prev.map((c) => (c._id === convId ? { ...c, isMuted: res.isMuted } : c))
-        );
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to update mute setting');
-    }
-  };
-
-  const filteredConversations = conversations.filter((c) => {
-    if (!convSearch.trim()) return true;
-    const name = c.otherParticipant?.name?.toLowerCase() || '';
-    const username = c.otherParticipant?.username?.toLowerCase() || '';
-    const q = convSearch.toLowerCase();
-    return name.includes(q) || username.includes(q);
-  });
-
-  const hasRemoteMatches =
-    remoteSearchResults.students.length > 0 || remoteSearchResults.colleges.length > 0;
+  const isCurrentGroupAdminOrOwner =
+    activeGroup && (activeGroup.myRole === 'Owner' || activeGroup.myRole === 'Admin');
 
   return (
-    <div className="h-[calc(100vh-120px)] min-h-[550px] max-w-7xl mx-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs flex flex-col md:flex-row">
-      {/* LEFT COLUMN: Conversation List & Search */}
+    <div className="h-[calc(100vh-120px)] min-h-[550px] max-w-7xl mx-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs flex flex-col md:flex-row relative">
+      {/* Toast Notification Banner */}
+      {toast && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2">
+          <div
+            className={`px-4 py-2 rounded-xl text-xs font-bold border shadow-lg flex items-center gap-2 ${
+              toast.type === 'error'
+                ? 'bg-red-500/90 text-white border-red-600'
+                : 'bg-emerald-600/95 text-white border-emerald-700'
+            }`}
+          >
+            {toast.type === 'error' ? (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            )}
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* LEFT COLUMN: Sidebar (Navigation & Lists) */}
       <div
         className={`w-full md:w-80 lg:w-88 border-r border-[var(--border-color)] flex flex-col shrink-0 ${
-          selectedConvId ? 'hidden md:flex' : 'flex'
+          selectedConvId || selectedGroupId ? 'hidden md:flex' : 'flex'
         }`}
       >
-        {/* Inbox Header - NO "+ New Chat" button per Requirement 10 */}
-        <div className="p-3.5 border-b border-[var(--border-color)] flex items-center justify-between gap-3">
+        {/* Header */}
+        <div className="p-3.5 border-b border-[var(--border-color)] flex items-center justify-between gap-3 bg-[var(--surface)]">
           <div className="flex items-center gap-2">
             {onBack && (
               <button
@@ -393,12 +635,50 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               </button>
             )}
             <h2 className="text-base font-black tracking-tight text-[var(--text-primary)]">
-              Messages
+              {asCollegeId ? `${collegeName || 'Collegiate'} Inbox` : 'Messages & Groups'}
             </h2>
           </div>
+          {asCollegeId && (
+            <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 text-[10px] font-bold border border-blue-500/20">
+              Workspace
+            </span>
+          )}
         </div>
 
-        {/* Search Students & Colleges Input (Requirements 7, 9, 10) */}
+        {/* Tab Switcher: Direct Chats vs Groups */}
+        <div className="flex border-b border-[var(--border-color)] bg-[var(--surface)] px-3 pt-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('chats')}
+            className={`flex-1 pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'chats'
+                ? 'border-[var(--primary-color)] text-[var(--primary-color)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Direct</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('groups')}
+            className={`flex-1 pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'groups'
+                ? 'border-[var(--primary-color)] text-[var(--primary-color)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Groups</span>
+            {groups.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-[var(--surface-subtle)] text-[10px]">
+                {groups.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Search Input */}
         <div className="p-3 border-b border-[var(--border-color)] bg-[var(--surface-subtle)] relative" ref={msgSearchRef}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
@@ -408,16 +688,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               onFocus={() => {
                 if (!convSearch.trim()) setShowMsgHistory(true);
               }}
-              onChange={(e) => {
-                const val = e.target.value;
-                setConvSearch(val);
-                if (!val.trim()) {
-                  setShowMsgHistory(true);
-                } else {
-                  setShowMsgHistory(false);
-                }
-              }}
-              placeholder="Search students or colleges..."
+              onChange={(e) => setConvSearch(e.target.value)}
+              placeholder={activeTab === 'chats' ? 'Search students or colleges...' : 'Search your groups...'}
               className="w-full pl-9 pr-8 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--primary-color)] transition-colors"
             />
             {convSearch && (
@@ -434,307 +706,604 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               </button>
             )}
           </div>
-
-          {/* Instagram-like Search History Dropdown when input is focused with no query */}
-          {showMsgHistory && !convSearch.trim() && msgHistory.length > 0 && (
-            <SearchHistoryDropdown
-              context="messages"
-              history={msgHistory}
-              onSelectTerm={(term) => {
-                setConvSearch(term);
-                setShowMsgHistory(false);
-              }}
-              onRemoveTerm={(term, e) => {
-                e.stopPropagation();
-                const updated = removeSearchTerm('messages', term);
-                setMsgHistory(updated);
-              }}
-              onClearAll={(e) => {
-                e.stopPropagation();
-                clearSearchHistory('messages');
-                setMsgHistory([]);
-              }}
-              onClose={() => setShowMsgHistory(false)}
-            />
-          )}
         </div>
 
-        {/* Conversation & Search Results Items */}
+        {/* Feed List */}
         <div className="flex-1 overflow-y-auto divide-y divide-[var(--border-color)]">
           {loadingList ? (
-            <div className="py-16 flex flex-col items-center justify-center space-y-2">
+            <div className="py-20 flex flex-col items-center justify-center space-y-2">
               <Loader2 className="w-6 h-6 animate-spin text-[var(--primary-color)]" />
-              <p className="text-xs text-[var(--text-muted)]">Loading messages...</p>
+              <p className="text-xs text-[var(--text-muted)]">Loading...</p>
             </div>
-          ) : convSearch.trim().length > 0 ? (
-            /* Live Search Results (Requirement 7: Student + College only, no events) */
-            <div className="divide-y divide-[var(--border-color)]">
-              {searchingRemote && (
-                <div className="p-3 text-center text-xs text-[var(--text-muted)] flex items-center justify-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary-color)]" />
-                  <span>Searching students & colleges...</span>
-                </div>
-              )}
-
-              {/* Matching Students */}
-              {remoteSearchResults.students.filter(
-                (s) => s.userId !== user?._id && s.userId !== user?.id && s._id !== user?._id
-              ).length > 0 && (
-                <div className="p-2 space-y-1">
-                  <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                    <User className="w-3 h-3 text-[var(--primary-color)]" />
-                    <span>Students ({remoteSearchResults.students.filter(
-                      (s) => s.userId !== user?._id && s.userId !== user?.id && s._id !== user?._id
-                    ).length})</span>
-                  </div>
-                  {remoteSearchResults.students
-                    .filter((s) => s.userId !== user?._id && s.userId !== user?.id && s._id !== user?._id)
-                    .map((student) => (
+          ) : activeTab === 'groups' ? (
+            // GROUPS TAB LIST
+            groups.length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <Users className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
+                <h4 className="text-xs font-bold text-[var(--text-primary)]">No groups joined yet</h4>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Join event and community groups to collaborate with your team.
+                </p>
+              </div>
+            ) : (
+              groups
+                .filter((g) => !convSearch.trim() || g.name.toLowerCase().includes(convSearch.toLowerCase()))
+                .map((g) => {
+                  const isSelected = selectedGroupId === g._id;
+                  return (
                     <div
-                      key={student._id || student.userId}
+                      key={g._id}
                       onClick={() => {
-                        saveSearchTerm('messages', student.fullName);
-                        setMsgHistory(getSearchHistory('messages'));
-                        handleStartChatWithUser(student.userId || student._id, 'student');
+                        setSelectedConvId(null);
+                        setSelectedGroupId(g._id);
                       }}
-                      className="p-2 rounded-xl hover:bg-[var(--surface-hover)] cursor-pointer transition-colors flex items-center justify-between gap-2.5 group"
+                      className={`p-3.5 flex items-center gap-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-[var(--primary-light)] border-l-4 border-[var(--primary-color)]'
+                          : 'hover:bg-[var(--surface-subtle)]'
+                      }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={student.profilePhoto || DEFAULT_STUDENT_AVATAR}
-                          alt={student.fullName}
-                          className="w-9 h-9 rounded-full object-cover shrink-0 border border-[var(--border-color)]"
-                          onError={(e) => {
-                            (e.target as any).src = DEFAULT_STUDENT_AVATAR;
-                          }}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] truncate">
-                            {student.fullName}
-                          </p>
-                          <p className="text-[11px] text-[var(--text-muted)] truncate">
-                            {student.username || student.collegeName}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold text-[var(--primary-color)] shrink-0 px-2 py-0.5 rounded-md bg-[var(--primary-light)]">
-                        Chat
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Matching Colleges */}
-              {remoteSearchResults.colleges.filter(
-                (c) => c.superAdminId !== user?._id && c._id !== user?.collegeId
-              ).length > 0 && (
-                <div className="p-2 space-y-1">
-                  <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                    <Building2 className="w-3 h-3 text-blue-500" />
-                    <span>Colleges ({remoteSearchResults.colleges.filter(
-                      (c) => c.superAdminId !== user?._id && c._id !== user?.collegeId
-                    ).length})</span>
-                  </div>
-                  {remoteSearchResults.colleges
-                    .filter((c) => c.superAdminId !== user?._id && c._id !== user?.collegeId)
-                    .map((col) => (
-                    <div
-                      key={col._id}
-                      onClick={() => {
-                        saveSearchTerm('messages', col.name);
-                        setMsgHistory(getSearchHistory('messages'));
-                        handleStartChatWithUser(col._id, 'college');
-                      }}
-                      className="p-2 rounded-xl hover:bg-[var(--surface-hover)] cursor-pointer transition-colors flex items-center justify-between gap-2.5 group"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={col.logo || DEFAULT_COLLEGE_LOGO}
-                          alt={col.name}
-                          className="w-9 h-9 rounded-xl object-cover shrink-0 border border-[var(--border-color)]"
-                          onError={(e) => {
-                            (e.target as any).src = DEFAULT_COLLEGE_LOGO;
-                          }}
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1">
-                            <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] truncate">
-                              {col.name}
-                            </p>
-                            {col.isVerified && (
-                              <span title="Verified College">
-                                <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-[var(--text-muted)] truncate">
-                            {col.username || col.location || 'College'}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold text-[var(--primary-color)] shrink-0 px-2 py-0.5 rounded-md bg-[var(--primary-light)]">
-                        Chat
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Matching Existing Conversations */}
-              {filteredConversations.length > 0 && (
-                <div className="p-2 space-y-1">
-                  <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                    <MessageSquare className="w-3 h-3 text-[var(--text-muted)]" />
-                    <span>Existing Chats ({filteredConversations.length})</span>
-                  </div>
-                  {filteredConversations.map((c) => {
-                    const other = c.otherParticipant;
-                    const isSelected = selectedConvId === c._id;
-                    const unread = c.unreadCount || 0;
-
-                    return (
-                      <div
-                        key={c._id}
-                        onClick={() => setSelectedConvId(c._id)}
-                        className={`p-2.5 rounded-xl flex items-center gap-3 cursor-pointer transition-colors ${
-                          isSelected
-                            ? 'bg-[var(--primary-light)] border-l-4 border-[var(--primary-color)]'
-                            : 'hover:bg-[var(--surface-hover)]'
-                        }`}
-                      >
-                        <img
-                          src={other?.avatar || DEFAULT_STUDENT_AVATAR}
-                          alt={other?.name || 'Chat User'}
-                          className="w-9 h-9 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
-                          onError={(e) => {
-                            (e.target as any).src = DEFAULT_STUDENT_AVATAR;
-                          }}
-                        />
-                        <div className="min-w-0 grow">
-                          <p className="text-xs font-bold truncate text-[var(--text-primary)]">
-                            {other?.name || 'User'}
-                          </p>
-                          <p className="text-[11px] text-[var(--text-muted)] truncate">
-                            {c.lastMessage?.text || 'Conversation started'}
-                          </p>
-                        </div>
-                        {unread > 0 && (
-                          <span className="shrink-0 w-4 h-4 rounded-full bg-[var(--primary-color)] text-[var(--primary-text)] text-[10px] font-bold flex items-center justify-center">
-                            {unread}
-                          </span>
+                      <div className="w-10 h-10 rounded-xl bg-[var(--primary-color)]/10 text-[var(--primary-color)] font-black text-sm flex items-center justify-center shrink-0 border border-[var(--border-color)]">
+                        {g.imageUrl ? (
+                          <img src={g.imageUrl} alt={g.name} className="w-full h-full object-cover rounded-xl" />
+                        ) : (
+                          g.name.slice(0, 2).toUpperCase()
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {!searchingRemote && !hasRemoteMatches && filteredConversations.length === 0 && (
-                <div className="p-6 text-center text-xs text-[var(--text-muted)]">
-                  No students, colleges, or conversations found for "{convSearch}".
-                </div>
-              )}
-            </div>
-          ) : conversations.length === 0 ? (
-            <div className="p-8 text-center space-y-2">
-              <MessageSquare className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
-              <h4 className="text-xs font-bold text-[var(--text-primary)]">No messages yet</h4>
-              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                Connect with collegiate organizers and student innovators. Search students or colleges above to start messaging.
-              </p>
-            </div>
+                      <div className="grow min-w-0">
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                          <p className="text-xs font-bold truncate text-[var(--text-primary)]">
+                            {g.name}
+                          </p>
+                          <span
+                            className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-sm shrink-0 ${
+                              g.type === 'Event'
+                                ? 'bg-purple-500/10 text-purple-600'
+                                : 'bg-[var(--surface-subtle)] text-[var(--text-muted)]'
+                            }`}
+                          >
+                            {g.type === 'Event' ? '📅 Event Group' : 'Group'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1 text-[11px] text-[var(--text-muted)]">
+                          <span className="truncate">{g.category || 'General'}</span>
+                          <span className="shrink-0">{g.membersCount || 1} members</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            )
           ) : (
-            filteredConversations.map((c) => {
-              const other = c.otherParticipant;
-              const isSelected = selectedConvId === c._id;
-              const unread = c.unreadCount || 0;
+            // DIRECT CHATS TAB LIST
+            conversations.length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <MessageSquare className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
+                <h4 className="text-xs font-bold text-[var(--text-primary)]">No messages yet</h4>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Search students or colleges above to start messaging.
+                </p>
+              </div>
+            ) : (
+              conversations
+                .filter((c) => {
+                  if (!convSearch.trim()) return true;
+                  const name = c.otherParticipant?.name?.toLowerCase() || '';
+                  const username = c.otherParticipant?.username?.toLowerCase() || '';
+                  return name.includes(convSearch.toLowerCase()) || username.includes(convSearch.toLowerCase());
+                })
+                .map((c) => {
+                  const other = c.otherParticipant;
+                  const isSelected = selectedConvId === c._id;
+                  const unread = c.unreadCount || 0;
 
-              return (
-                <div
-                  key={c._id}
-                  onClick={() => setSelectedConvId(c._id)}
-                  className={`p-3.5 flex items-center gap-3 cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-[var(--primary-light)] border-l-4 border-[var(--primary-color)]'
-                      : 'hover:bg-[var(--surface-subtle)]'
-                  }`}
-                >
-                  <div className="relative shrink-0">
-                    <img
-                      src={other?.avatar || DEFAULT_STUDENT_AVATAR}
-                      alt={other?.name || 'Chat User'}
-                      className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)]"
-                      onError={(e) => {
-                        (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                  return (
+                    <div
+                      key={c._id}
+                      onClick={() => {
+                        setSelectedGroupId(null);
+                        setSelectedConvId(c._id);
                       }}
-                    />
-                    {c.isMuted && (
-                      <span className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-slate-700 text-white">
-                        <BellOff className="w-2.5 h-2.5" />
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grow min-w-0">
-                    <div className="flex items-center justify-between gap-1 mb-0.5">
-                      <p
-                        className={`text-xs font-bold truncate ${
-                          unread > 0 ? 'text-[var(--text-primary)] font-black' : 'text-[var(--text-primary)]'
-                        }`}
-                      >
-                        {other?.name || 'User'}
-                      </p>
-                      {c.lastMessage && (
-                        <span className="text-[10px] text-[var(--text-muted)] shrink-0">
-                          {new Date(c.lastMessage.timestamp).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      )}
+                      className={`p-3.5 flex items-center gap-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-[var(--primary-light)] border-l-4 border-[var(--primary-color)]'
+                          : 'hover:bg-[var(--surface-subtle)]'
+                      }`}
+                    >
+                      <img
+                        src={other?.avatar || DEFAULT_STUDENT_AVATAR}
+                        alt={other?.name || 'User'}
+                        className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                        onError={(e) => {
+                          (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                        }}
+                      />
+                      <div className="grow min-w-0">
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                          <p className={`text-xs font-bold truncate text-[var(--text-primary)]`}>
+                            {other?.name || 'User'}
+                          </p>
+                          {c.lastMessage && (
+                            <span className="text-[10px] text-[var(--text-muted)] shrink-0">
+                              {new Date(c.lastMessage.timestamp).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between gap-1">
+                          <p className={`text-[11px] truncate text-[var(--text-muted)]`}>
+                            {c.lastMessage?.text || 'Started a conversation'}
+                          </p>
+                          {unread > 0 && (
+                            <span className="shrink-0 w-4 h-4 rounded-full bg-[var(--primary-color)] text-[var(--primary-text)] text-[10px] font-bold flex items-center justify-center">
+                              {unread}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-
-                    <div className="flex items-center justify-between gap-1">
-                      <p
-                        className={`text-[11px] truncate ${
-                          unread > 0
-                            ? 'text-[var(--primary-color)] font-bold'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {c.lastMessage?.text || 'Started a conversation'}
-                      </p>
-                      {unread > 0 && (
-                        <span className="shrink-0 w-4 h-4 rounded-full bg-[var(--primary-color)] text-[var(--primary-text)] text-[10px] font-bold flex items-center justify-center">
-                          {unread}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+                  );
+                })
+            )
           )}
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Active Chat Panel (Instagram-Like compact DM layout per Requirement 12) */}
+      {/* RIGHT COLUMN: Active Chat Panel (Direct or Group) */}
       <div
         className={`flex-1 flex flex-col min-w-0 bg-[var(--surface)] ${
-          selectedConvId ? 'flex' : 'hidden md:flex'
+          selectedConvId || selectedGroupId ? 'flex' : 'hidden md:flex'
         }`}
       >
-        {activeConversation && selectedConvId ? (
+        {selectedGroupId && activeGroup ? (
+          // ================= GROUP CHAT VIEW (Part 5B) =================
           <>
-            {/* Conversation Header */}
+            {/* Group Header */}
+            <div className="p-3.5 border-b border-[var(--border-color)] flex items-center justify-between gap-3 bg-[var(--surface)]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupId(null)}
+                  className="p-1.5 rounded-lg hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] md:hidden cursor-pointer"
+                  title="Back to groups"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+
+                <div
+                  onClick={() => {
+                    loadGroupMembers(activeGroup._id);
+                    setShowGroupInfoModal(true);
+                  }}
+                  className="flex items-center gap-2.5 cursor-pointer group min-w-0"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-[var(--primary-color)]/10 text-[var(--primary-color)] font-black text-sm flex items-center justify-center shrink-0 border border-[var(--border-color)]">
+                    {activeGroup.imageUrl ? (
+                      <img src={activeGroup.imageUrl} alt={activeGroup.name} className="w-full h-full object-cover rounded-xl" />
+                    ) : (
+                      activeGroup.name.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--primary-color)] transition-colors">
+                        {activeGroup.name}
+                      </p>
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${
+                          activeGroup.type === 'Event'
+                            ? 'bg-purple-500/10 text-purple-600'
+                            : 'bg-blue-500/10 text-blue-600'
+                        }`}
+                      >
+                        {activeGroup.type === 'Event' ? '📅 Event Group' : (activeGroup.type || 'Custom')}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
+                      <span>{activeGroup.membersCount || 1} members</span>
+                      <span>·</span>
+                      <span className="font-semibold text-[var(--primary-color)]">
+                        {activeGroup.myRole || 'Member'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Group Info / Actions */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    loadGroupMembers(activeGroup._id);
+                    setShowGroupInfoModal(true);
+                  }}
+                  className="p-2 rounded-xl hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                  title="Group Info"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Event Group Lifecycle Notice (Part 5C) */}
+            {activeGroup.type === 'Event' &&
+              (activeGroup.isReadOnly ||
+                activeGroup.lifecycleStatus === 'Completed' ||
+                activeGroup.lifecycleStatus === 'Cancelled') && (
+                <div className="px-4 py-2 border-b border-amber-500/20 bg-amber-500/10 flex items-center gap-2 text-xs text-amber-900">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="font-semibold">
+                    This event has concluded ({activeGroup.lifecycleStatus || 'Completed'}). Group chat is archived and read-only.
+                  </span>
+                </div>
+              )}
+
+            {/* Pinned Messages Bar (Part 5B: Requirement 10) */}
+            {pinnedMessages.length > 0 && (
+              <div className="px-4 py-2 border-b border-[var(--border-color)] bg-amber-500/10 flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Pin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span className="font-bold text-amber-900 shrink-0">Pinned:</span>
+                  <p className="text-amber-800 truncate">
+                    {pinnedMessages[pinnedMessages.length - 1].text}
+                  </p>
+                </div>
+                {isCurrentGroupAdminOrOwner && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleTogglePin(pinnedMessages[pinnedMessages.length - 1]._id, true)
+                    }
+                    className="text-[10px] text-amber-900 font-bold hover:underline cursor-pointer shrink-0"
+                  >
+                    Unpin
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Group Messages Feed */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[var(--surface-subtle)]/40">
+              {loadingMessages ? (
+                <div className="py-20 flex flex-col items-center justify-center space-y-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-[var(--primary-color)]" />
+                  <p className="text-xs text-[var(--text-muted)]">Loading group messages...</p>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="py-20 text-center space-y-2">
+                  <Users className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">
+                    No messages yet in this group. Say hello!
+                  </p>
+                </div>
+              ) : (
+                messages.map((m) => {
+                  const isMine = m.senderId === user?._id;
+                  const isDeleted = Boolean(m.deletedForEveryone);
+                  const isAnnouncement = Boolean(m.isAnnouncement);
+
+                  return (
+                    <div
+                      key={m._id}
+                      className={`flex flex-col group relative ${isMine ? 'items-end' : 'items-start'}`}
+                    >
+                      <div className="flex items-start gap-1.5 max-w-[90%] sm:max-w-md">
+                        {/* Sender avatar for other's message */}
+                        {!isMine && (
+                          <img
+                            src={m.senderAvatar || DEFAULT_STUDENT_AVATAR}
+                            alt={m.senderName}
+                            className="w-7 h-7 rounded-full object-cover shrink-0 mt-1 border border-[var(--border-color)]"
+                            onError={(e) => {
+                              (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                            }}
+                          />
+                        )}
+
+                        {/* Action Trigger for own message */}
+                        {isMine && !isDeleted && (
+                          <div className="relative message-action-menu-container mt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveMenuMsgId(activeMenuMsgId === m._id ? null : m._id)
+                              }
+                              className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] cursor-pointer opacity-70 group-hover:opacity-100 transition-opacity"
+                              title="Message options"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+
+                            {activeMenuMsgId === m._id && (
+                              <div className="absolute right-0 bottom-full mb-1 z-30 w-44 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-lg p-1 text-xs">
+                                {isCurrentGroupAdminOrOwner && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuMsgId(null);
+                                      handleTogglePin(m._id, m.isPinned);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 rounded-lg text-left text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Pin className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>{m.isPinned ? 'Unpin message' : 'Pin message'}</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuMsgId(null);
+                                    setDeleteConfirmModal({
+                                      isOpen: true,
+                                      type: 'for-me',
+                                      messageId: m._id,
+                                    });
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-zinc-500" />
+                                  <span>Delete for me</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuMsgId(null);
+                                    setDeleteConfirmModal({
+                                      isOpen: true,
+                                      type: 'for-everyone',
+                                      messageId: m._id,
+                                    });
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-red-600 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer font-medium"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                  <span>Delete for everyone</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Message Bubble */}
+                        <div
+                          className={`rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-1.5 ${
+                            isAnnouncement
+                              ? 'bg-amber-500/15 border-2 border-amber-500 text-[var(--text-primary)] rounded-xl'
+                              : isMine
+                              ? 'bg-[var(--primary-color)] text-[var(--primary-text)] rounded-br-xs'
+                              : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-bl-xs'
+                          }`}
+                        >
+                          {/* Announcement banner tag */}
+                          {isAnnouncement && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-700 mb-1">
+                              <Megaphone className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>Official Announcement</span>
+                            </div>
+                          )}
+
+                          {/* Sender name for group */}
+                          {!isMine && !isDeleted && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-bold text-[var(--primary-color)]">
+                                {m.senderName}
+                              </span>
+                              {m.senderRole && m.senderRole !== 'Member' && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-xs bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
+                                  {m.senderRole}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {isDeleted ? (
+                            <p className="text-xs italic opacity-75">This message was deleted</p>
+                          ) : (
+                            <>
+                              {m.text && (
+                                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                  {m.text}
+                                </p>
+                              )}
+
+                              {m.attachmentUrl && (
+                                <div className="rounded-xl overflow-hidden border border-black/10 mt-1 max-h-60 bg-black/5">
+                                  <img
+                                    src={m.attachmentUrl}
+                                    alt="attachment"
+                                    className="w-full h-full object-cover cursor-pointer hover:scale-102 transition-transform"
+                                    onClick={() => window.open(m.attachmentUrl, '_blank')}
+                                  />
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* Timestamp & Pin status */}
+                          <div
+                            className={`flex items-center justify-end gap-1.5 text-[10px] mt-1 ${
+                              isMine && !isAnnouncement
+                                ? 'text-white/80'
+                                : 'text-[var(--text-muted)]'
+                            }`}
+                          >
+                            {m.isPinned && !isDeleted && (
+                              <span className="flex items-center gap-0.5 text-amber-600 font-bold">
+                                <Pin className="w-2.5 h-2.5" /> Pinned
+                              </span>
+                            )}
+                            <span>
+                              {new Date(m.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action trigger for received message */}
+                        {!isMine && !isDeleted && (
+                          <div className="relative message-action-menu-container mt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveMenuMsgId(activeMenuMsgId === m._id ? null : m._id)
+                              }
+                              className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] cursor-pointer opacity-70 group-hover:opacity-100 transition-opacity"
+                              title="Message options"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+
+                            {activeMenuMsgId === m._id && (
+                              <div className="absolute left-0 bottom-full mb-1 z-30 w-36 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-lg p-1 text-xs">
+                                {isCurrentGroupAdminOrOwner && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuMsgId(null);
+                                      handleTogglePin(m._id, m.isPinned);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 rounded-lg text-left text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Pin className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>{m.isPinned ? 'Unpin' : 'Pin'}</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuMsgId(null);
+                                    setDeleteConfirmModal({
+                                      isOpen: true,
+                                      type: 'for-me',
+                                      messageId: m._id,
+                                    });
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-zinc-500" />
+                                  <span>Delete for me</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Group Composer */}
+            <div className="p-3 border-t border-[var(--border-color)] bg-[var(--surface)] space-y-2">
+              {attachmentPreview && (
+                <div className="relative inline-block border border-[var(--border-color)] rounded-xl overflow-hidden p-1 bg-[var(--surface-subtle)]">
+                  <img
+                    src={attachmentPreview}
+                    alt="preview"
+                    className="w-16 h-16 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttachmentPreview(null);
+                      setAttachmentFile(null);
+                    }}
+                    className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 cursor-pointer shadow-xs"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              {activeGroup?.type === 'Event' &&
+              (activeGroup.isReadOnly ||
+                activeGroup.lifecycleStatus === 'Completed' ||
+                activeGroup.lifecycleStatus === 'Cancelled') &&
+              !isCurrentGroupAdminOrOwner ? (
+                <div className="py-2.5 px-4 rounded-xl bg-[var(--surface-subtle)] text-center text-xs font-semibold text-[var(--text-muted)] flex items-center justify-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>This event group is read-only because the event has completed or concluded.</span>
+                </div>
+              ) : (
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer shrink-0"
+                    title="Attach Image"
+                  >
+                    <Image className="w-4 h-4" />
+                  </button>
+
+                  {/* Announcement Mode Toggle for Owner/Admin */}
+                  {isCurrentGroupAdminOrOwner && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAnnouncementMode(!isAnnouncementMode)}
+                      className={`p-2.5 rounded-xl border transition-colors cursor-pointer shrink-0 flex items-center gap-1 text-xs font-bold ${
+                        isAnnouncementMode
+                          ? 'bg-amber-500 text-white border-amber-600'
+                          : 'border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--surface-subtle)]'
+                      }`}
+                      title="Announcement Mode"
+                    >
+                      <Megaphone className="w-4 h-4" />
+                      <span className="hidden sm:inline">Announcement</span>
+                    </button>
+                  )}
+
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={
+                      isAnnouncementMode ? 'Broadcast an announcement...' : 'Message group...'
+                    }
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden transition-all"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={sending || (!inputText.trim() && !attachmentPreview)}
+                    className="p-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                    title="Send"
+                  >
+                    {sending || uploadingAttachment ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          </>
+        ) : selectedConvId && activeConversation ? (
+          // ================= DIRECT CHAT VIEW =================
+          <>
+            {/* Direct Header */}
             <div className="p-3.5 border-b border-[var(--border-color)] flex items-center justify-between gap-3 bg-[var(--surface)]">
               <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   type="button"
                   onClick={() => setSelectedConvId(null)}
                   className="p-1.5 rounded-lg hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] md:hidden cursor-pointer"
-                  title="Back to conversation list"
+                  title="Back"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -742,19 +1311,16 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 <div
                   onClick={() => {
                     const other = activeConversation.otherParticipant;
-                    if (other?.role === 'Student' && onViewStudent) {
-                      onViewStudent(other.userId);
-                    } else if (other?.collegeId && onViewCollege) {
+                    if (other?.collegeId && onViewCollege) {
                       onViewCollege(other.collegeId);
+                    } else if (other?.userId && onViewStudent) {
+                      onViewStudent(other.userId);
                     }
                   }}
                   className="flex items-center gap-2.5 cursor-pointer group min-w-0"
                 >
                   <img
-                    src={
-                      activeConversation.otherParticipant?.avatar ||
-                      DEFAULT_STUDENT_AVATAR
-                    }
+                    src={activeConversation.otherParticipant?.avatar || DEFAULT_STUDENT_AVATAR}
                     alt="Recipient Avatar"
                     className="w-9 h-9 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
                     onError={(e) => {
@@ -762,16 +1328,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     }}
                   />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--primary-color)] transition-colors">
-                        {activeConversation.otherParticipant?.name}
-                      </p>
-                      {activeConversation.otherParticipant?.username && (
-                        <span className="text-[11px] font-semibold text-[var(--text-muted)]">
-                          @{activeConversation.otherParticipant.username.replace(/^@/, '')}
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--primary-color)] transition-colors">
+                      {activeConversation.otherParticipant?.name}
+                    </p>
                     <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                       <span>{activeConversation.otherParticipant?.role || 'Direct Message'}</span>
@@ -780,42 +1339,25 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 </div>
               </div>
 
-              {/* Action Menu (No voice or video call per Requirement 12) */}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => handleToggleMute(selectedConvId)}
-                  className="p-2 rounded-xl hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                  title={activeConversation.isMuted ? 'Unmute' : 'Mute'}
+                  onClick={() =>
+                    setDeleteConfirmModal({
+                      isOpen: true,
+                      type: 'conversation',
+                      convId: selectedConvId,
+                    })
+                  }
+                  className="p-2 rounded-xl hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
+                  title="Delete Conversation"
                 >
-                  {activeConversation.isMuted ? (
-                    <BellOff className="w-4 h-4 text-amber-500" />
-                  ) : (
-                    <Bell className="w-4 h-4" />
-                  )}
+                  <Trash2 className="w-4 h-4" />
                 </button>
-
-                <ActionMenu
-                  items={[
-                    {
-                      id: 'mute',
-                      label: activeConversation.isMuted ? 'Unmute notifications' : 'Mute notifications',
-                      icon: activeConversation.isMuted ? Bell : BellOff,
-                      onClick: () => handleToggleMute(selectedConvId),
-                    },
-                    {
-                      id: 'delete',
-                      label: 'Delete conversation',
-                      icon: Trash2,
-                      danger: true,
-                      onClick: () => handleDeleteConversation(selectedConvId),
-                    },
-                  ]}
-                />
               </div>
             </div>
 
-            {/* Messages Feed */}
+            {/* Direct Messages Feed */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[var(--surface-subtle)]/40">
               {loadingMessages ? (
                 <div className="py-20 flex flex-col items-center justify-center space-y-2">
@@ -832,194 +1374,138 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               ) : (
                 messages.map((m) => {
                   const isMine = m.senderId === user?._id;
-                  const isDeleted = m.deletedForEveryone;
-                  const isSeen = !isDeleted && (
-                    (m.readBy && m.readBy.some((id) => id !== user?._id)) ||
-                    Boolean(m.seenAt)
-                  );
-
+                  const isDeleted = Boolean(m.deletedForEveryone);
                   return (
                     <div
                       key={m._id}
-                      className={`flex flex-col group ${isMine ? 'items-end' : 'items-start'}`}
+                      className={`flex flex-col group relative ${isMine ? 'items-end' : 'items-start'}`}
                     >
-                      <div
-                        className={`max-w-[85%] sm:max-w-md rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-2 ${
-                          isMine
-                            ? 'bg-[var(--primary-color)] text-[var(--primary-text)] rounded-br-xs'
-                            : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-bl-xs'
-                        }`}
-                      >
-                        {isDeleted ? (
-                          <p className="text-xs italic opacity-75">This message was deleted</p>
-                        ) : (
-                          <>
-                            {/* Message text */}
-                            {m.text && (
-                              <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
-                                {m.text}
-                              </p>
-                            )}
+                      <div className="flex items-center gap-1.5 max-w-[90%] sm:max-w-md">
+                        {isMine && !isDeleted && (
+                          <div className="relative message-action-menu-container">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveMenuMsgId(activeMenuMsgId === m._id ? null : m._id)
+                              }
+                              className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] cursor-pointer opacity-70 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
 
-                            {/* Image attachment */}
-                            {m.attachmentUrl && (
-                              <div className="rounded-xl overflow-hidden border border-black/10 mt-1 max-h-60 bg-black/5">
-                                <img
-                                  src={m.attachmentUrl}
-                                  alt="attachment"
-                                  className="w-full h-full object-cover cursor-pointer hover:scale-102 transition-transform"
-                                  onClick={() => window.open(m.attachmentUrl, '_blank')}
-                                />
+                            {activeMenuMsgId === m._id && (
+                              <div className="absolute right-0 bottom-full mb-1 z-30 w-44 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-lg p-1 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuMsgId(null);
+                                    setDeleteConfirmModal({
+                                      isOpen: true,
+                                      type: 'for-me',
+                                      messageId: m._id,
+                                    });
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-zinc-500" />
+                                  <span>Delete for me</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuMsgId(null);
+                                    setDeleteConfirmModal({
+                                      isOpen: true,
+                                      type: 'for-everyone',
+                                      messageId: m._id,
+                                    });
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-red-600 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer font-medium"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                  <span>Delete for everyone</span>
+                                </button>
                               </div>
                             )}
-
-                            {/* SHARED EVENT CARD (Requirement 15: Share Event Through Message) */}
-                            {m.sharedEvent && (
-                              <div
-                                onClick={() => onViewEvent && onViewEvent(m.sharedEvent!._id)}
-                                className={`rounded-xl border p-2.5 transition-all cursor-pointer ${
-                                  isMine
-                                    ? 'bg-black/15 border-white/20 hover:bg-black/25 text-white'
-                                    : 'bg-[var(--surface-subtle)] border-[var(--border-color)] hover:border-[var(--primary-color)] text-[var(--text-primary)]'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <img
-                                    src={m.sharedEvent.poster || DEFAULT_EVENT_POSTER}
-                                    alt={m.sharedEvent.title}
-                                    className="w-12 h-12 rounded-lg object-cover shrink-0 border border-black/10"
-                                    onError={(e) => {
-                                      (e.target as any).src = DEFAULT_EVENT_POSTER;
-                                    }}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center justify-between gap-1 mb-0.5">
-                                      <span className="text-[10px] font-black uppercase tracking-wider block opacity-75 truncate">
-                                        {m.sharedEvent.category} · Event
-                                      </span>
-                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-black/20 shrink-0">
-                                        {m.sharedEvent.isFree ? 'Free' : `$${m.sharedEvent.registrationFee || 0}`}
-                                      </span>
-                                    </div>
-                                    <p className="text-xs font-bold truncate">{m.sharedEvent.title}</p>
-                                    <p className="text-[10px] opacity-75 truncate">
-                                      {m.sharedEvent.hostCollegeName} · {m.sharedEvent.eventDate}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* SHARED STUDENT PROFILE CARD */}
-                            {m.sharedStudent && (
-                              <div
-                                onClick={() => onViewStudent && onViewStudent(m.sharedStudent!.userId)}
-                                className={`rounded-xl border p-2.5 transition-all cursor-pointer ${
-                                  isMine
-                                    ? 'bg-black/15 border-white/20 hover:bg-black/25 text-white'
-                                    : 'bg-[var(--surface-subtle)] border-[var(--border-color)] hover:border-[var(--primary-color)] text-[var(--text-primary)]'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <img
-                                    src={m.sharedStudent.profilePhoto || DEFAULT_STUDENT_AVATAR}
-                                    alt={m.sharedStudent.fullName}
-                                    className="w-10 h-10 rounded-full object-cover shrink-0 border border-black/10"
-                                    onError={(e) => {
-                                      (e.target as any).src = DEFAULT_STUDENT_AVATAR;
-                                    }}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider block opacity-75">
-                                      Student Profile
-                                    </span>
-                                    <p className="text-xs font-bold truncate">{m.sharedStudent.fullName}</p>
-                                    <p className="text-[10px] opacity-75 truncate">
-                                      {m.sharedStudent.username ? `@${m.sharedStudent.username.replace(/^@/, '')}` : m.sharedStudent.collegeName}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* SHARED COLLEGE PROFILE CARD */}
-                            {m.sharedCollege && (
-                              <div
-                                onClick={() => onViewCollege && onViewCollege(m.sharedCollege!._id)}
-                                className={`rounded-xl border p-2.5 transition-all cursor-pointer ${
-                                  isMine
-                                    ? 'bg-black/15 border-white/20 hover:bg-black/25 text-white'
-                                    : 'bg-[var(--surface-subtle)] border-[var(--border-color)] hover:border-[var(--primary-color)] text-[var(--text-primary)]'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <img
-                                    src={m.sharedCollege.logo || DEFAULT_COLLEGE_LOGO}
-                                    alt={m.sharedCollege.name}
-                                    className="w-10 h-10 rounded-xl object-cover shrink-0 border border-black/10"
-                                    onError={(e) => {
-                                      (e.target as any).src = DEFAULT_COLLEGE_LOGO;
-                                    }}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider block opacity-75">
-                                      College Profile
-                                    </span>
-                                    <p className="text-xs font-bold truncate">{m.sharedCollege.name}</p>
-                                    <p className="text-[10px] opacity-75 truncate">
-                                      {m.sharedCollege.location || 'University Campus'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </>
+                          </div>
                         )}
 
-                        {/* Timestamp & Real Sent / Seen Receipts (Requirement 13) */}
                         <div
-                          className={`flex items-center justify-end gap-1.5 text-[10px] mt-1 ${
-                            isMine ? 'text-white/80' : 'text-[var(--text-muted)]'
+                          className={`rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-1.5 ${
+                            isMine
+                              ? 'bg-[var(--primary-color)] text-[var(--primary-text)] rounded-br-xs'
+                              : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-bl-xs'
                           }`}
                         >
-                          <span>
-                            {new Date(m.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                          {isMine && !isDeleted && (
-                            isSeen ? (
-                              <span
-                                title={m.seenAt ? `Seen at ${new Date(m.seenAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Seen'}
-                                className="flex items-center gap-0.5 text-sky-300 font-bold"
-                              >
-                                <CheckCheck className="w-3.5 h-3.5 text-sky-300" />
-                                <span className="text-[9px]">Seen</span>
-                              </span>
-                            ) : (
-                              <span title="Sent" className="flex items-center gap-0.5 text-white/70">
-                                <Check className="w-3.5 h-3.5 text-white/70" />
-                                <span className="text-[9px]">Sent</span>
-                              </span>
-                            )
+                          {isDeleted ? (
+                            <p className="text-xs italic opacity-75">This message was deleted</p>
+                          ) : (
+                            <>
+                              {m.text && (
+                                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                  {m.text}
+                                </p>
+                              )}
+                              {m.attachmentUrl && (
+                                <div className="rounded-xl overflow-hidden border border-black/10 mt-1 max-h-60 bg-black/5">
+                                  <img
+                                    src={m.attachmentUrl}
+                                    alt="attachment"
+                                    className="w-full h-full object-cover cursor-pointer hover:scale-102 transition-transform"
+                                    onClick={() => window.open(m.attachmentUrl, '_blank')}
+                                  />
+                                </div>
+                              )}
+                            </>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Delete Options Button on Hover */}
-                      {!isDeleted && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 px-1">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteMessage(m._id, isMine)}
-                            className="text-[10px] text-red-500 hover:underline cursor-pointer flex items-center gap-1"
+                          <div
+                            className={`flex items-center justify-end gap-1.5 text-[10px] mt-1 ${
+                              isMine ? 'text-white/80' : 'text-[var(--text-muted)]'
+                            }`}
                           >
-                            <Trash2 className="w-2.5 h-2.5" />
-                            <span>{isMine ? 'Delete for everyone' : 'Delete for me'}</span>
-                          </button>
+                            <span>
+                              {new Date(m.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
                         </div>
-                      )}
+
+                        {!isMine && !isDeleted && (
+                          <div className="relative message-action-menu-container">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveMenuMsgId(activeMenuMsgId === m._id ? null : m._id)
+                              }
+                              className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] cursor-pointer opacity-70 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+
+                            {activeMenuMsgId === m._id && (
+                              <div className="absolute left-0 bottom-full mb-1 z-30 w-36 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] shadow-lg p-1 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuMsgId(null);
+                                    setDeleteConfirmModal({
+                                      isOpen: true,
+                                      type: 'for-me',
+                                      messageId: m._id,
+                                    });
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-zinc-500" />
+                                  <span>Delete for me</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })
@@ -1027,9 +1513,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Clean Input & Action Composer (Requirement 11: Remove dedicated emoji button) */}
+            {/* Direct Composer */}
             <div className="p-3 border-t border-[var(--border-color)] bg-[var(--surface)] space-y-2">
-              {/* Attachment Preview Box */}
               {attachmentPreview && (
                 <div className="relative inline-block border border-[var(--border-color)] rounded-xl overflow-hidden p-1 bg-[var(--surface-subtle)]">
                   <img
@@ -1051,7 +1536,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               )}
 
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                {/* Hidden File Input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1060,7 +1544,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   className="hidden"
                 />
 
-                {/* Attach Image Button */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -1070,7 +1553,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   <Image className="w-4 h-4" />
                 </button>
 
-                {/* Main Text Input */}
                 <input
                   type="text"
                   value={inputText}
@@ -1079,7 +1561,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:border-[var(--primary-color)] text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden transition-all"
                 />
 
-                {/* Send Button */}
                 <button
                   type="submit"
                   disabled={sending || (!inputText.trim() && !attachmentPreview)}
@@ -1096,17 +1577,201 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             </div>
           </>
         ) : (
+          // ================= EMPTY STATE =================
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
             <div className="w-16 h-16 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)]">
               <MessageSquare className="w-8 h-8 opacity-60" />
             </div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">Your Messages</h3>
+            <h3 className="text-base font-bold text-[var(--text-primary)]">Your Messages & Groups</h3>
             <p className="text-xs text-[var(--text-muted)] max-w-sm">
-              Send private direct messages, share event passes, and collaborate. Search students or colleges in the sidebar to start a conversation.
+              Select a direct chat or group from the sidebar to start collaborating.
             </p>
           </div>
         )}
       </div>
+
+      {/* Group Info Modal (Requirement 14) */}
+      {showGroupInfoModal && activeGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl p-5 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
+              <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Info className="w-4 h-4 text-[var(--primary-color)]" />
+                <span>Group Information</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowGroupInfoModal(false)}
+                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--primary-color)]/10 text-[var(--primary-color)] font-black text-lg flex items-center justify-center shrink-0 border border-[var(--border-color)]">
+                  {activeGroup.imageUrl ? (
+                    <img src={activeGroup.imageUrl} alt={activeGroup.name} className="w-full h-full object-cover rounded-2xl" />
+                  ) : (
+                    activeGroup.name.slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                    {activeGroup.name}
+                  </h4>
+                  <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                    <span>{activeGroup.type || 'Custom Group'}</span>
+                    <span>·</span>
+                    <span className="font-semibold text-emerald-600">
+                      {activeGroup.membersCount || 1} members
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {activeGroup.description && (
+                <div className="p-3 rounded-xl bg-[var(--surface-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed">
+                  {activeGroup.description}
+                </div>
+              )}
+
+              {/* Members List */}
+              <div className="space-y-2 pt-1">
+                <h5 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                  Group Members ({groupMembers.length})
+                </h5>
+                {loadingGroupMembers ? (
+                  <div className="py-4 text-center">
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto text-[var(--primary-color)]" />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {groupMembers.map((mem) => (
+                      <div
+                        key={mem._id}
+                        className="flex items-center justify-between p-2 rounded-xl bg-[var(--surface-subtle)] text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <img
+                            src={mem.avatar || DEFAULT_STUDENT_AVATAR}
+                            alt={mem.fullName}
+                            className="w-7 h-7 rounded-full object-cover shrink-0 border border-[var(--border-color)]"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-bold text-[var(--text-primary)] truncate">
+                              {mem.fullName}
+                            </p>
+                            <p className="text-[10px] text-[var(--text-muted)] truncate">
+                              {mem.collegeName || 'Student'}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-sm shrink-0 ${
+                            mem.role === 'Owner'
+                              ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                              : mem.role === 'Admin'
+                              ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                              : 'bg-zinc-500/10 text-zinc-600'
+                          }`}
+                        >
+                          {mem.role}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-2 border-t border-[var(--border-color)] flex items-center justify-between">
+              {activeGroup.myRole === 'Owner' ? (
+                <p className="text-[11px] text-[var(--text-muted)] italic">
+                  Owner cannot leave without transferring ownership.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGroupInfoModal(false);
+                    setDeleteConfirmModal({
+                      isOpen: true,
+                      type: 'leave-group',
+                      groupId: activeGroup._id,
+                    });
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Leave Group</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowGroupInfoModal(false)}
+                className="px-4 py-1.5 rounded-xl bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Confirmation Modal */}
+      {deleteConfirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                {deleteConfirmModal.type === 'for-everyone'
+                  ? 'Delete message for everyone?'
+                  : deleteConfirmModal.type === 'conversation'
+                  ? 'Delete this conversation?'
+                  : deleteConfirmModal.type === 'leave-group'
+                  ? 'Leave this group?'
+                  : 'Delete message for you?'}
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                {deleteConfirmModal.type === 'for-everyone'
+                  ? 'This message will be removed for everyone. A neutral notice indicating the message was deleted will be displayed.'
+                  : deleteConfirmModal.type === 'conversation'
+                  ? 'This conversation will be hidden from your inbox.'
+                  : deleteConfirmModal.type === 'leave-group'
+                  ? 'You will lose access to group messages and announcements until re-added.'
+                  : 'This message will be removed from your view only.'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmModal({ isOpen: false, type: 'for-me' })}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95"
+              >
+                {deleteConfirmModal.type === 'for-everyone'
+                  ? 'Delete for Everyone'
+                  : deleteConfirmModal.type === 'conversation'
+                  ? 'Delete Conversation'
+                  : deleteConfirmModal.type === 'leave-group'
+                  ? 'Leave Group'
+                  : 'Delete for Me'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

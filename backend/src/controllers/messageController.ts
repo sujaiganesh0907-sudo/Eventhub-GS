@@ -11,6 +11,7 @@ import {
   Connection,
   Notification,
   CollegeAdminMembership,
+  GroupMembership,
   IConversationParticipant,
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
@@ -18,7 +19,10 @@ import { AuthenticatedRequest } from '../middleware/auth';
 /**
  * Helper to get clean participant display details
  */
-async function getParticipantDetails(userId: string, activeCollegeId?: string): Promise<IConversationParticipant | null> {
+export async function getParticipantDetails(
+  userId: string,
+  activeCollegeId?: string
+): Promise<IConversationParticipant | null> {
   const user = await User.findById(userId);
   if (!user) return null;
 
@@ -68,7 +72,7 @@ async function getParticipantDetails(userId: string, activeCollegeId?: string): 
 }
 
 /**
- * Helper to verify manageMessages permission for college admin actions (Requirement 14)
+ * Helper to verify manageMessages permission for college admin actions (Requirements 9, 24)
  */
 export async function checkManageMessagesPermission(user: any, collegeId: string): Promise<boolean> {
   if (!user || !collegeId) return false;
@@ -85,9 +89,13 @@ export async function checkManageMessagesPermission(user: any, collegeId: string
 }
 
 /**
- * Validate message privacy permission between sender and receiver
+ * Validate message privacy permission between sender and receiver (Requirements 8, 9)
  */
-async function checkMessagePermission(senderUserId: string, targetUserId: string): Promise<{ allowed: boolean; reason?: string }> {
+export async function checkMessagePermission(
+  senderUserId: string,
+  targetUserId: string,
+  senderCollegeId?: string
+): Promise<{ allowed: boolean; reason?: string }> {
   if (senderUserId === targetUserId) {
     return { allowed: true };
   }
@@ -103,56 +111,96 @@ async function checkMessagePermission(senderUserId: string, targetUserId: string
     const privacy = targetProfile?.messagePrivacy || 'Everyone';
 
     if (privacy === 'Nobody') {
-      return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} does not accept direct messages.` };
+      return {
+        allowed: false,
+        reason: `${targetProfile?.fullName || 'This user'} does not accept direct messages.`,
+      };
     }
 
     if (privacy === 'Connections only' || privacy === 'Connections') {
       const senderProfile = await StudentProfile.findOne({ userId: senderUserId });
       if (!senderProfile) {
+        // If sender is college, check college-student connection
+        if (senderCollegeId) {
+          const isConnected = await Connection.findOne({
+            studentId: targetProfile?._id,
+            collegeId: senderCollegeId,
+          });
+          if (!isConnected) {
+            return {
+              allowed: false,
+              reason: 'This student only accepts messages from established connections.',
+            };
+          }
+          return { allowed: true };
+        }
         return { allowed: false, reason: 'This user only accepts messages from connections.' };
       }
+
       // Check mutual connection (mutual follow or connection)
-      const [followsThem, theyFollow] = await Promise.all([
+      const [followsThem, theyFollow, directConnection] = await Promise.all([
         Follow.findOne({ followerStudentId: senderProfile._id, followingStudentId: targetProfile?._id }),
         Follow.findOne({ followerStudentId: targetProfile?._id, followingStudentId: senderProfile._id }),
+        Connection.findOne({
+          $or: [
+            { studentId: senderProfile._id, targetStudentId: targetProfile?._id },
+            { studentId: targetProfile?._id, targetStudentId: senderProfile._id },
+          ],
+        }),
       ]);
-      if (!followsThem || !theyFollow) {
-        return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} only accepts messages from mutual connections.` };
+
+      if ((!followsThem || !theyFollow) && !directConnection) {
+        return {
+          allowed: false,
+          reason: `${targetProfile?.fullName || 'This user'} only accepts messages from mutual connections.`,
+        };
       }
     }
 
     if (privacy === 'Same college only') {
       const senderProfile = await StudentProfile.findOne({ userId: senderUserId });
       const sameCollege =
-        (senderProfile?.collegeName && targetProfile?.collegeName && senderProfile.collegeName.toLowerCase().trim() === targetProfile.collegeName.toLowerCase().trim()) ||
-        (senderUser.collegeId && targetProfile?.targetCollegeId === senderUser.collegeId);
+        (senderProfile?.collegeName &&
+          targetProfile?.collegeName &&
+          senderProfile.collegeName.toLowerCase().trim() === targetProfile.collegeName.toLowerCase().trim()) ||
+        (senderUser.collegeId && targetProfile?.targetCollegeId === senderUser.collegeId) ||
+        (senderCollegeId && targetProfile?.targetCollegeId === senderCollegeId);
 
       if (!sameCollege) {
-        return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} only accepts messages from students or faculty of the same college.` };
+        return {
+          allowed: false,
+          reason: `${targetProfile?.fullName || 'This user'} only accepts messages from students or faculty of the same college.`,
+        };
       }
     }
 
     if (privacy === 'Following') {
-      // Target must be following the sender
       const senderProfile = await StudentProfile.findOne({ userId: senderUserId });
       if (!senderProfile) {
-        return { allowed: false, reason: 'This student only accepts messages from students they follow.' };
+        return { allowed: false, reason: 'This student only accepts messages from people they follow.' };
       }
       const isFollowing = await Follow.findOne({
         followerStudentId: targetProfile?._id,
         followingStudentId: senderProfile._id,
       });
       if (!isFollowing) {
-        return { allowed: false, reason: `${targetProfile?.fullName || 'This user'} only accepts messages from people they follow.` };
+        return {
+          allowed: false,
+          reason: `${targetProfile?.fullName || 'This user'} only accepts messages from people they follow.`,
+        };
       }
     }
   } else {
     // Target is College
-    const college = targetUser.collegeId ? await College.findById(targetUser.collegeId) : null;
+    const collegeId = targetUser.collegeId;
+    const college = collegeId ? await College.findById(collegeId) : null;
     const privacy = college?.messagePrivacy || 'Everyone';
 
     if (privacy === 'Nobody') {
-      return { allowed: false, reason: `${college?.name || 'This college'} does not accept direct messages at this time.` };
+      return {
+        allowed: false,
+        reason: `${college?.name || 'This college'} does not accept direct messages at this time.`,
+      };
     }
 
     if (privacy === 'Connected') {
@@ -174,7 +222,7 @@ async function checkMessagePermission(senderUserId: string, targetUserId: string
 
 /**
  * GET /api/messages/conversations
- * Supports personal student conversations or separate College Admin Workspace Inbox (Requirements 14, 15)
+ * Supports personal student conversations or separate College Admin Workspace Inbox (Requirements 7, 9, 11, 20)
  */
 export async function getConversations(req: AuthenticatedRequest, res: Response) {
   try {
@@ -190,8 +238,8 @@ export async function getConversations(req: AuthenticatedRequest, res: Response)
     let userConvs: any[] = [];
     const allConvs = await Conversation.find().sort({ updatedAt: -1 }).exec();
 
-    if (activeCollegeId && (user.role === 'College Super Admin' || user.collegeId === activeCollegeId || req.query.asCollegeId)) {
-      // 1. Verify manageMessages permission for college workspace (Requirement 14)
+    if (activeCollegeId && (user.role === 'College Super Admin' || user.collegeId === activeCollegeId || asCollegeId)) {
+      // 1. Verify manageMessages permission for college workspace (Requirement 9, 24)
       const hasPerm = await checkManageMessagesPermission(user, activeCollegeId);
       if (!hasPerm) {
         return res.status(403).json({
@@ -210,13 +258,13 @@ export async function getConversations(req: AuthenticatedRequest, res: Response)
           (superAdminId && c.participants && c.participants.includes(superAdminId))
       );
     } else {
-      // 2. Personal Student / User Inbox: separate from collegiate administration
+      // 2. Personal Student / User Inbox: separate from collegiate administration (Requirement 7)
       userConvs = allConvs.filter(
         (c) => c.participants && c.participants.includes(user._id) && !c.collegeId
       );
     }
 
-    // Get preferences
+    // Get preferences to filter hidden conversations
     const preferences = await ConversationPreference.find({ userId: user._id }).exec();
     const prefMap = new Map(preferences.map((p) => [p.conversationId, p]));
 
@@ -228,11 +276,11 @@ export async function getConversations(req: AuthenticatedRequest, res: Response)
         })
         .map(async (c) => {
           const pref = prefMap.get(c._id);
-          const otherParticipantIds = c.participants.filter((p: string) => p !== user._id);
+          const otherParticipantIds = (c.participants || []).filter((p: string) => p !== user._id);
           const otherId = otherParticipantIds[0] || user._id;
 
           // Fresh details for other participant
-          const otherDetails = await getParticipantDetails(otherId);
+          const otherDetails = await getParticipantDetails(otherId, c.collegeId);
 
           // Calculate unread count for current user
           const unreadCount = await Message.countDocuments({
@@ -240,16 +288,53 @@ export async function getConversations(req: AuthenticatedRequest, res: Response)
             senderId: { $ne: user._id },
             readBy: { $nin: [user._id] },
             deletedFor: { $nin: [user._id] },
+            deletedForUserIds: { $nin: [user._id] },
           });
+
+          // Accurate preview calculation (Requirement 20)
+          let lastMessagePreview = c.lastMessage;
+          const convMessages = await Message.find({ conversationId: c._id })
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .exec();
+
+          // Find the latest message visible to this user
+          const latestVisible = convMessages.find(
+            (m) =>
+              (!m.deletedFor || !m.deletedFor.includes(user._id)) &&
+              (!m.deletedForUserIds || !m.deletedForUserIds.includes(user._id))
+          );
+
+          if (latestVisible) {
+            lastMessagePreview = {
+              text: latestVisible.deletedForEveryone ? 'This message was deleted' : latestVisible.text || 'Attachment',
+              senderId: latestVisible.senderId,
+              timestamp: latestVisible.createdAt || latestVisible.updatedAt,
+            };
+          } else if (convMessages.length > 0 && convMessages[0].deletedForEveryone) {
+            lastMessagePreview = {
+              text: 'This message was deleted',
+              senderId: convMessages[0].senderId,
+              timestamp: convMessages[0].createdAt,
+            };
+          }
 
           return {
             ...c,
+            lastMessage: lastMessagePreview,
             otherParticipant: otherDetails,
             unreadCount,
             isMuted: pref?.muted || false,
           };
         })
     );
+
+    // Sort by most recently active conversation first (Requirement 11)
+    enriched.sort((a, b) => {
+      const timeA = new Date(a.lastMessage?.timestamp || a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.lastMessage?.timestamp || b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
 
     return res.json({ success: true, conversations: enriched });
   } catch (error: any) {
@@ -259,7 +344,7 @@ export async function getConversations(req: AuthenticatedRequest, res: Response)
 
 /**
  * POST /api/messages/conversations
- * Start or get existing conversation with a target user (Requirements 15, 17)
+ * Start or get existing conversation with a target user (Requirements 6, 23)
  */
 export async function startOrGetConversation(req: AuthenticatedRequest, res: Response) {
   try {
@@ -268,8 +353,9 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
 
     const { targetUserId, targetStudentId, targetCollegeId, asCollegeId } = req.body;
     let actualTargetUserId = targetUserId;
+    let associatedCollegeId: string | undefined = asCollegeId;
 
-    // Robust resolution: targetStudentId might be studentProfile._id, or studentProfile.userId, or user._id
+    // Resolve targetStudentId
     if (!actualTargetUserId && targetStudentId) {
       let sp = await StudentProfile.findById(targetStudentId);
       if (!sp) {
@@ -286,6 +372,7 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
     } else if (!actualTargetUserId && targetCollegeId) {
       const col = await College.findById(targetCollegeId);
       if (col) {
+        associatedCollegeId = col._id;
         if (col.superAdminId) {
           actualTargetUserId = col.superAdminId;
         } else {
@@ -299,15 +386,21 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
     }
 
     if (!actualTargetUserId) {
-      return res.status(400).json({ success: false, message: 'Target user ID could not be resolved.' });
+      return res.status(400).json({ success: false, message: 'Target user could not be identified.' });
     }
 
+    // REQUIREMENT 23: Block invalid self-conversations
     if (actualTargetUserId === user._id) {
       return res.status(400).json({ success: false, message: 'Cannot start a conversation with yourself.' });
     }
 
-    // Verify manageMessages permission if starting conversation on behalf of a college workspace
     if (asCollegeId) {
+      const col = await College.findById(asCollegeId);
+      if (col && (col.superAdminId === actualTargetUserId || actualTargetUserId === user._id)) {
+        return res.status(400).json({ success: false, message: 'Cannot start a conversation with yourself.' });
+      }
+
+      // Verify manageMessages permission
       const hasPerm = await checkManageMessagesPermission(user, asCollegeId);
       if (!hasPerm) {
         return res.status(403).json({
@@ -317,22 +410,29 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
       }
     }
 
-    // Check message privacy permissions
-    const permission = await checkMessagePermission(user._id, actualTargetUserId);
+    // Check message privacy permissions (Requirement 8, 9)
+    const permission = await checkMessagePermission(user._id, actualTargetUserId, asCollegeId);
     if (!permission.allowed) {
       return res.status(403).json({ success: false, message: permission.reason });
     }
 
-    // Check if conversation already exists
+    // REQUIREMENT 6: Check if conversation already exists between these identities
     const allConvs = await Conversation.find().exec();
-    let existing = allConvs.find(
-      (c) =>
+    let existing = allConvs.find((c) => {
+      const hasBoth =
         c.participants &&
         c.participants.length === 2 &&
         c.participants.includes(user._id) &&
-        c.participants.includes(actualTargetUserId) &&
-        (!asCollegeId || c.collegeId === asCollegeId)
-    );
+        c.participants.includes(actualTargetUserId);
+
+      if (!hasBoth) return false;
+
+      // In collegiate context, match collegeId
+      if (asCollegeId) {
+        return c.collegeId === asCollegeId;
+      }
+      return !c.collegeId || c.collegeId === associatedCollegeId;
+    });
 
     if (existing) {
       // Unhide if previously hidden
@@ -341,7 +441,7 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
         { $set: { hidden: false } }
       );
 
-      const otherDetails = await getParticipantDetails(actualTargetUserId);
+      const otherDetails = await getParticipantDetails(actualTargetUserId, existing.collegeId);
       return res.json({
         success: true,
         conversation: {
@@ -354,11 +454,11 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
     // Create new conversation
     const [meDetails, otherDetails] = await Promise.all([
       getParticipantDetails(user._id, asCollegeId),
-      getParticipantDetails(actualTargetUserId),
+      getParticipantDetails(actualTargetUserId, associatedCollegeId),
     ]);
 
     const newConv = await Conversation.create({
-      collegeId: asCollegeId || undefined,
+      collegeId: asCollegeId || associatedCollegeId || undefined,
       participants: [user._id, actualTargetUserId],
       participantDetails: [meDetails!, otherDetails!].filter(Boolean),
       lastMessage: undefined,
@@ -380,7 +480,7 @@ export async function startOrGetConversation(req: AuthenticatedRequest, res: Res
 
 /**
  * GET /api/messages/conversations/:id
- * Load messages and mark unread messages as read
+ * Load messages chronologically and mark unread messages as read (Requirements 11, 19)
  */
 export async function getConversationMessages(req: AuthenticatedRequest, res: Response) {
   try {
@@ -389,20 +489,35 @@ export async function getConversationMessages(req: AuthenticatedRequest, res: Re
 
     const { id } = req.params;
     const conv = await Conversation.findById(id);
-    if (!conv || !conv.participants.includes(user._id)) {
+    if (!conv) {
       return res.status(404).json({ success: false, message: 'Conversation not found.' });
     }
 
+    // Verify membership or authorized college admin access
+    const isMember = conv.participants && conv.participants.includes(user._id);
+    let isAuthorizedCollegeAdmin = false;
+    if (!isMember && conv.collegeId) {
+      isAuthorizedCollegeAdmin = await checkManageMessagesPermission(user, conv.collegeId);
+    }
+
+    if (!isMember && !isAuthorizedCollegeAdmin) {
+      return res.status(403).json({ success: false, message: 'Unauthorized access to this conversation.' });
+    }
+
+    // REQUIREMENT 11: Older messages top, newest bottom (sort: 1)
     const allMessages = await Message.find({ conversationId: id })
       .sort({ createdAt: 1 })
       .exec();
 
-    // Filter out messages deleted by this user
+    // REQUIREMENT 13: Filter out messages deleted for current user and ensure no group messages leak into direct chat
     const visibleMessages = allMessages.filter(
-      (m) => !m.deletedFor || !m.deletedFor.includes(user._id)
+      (m) =>
+        !m.groupId &&
+        (!m.deletedFor || !m.deletedFor.includes(user._id)) &&
+        (!m.deletedForUserIds || !m.deletedForUserIds.includes(user._id))
     );
 
-    // Mark unread messages as read by current user
+    // REQUIREMENT 19: Mark unread incoming messages as read by current user
     const nowIso = new Date().toISOString();
     for (const msg of visibleMessages) {
       if (msg.senderId !== user._id && (!msg.readBy || !msg.readBy.includes(user._id))) {
@@ -412,9 +527,22 @@ export async function getConversationMessages(req: AuthenticatedRequest, res: Re
       }
     }
 
-    // Enrich shared cards with fresh live entity data
+    // Enrich shared cards and ensure deleted-for-everyone content is sanitized
     const enrichedMessages = await Promise.all(
       visibleMessages.map(async (m) => {
+        // REQUIREMENT 14: Never expose original content for deleted-for-everyone messages
+        if (m.deletedForEveryone) {
+          return {
+            ...m,
+            text: 'This message was deleted',
+            attachmentUrl: undefined,
+            attachmentType: undefined,
+            sharedEvent: null,
+            sharedStudent: null,
+            sharedCollege: null,
+          };
+        }
+
         let sharedEvent = null;
         let sharedStudent = null;
         let sharedCollege = null;
@@ -472,9 +600,8 @@ export async function getConversationMessages(req: AuthenticatedRequest, res: Re
       })
     );
 
-    const otherId = conv.participants.find((p) => p !== user._id) || user._id;
-    const otherDetails = await getParticipantDetails(otherId);
-
+    const otherId = (conv.participants || []).find((p) => p !== user._id) || user._id;
+    const otherDetails = await getParticipantDetails(otherId, conv.collegeId);
     const pref = await ConversationPreference.findOne({ userId: user._id, conversationId: id });
 
     return res.json({
@@ -493,7 +620,7 @@ export async function getConversationMessages(req: AuthenticatedRequest, res: Re
 
 /**
  * POST /api/messages/conversations/:id
- * Send a message
+ * Send a message (Requirements 10, 11, 12, 31)
  */
 export async function sendMessage(req: AuthenticatedRequest, res: Response) {
   try {
@@ -515,19 +642,29 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
     }
 
     const conv = await Conversation.findById(id);
-    if (!conv || !conv.participants.includes(user._id)) {
+    if (!conv) {
       return res.status(404).json({ success: false, message: 'Conversation not found.' });
     }
 
-    const otherParticipantId = conv.participants.find((p) => p !== user._id);
+    const isMember = conv.participants && conv.participants.includes(user._id);
+    let isAuthorizedCollegeAdmin = false;
+    if (!isMember && conv.collegeId) {
+      isAuthorizedCollegeAdmin = await checkManageMessagesPermission(user, conv.collegeId);
+    }
+
+    if (!isMember && !isAuthorizedCollegeAdmin) {
+      return res.status(403).json({ success: false, message: 'Unauthorized access to this conversation.' });
+    }
+
+    const otherParticipantId = (conv.participants || []).find((p) => p !== user._id);
     if (otherParticipantId) {
-      const permission = await checkMessagePermission(user._id, otherParticipantId);
+      const permission = await checkMessagePermission(user._id, otherParticipantId, conv.collegeId);
       if (!permission.allowed) {
         return res.status(403).json({ success: false, message: permission.reason });
       }
     }
 
-    // Determine sender name & role (College identity if messaging in college workspace/context)
+    // Determine sender name & role
     const activeCollegeId =
       (req.headers['x-college-id'] as string) ||
       req.body?.asCollegeId ||
@@ -547,10 +684,10 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
     const senderDetails = await getParticipantDetails(user._id, activeCollegeId);
     const senderName = senderDetails?.name || user.fullName;
     const senderRole = senderDetails?.role || user.role;
-
     const senderAvatar = senderDetails?.avatar || undefined;
     const isSendingAsCollege = Boolean(senderDetails?.collegeId);
 
+    // Save message with all required fields
     const message = await Message.create({
       conversationId: id,
       senderId: user._id,
@@ -567,6 +704,7 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
       sharedCollegeId: sharedCollegeId || undefined,
       readBy: [user._id],
       deletedFor: [],
+      deletedForUserIds: [],
       deletedForEveryone: false,
     });
 
@@ -621,7 +759,8 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
 
 /**
  * DELETE /api/messages/:id
- * Delete a message
+ * Delete a message (Delete for Me or Delete for Everyone based on query or endpoint)
+ * Requirements 13, 14, 15
  */
 export async function deleteMessage(req: AuthenticatedRequest, res: Response) {
   try {
@@ -634,25 +773,81 @@ export async function deleteMessage(req: AuthenticatedRequest, res: Response) {
     const message = await Message.findById(id);
     if (!message) return res.status(404).json({ success: false, message: 'Message not found.' });
 
+    let isMember = false;
+    let conv: any = null;
+
+    if (message.groupId) {
+      // Group Message authorization
+      const groupMem = await GroupMembership.findOne({
+        groupId: message.groupId,
+        userId: user._id,
+        status: 'Active',
+      });
+      if (groupMem) {
+        isMember = true;
+      }
+    } else {
+      // Direct Message authorization
+      conv = await Conversation.findById(message.conversationId);
+      if (!conv) return res.status(404).json({ success: false, message: 'Conversation not found.' });
+
+      isMember = Boolean(conv.participants && conv.participants.includes(user._id));
+      if (!isMember && conv.collegeId) {
+        isMember = await checkManageMessagesPermission(user, conv.collegeId);
+      }
+    }
+
+    if (!isMember) {
+      return res.status(403).json({ success: false, message: 'Unauthorized access to this message.' });
+    }
+
     const isForEveryone = forEveryone === 'true' || (forEveryone as any) === true;
+
     if (isForEveryone) {
+      // REQUIREMENT 14 & 15: Only original sender may delete for everyone
       if (message.senderId !== user._id) {
-        return res.status(403).json({ success: false, message: 'You can only delete your own messages for everyone.' });
+        return res.status(403).json({
+          success: false,
+          message: 'You can only delete your own messages for everyone.',
+        });
       }
 
       await Message.findByIdAndUpdate(id, {
         deletedForEveryone: true,
-        text: 'This message was deleted.',
+        deletedAt: new Date().toISOString(),
+        deletedBy: user._id,
+        text: 'This message was deleted',
         attachmentUrl: undefined,
+        attachmentType: undefined,
         sharedEventId: undefined,
         sharedStudentId: undefined,
         sharedCollegeId: undefined,
       });
 
+      // Update conversation preview if direct chat and this was the last message
+      if (conv && conv.lastMessage && conv.lastMessage.timestamp === message.createdAt) {
+        await Conversation.findByIdAndUpdate(conv._id, {
+          lastMessage: {
+            text: 'This message was deleted',
+            senderId: message.senderId,
+            timestamp: message.createdAt || new Date().toISOString(),
+          },
+        });
+      }
+
       return res.json({ success: true, message: 'Message deleted for everyone.' });
     } else {
-      const deletedFor = [...(message.deletedFor || []), user._id];
-      await Message.findByIdAndUpdate(id, { deletedFor });
+      // REQUIREMENT 13: Delete for Me removes/hides message ONLY for current user
+      const existingDeletedFor = new Set(message.deletedFor || []);
+      const existingDeletedForUserIds = new Set(message.deletedForUserIds || []);
+      existingDeletedFor.add(user._id);
+      existingDeletedForUserIds.add(user._id);
+
+      await Message.findByIdAndUpdate(id, {
+        deletedFor: Array.from(existingDeletedFor),
+        deletedForUserIds: Array.from(existingDeletedForUserIds),
+      });
+
       return res.json({ success: true, message: 'Message removed from your view.' });
     }
   } catch (error: any) {
@@ -661,8 +856,26 @@ export async function deleteMessage(req: AuthenticatedRequest, res: Response) {
 }
 
 /**
+ * POST /api/messages/:id/delete-for-me
+ * Dedicated endpoint for Delete for Me (Requirement 13)
+ */
+export async function deleteMessageForMe(req: AuthenticatedRequest, res: Response) {
+  req.query.forEveryone = 'false';
+  return deleteMessage(req, res);
+}
+
+/**
+ * POST /api/messages/:id/delete-for-everyone
+ * Dedicated endpoint for Delete for Everyone (Requirement 14, 15)
+ */
+export async function deleteMessageForEveryone(req: AuthenticatedRequest, res: Response) {
+  req.query.forEveryone = 'true';
+  return deleteMessage(req, res);
+}
+
+/**
  * DELETE /api/messages/conversations/:id
- * Remove / hide conversation for current user
+ * Remove / hide conversation for current user only (Requirement 17)
  */
 export async function deleteConversation(req: AuthenticatedRequest, res: Response) {
   try {
@@ -764,7 +977,9 @@ export async function getUnreadMessagesCount(req: AuthenticatedRequest, res: Res
     }).exec();
 
     const count = unreadMessages.filter(
-      (m) => !m.deletedFor || !m.deletedFor.includes(user._id)
+      (m) =>
+        (!m.deletedFor || !m.deletedFor.includes(user._id)) &&
+        (!m.deletedForUserIds || !m.deletedForUserIds.includes(user._id))
     ).length;
 
     return res.json({ success: true, unreadCount: count });
@@ -772,4 +987,3 @@ export async function getUnreadMessagesCount(req: AuthenticatedRequest, res: Res
     return res.status(500).json({ success: false, message: error.message });
   }
 }
-

@@ -27,6 +27,7 @@ import {
   FileText,
   ExternalLink,
   Maximize2,
+  MessageSquare,
 } from 'lucide-react';
 import { IEvent, IEventRegistration } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -62,6 +63,8 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
   const [isRegistered, setIsRegistered] = useState(false);
   const [userRegistration, setUserRegistration] = useState<IEventRegistration | null>(null);
   const [userCertificate, setUserCertificate] = useState<any>(null);
+  const [eventGroup, setEventGroup] = useState<any>(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   // Accordion state for "More Details"
   const [showMoreDetails, setShowMoreDetails] = useState(false);
@@ -80,12 +83,20 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
   const fetchEventData = async () => {
     try {
       setLoading(true);
-      const res = await api.get<any>(`/events/${eventId}`);
+      const [res, groupRes] = await Promise.all([
+        api.get<any>(`/events/${eventId}`),
+        api.get<any>(`/events/${eventId}/group`).catch(() => ({ success: false })),
+      ]);
       if (res.success && res.event) {
         setEvent(res.event);
         setIsRegistered(!!res.isRegistered);
         setUserRegistration(res.registration || null);
         setUserCertificate(res.certificate || null);
+        if (groupRes?.success && groupRes.hasGroup) {
+          setEventGroup(groupRes.group);
+        } else {
+          setEventGroup(null);
+        }
       } else {
         setError(res.message || 'Event not found');
       }
@@ -93,6 +104,41 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
       setError(err.message || 'Failed to load event');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenOrCreateGroup = async () => {
+    try {
+      if (eventGroup) {
+        if (onNavigateToMessages) {
+          onNavigateToMessages(`group_${eventGroup._id}`);
+        } else {
+          window.location.href = `/messages?group=${eventGroup._id}`;
+        }
+        return;
+      }
+      if (canManage && event) {
+        setCreatingGroup(true);
+        const createRes = await api.post<any>('/groups', {
+          name: `${event.title} - Official Group`,
+          description: `Official participant group for ${event.title}`,
+          type: 'Event',
+          eventId: event._id,
+          reuseIfExists: true,
+        });
+        if (createRes.success && createRes.group) {
+          setEventGroup(createRes.group);
+          if (onNavigateToMessages) {
+            onNavigateToMessages(`group_${createRes.group._id}`);
+          } else {
+            window.location.href = `/messages?group=${createRes.group._id}`;
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to open event group', err);
+    } finally {
+      setCreatingGroup(false);
     }
   };
 
@@ -390,6 +436,19 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
           >
             <Share2 className="w-4 h-4 text-[var(--primary-color)]" /> Share Event
           </button>
+
+          {/* Event Group Chat / Create Event Group Button */}
+          {(eventGroup || canManage) && (
+            <button
+              onClick={handleOpenOrCreateGroup}
+              disabled={creatingGroup}
+              className="px-4 py-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-xs font-bold text-indigo-600 flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+              title={eventGroup ? 'Open event group chat' : 'Create event discussion group'}
+            >
+              <MessageSquare className="w-4 h-4 text-indigo-600" />
+              {creatingGroup ? 'Creating...' : eventGroup ? 'Event Group Chat' : 'Create Event Group'}
+            </button>
+          )}
 
           {isRegistered ? (
             <>

@@ -12,6 +12,8 @@ export interface IUser {
   collegeId?: string; // If College Admin/Super Admin
   adminPinHash?: string; // Hashed 4-digit Admin Access PIN (never plain)
   themePreference?: string; // Stored theme preference ('classic-blue', 'neutral-slate', 'system')
+  mfaEnabled?: boolean;
+  mfaSecret?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,6 +40,7 @@ export interface IStudentProfile {
   messagePrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody' | 'Following' | 'Connections';
   resumePrivacy?: 'Everyone' | 'Connections' | 'Colleges only' | 'Private';
   groupAddPrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody / request only';
+  groupPrivacy?: string;
   resumeFileUrl?: string;
   resumeFileType?: string; // 'pdf' | 'doc' | 'docx' | 'image'
   resumeOriginalName?: string;
@@ -257,8 +260,9 @@ export interface IEvent {
   creatorRole: 'Student' | 'College';
   creatorUserId: string;
   targetCollegeId?: string;
-  status: 'Draft' | 'Pending Approval' | 'Published' | 'Rejected' | 'Completed' | 'Cancelled';
+  status: 'Draft' | 'Pending Approval' | 'Published' | 'Rejected' | 'Completed' | 'Cancelled' | 'Changes Requested' | 'Closed' | string;
   rejectionReason?: string;
+  changesRequestedComment?: string;
   viewsCount: number;
   attendanceCount: number;
   certificatesIssuedCount: number;
@@ -512,7 +516,10 @@ export interface INotification {
   _id: string;
   id?: string;
   recipientUserId: string;
-  type: 'REGISTRATION' | 'PAYMENT' | 'REMINDER' | 'EVENT_APPROVAL' | 'EVENT_REJECTION' | 'EVENT_UPDATE' | 'CERTIFICATE' | 'ATTENDANCE' | 'ADMIN_ACTION' | 'ADMIN_INVITE';
+  recipientRole?: 'Student' | 'College Super Admin' | 'College Admin';
+  collegeId?: string;
+  category?: string;
+  type: 'REGISTRATION' | 'PAYMENT' | 'REMINDER' | 'EVENT_APPROVAL' | 'EVENT_REJECTION' | 'EVENT_UPDATE' | 'CERTIFICATE' | 'ATTENDANCE' | 'ADMIN_ACTION' | 'ADMIN_INVITE' | string;
   title: string;
   message: string;
   link?: string;
@@ -543,7 +550,7 @@ export interface IOtpVerification {
   id?: string;
   email: string;
   otpHash: string;
-  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'RESET_ADMIN_PIN';
+  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'RESET_ADMIN_PIN' | 'PASSWORD_RESET' | 'MFA_LOGIN' | 'MFA_SETUP' | string;
   payload?: any;
   expiresAt: string;
   resendAvailableAt: string;
@@ -581,6 +588,9 @@ export interface IMessage {
   _id: string;
   id?: string;
   conversationId: string;
+  groupId?: string;
+  isAnnouncement?: boolean;
+  isPinned?: boolean;
   senderId: string;
   senderName: string;
   senderRole: string;
@@ -596,7 +606,10 @@ export interface IMessage {
   readBy: string[]; // user IDs
   seenAt?: string;
   deletedFor: string[]; // user IDs
+  deletedForUserIds?: string[]; // user IDs
   deletedForEveryone?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -608,6 +621,61 @@ export interface IConversationPreference {
   conversationId: string;
   muted: boolean;
   hidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IGroup {
+  _id: string;
+  id?: string;
+  name: string;
+  description: string;
+  category?: string;
+  type?: 'Custom' | 'Event' | string;
+  imageUrl?: string;
+  coverUrl?: string;
+  collegeId?: string;
+  eventId?: string;
+  hostCollegeId?: string;
+  visibility?: 'Public' | 'Private' | 'Invite Only' | 'Event Participants Only' | string;
+  groupPrivacy?: 'Everyone' | 'Connections only' | 'Same College only' | 'Nobody' | 'Private' | string;
+  approvalRequired?: boolean;
+  verifiedOnly?: boolean;
+  maxMembers?: number;
+  permissions?: any;
+  rules?: string[];
+  moderation?: any;
+  notifications?: any;
+  ownerId: string;
+  membersCount: number;
+  lifecycleStatus?: 'Active' | 'Completed' | 'Cancelled' | 'Archived' | string;
+  isReadOnly?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IGroupMembership {
+  _id: string;
+  id?: string;
+  groupId: string;
+  userId: string;
+  role: 'Owner' | 'Admin' | 'Moderator' | 'Member';
+  status: 'Active' | 'Banned' | 'Muted' | 'Left' | 'Removed';
+  mutedUntil?: string;
+  invitedBy?: string;
+  addedBy?: string;
+  joinedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IGroupJoinRequest {
+  _id: string;
+  id?: string;
+  groupId: string;
+  userId: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  requestedAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -635,3 +703,6 @@ export const Message = new CollectionModel<IMessage>('messages');
 export const ConversationPreference = new CollectionModel<IConversationPreference>('conversationPreferences');
 export const AdminActivityLog = new CollectionModel<IAdminActivityLog>('adminActivityLogs');
 export const CredentialPost = new CollectionModel<ICredentialPost>('credentialPosts');
+export const Group = new CollectionModel<IGroup>('groups');
+export const GroupMembership = new CollectionModel<IGroupMembership>('groupMemberships');
+export const GroupJoinRequest = new CollectionModel<IGroupJoinRequest>('groupJoinRequests');

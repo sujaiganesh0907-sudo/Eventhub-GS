@@ -1,38 +1,30 @@
-import express from 'express';
-import cors from 'cors';
+import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import dotenv from 'dotenv';
+
+// Load environment variables from backend/.env and root .env BEFORE importing backend modules
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), 'backend/.env') });
+
+import express from 'express';
+import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 
-// Load backend environment variables BEFORE importing backend modules
-dotenv.config({
-  path: path.resolve(process.cwd(), 'backend', '.env'),
-});
+const PORT = Number(process.env.PORT) || 3000;
+const isProd = process.env.NODE_ENV === 'production';
 
 async function startServer() {
-  // Import backend modules only after environment variables are loaded
-  const { default: apiRouter } = await import('./backend/src/routes/index');
-  const { seedDatabaseIfEmpty } = await import('./backend/src/config/seed');
-  const { processDueReminders } = await import(
-    './backend/src/controllers/reminderController'
-  );
-
-  const PORT = Number(process.env.PORT) || 3000;
-  const isProd = process.env.NODE_ENV === 'production';
-
-  const hasCloudinaryConfig = Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
-  );
-
-  if (hasCloudinaryConfig) {
-    console.log('Cloudinary configuration detected');
-  } else {
-    console.log('Cloudinary configuration missing - local fallback enabled');
-  }
   const app = express();
+
+  // Dynamic backend imports so that Cloudinary, MongoDB, and other modules see loaded env variables
+  const { connectToMongo, isMongoConnected } = await import('./backend/src/config/db');
+  const { seedDatabaseIfEmpty } = await import('./backend/src/config/seed');
+  const { default: apiRouter } = await import('./backend/src/routes/index');
+  const { processDueReminders } = await import('./backend/src/controllers/reminderController');
+  const { isCloudinaryConfigured } = await import('./backend/src/services/cloudinaryService');
+
+  // Initialize MongoDB Atlas connection (eventhub_db)
+  await connectToMongo();
 
   // Ensure public uploads directory exists
   const uploadsDir = path.resolve(process.cwd(), 'public/uploads');
@@ -59,7 +51,13 @@ async function startServer() {
 
   // Health check endpoint
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'EVENTHUB Full-Stack Engine', time: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      service: 'EVENTHUB Full-Stack Engine',
+      database: isMongoConnected() ? 'MongoDB Atlas (eventhub_db)' : 'Embedded Engine Fallback',
+      cloudinary: isCloudinaryConfigured ? 'Configured & Active' : 'Local Storage Fallback Mode',
+      time: new Date().toISOString(),
+    });
   });
 
   // Direct any index requests straight to the web browser root
@@ -89,6 +87,8 @@ async function startServer() {
     console.log(`  EVENTHUB Web Application is Live!`);
     console.log(`  Directing to web browser: ${localUrl}`);
     console.log(`  Network access:         http://0.0.0.0:${PORT}`);
+    console.log(`  Database Status:        ${isMongoConnected() ? 'MongoDB Atlas (eventhub_db)' : 'Embedded Engine Fallback'}`);
+    console.log(`  Cloudinary Status:      ${isCloudinaryConfigured ? 'Cloudinary Storage' : 'Local Static Fallback'}`);
     console.log(`==================================================\n`);
 
     // In local non-CI environments, attempt to automatically open default browser

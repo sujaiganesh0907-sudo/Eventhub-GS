@@ -11,6 +11,13 @@ import {
   getCurrentUser,
   refreshToken,
   quickSwitch,
+  changePassword,
+  requestForgotPasswordOtp,
+  resetPasswordWithOtp,
+  requestEnableMfaOtp,
+  verifyEnableMfa,
+  disableMfa,
+  verifyMfaLogin,
 } from '../controllers/authController';
 import { getPublicStats } from '../controllers/statsController';
 import {
@@ -31,6 +38,8 @@ import {
   getStudentRegistrations,
   getCollegeRegistrations,
   getRegistrationTicket,
+  cancelRegistration,
+  rejectRegistration,
 } from '../controllers/registrationController';
 import {
   createPaymentOrder,
@@ -136,10 +145,31 @@ import {
   getConversationMessages,
   sendMessage,
   deleteMessage,
+  deleteMessageForMe,
+  deleteMessageForEveryone,
   deleteConversation,
   toggleMuteConversation,
   getUnreadMessagesCount,
 } from '../controllers/messageController';
+import {
+  createGroup,
+  getGroups,
+  getGroupById,
+  getGroupMembers,
+  addMember,
+  removeMember,
+  updateMemberRole,
+  joinGroup,
+  getJoinRequests,
+  reviewJoinRequest,
+  transferOwnership,
+  leaveGroup,
+  deleteGroup,
+  getGroupMessages,
+  sendGroupMessage,
+  togglePinGroupMessage,
+  getGroupByEventId,
+} from '../controllers/groupController';
 import uploadRouter from './uploadRoutes';
 import { authenticate, requireRole, optionalAuthenticate, requireAdminPermission } from '../middleware/auth';
 
@@ -159,6 +189,15 @@ apiRouter.post('/auth/login', login);
 apiRouter.post('/auth/quick-switch', quickSwitch);
 apiRouter.get('/auth/me', authenticate, getCurrentUser);
 apiRouter.post('/auth/refresh-token', refreshToken);
+
+// Security & Credentials routes (Requirements 10, 11, 12, 13)
+apiRouter.post('/auth/change-password', authenticate, changePassword);
+apiRouter.post('/auth/forgot-password/request-otp', requestForgotPasswordOtp);
+apiRouter.post('/auth/forgot-password/reset', resetPasswordWithOtp);
+apiRouter.post('/auth/mfa/enable/request-otp', authenticate, requestEnableMfaOtp);
+apiRouter.post('/auth/mfa/enable/verify', authenticate, verifyEnableMfa);
+apiRouter.post('/auth/mfa/disable', authenticate, disableMfa);
+apiRouter.post('/auth/mfa/verify-login', verifyMfaLogin);
 
 // Public Stats route (real database metrics)
 apiRouter.get('/stats', getPublicStats);
@@ -194,6 +233,8 @@ apiRouter.get('/registrations/my', authenticate, getStudentRegistrations);
 apiRouter.get('/registrations/student', authenticate, getStudentRegistrations);
 apiRouter.get('/registrations/college', authenticate, getCollegeRegistrations);
 apiRouter.get('/registrations/ticket/:registrationId', authenticate, getRegistrationTicket);
+apiRouter.post('/registrations/:id/cancel', authenticate, cancelRegistration);
+apiRouter.post('/registrations/:id/reject', authenticate, rejectRegistration);
 
 // 4. Payment routes
 apiRouter.post('/payments/create-order', authenticate, createPaymentOrder);
@@ -317,10 +358,36 @@ apiRouter.post('/messages/conversations', authenticate, startOrGetConversation);
 apiRouter.get('/messages/conversations/:id', authenticate, getConversationMessages);
 apiRouter.post('/messages/conversations/:id', authenticate, sendMessage);
 apiRouter.delete('/messages/:id', authenticate, deleteMessage);
+apiRouter.post('/messages/:id/delete-for-me', authenticate, deleteMessageForMe);
+apiRouter.post('/messages/:id/delete-for-everyone', authenticate, deleteMessageForEveryone);
 apiRouter.delete('/messages/conversations/:id', authenticate, deleteConversation);
 apiRouter.post('/messages/conversations/:id/mute', authenticate, toggleMuteConversation);
 
-// 15. File Uploads
+// 15. Groups & Collaboration (Part 5A)
+apiRouter.post('/groups', authenticate, createGroup);
+apiRouter.get('/groups', optionalAuthenticate, getGroups);
+apiRouter.get('/groups/:id', optionalAuthenticate, getGroupById);
+apiRouter.get('/groups/:id/members', optionalAuthenticate, getGroupMembers);
+apiRouter.post('/groups/:id/members', authenticate, addMember);
+apiRouter.delete('/groups/:id/members/:memberUserId', authenticate, removeMember);
+apiRouter.put('/groups/:id/members/:memberUserId/role', authenticate, updateMemberRole);
+apiRouter.post('/groups/:id/join', authenticate, joinGroup);
+apiRouter.get('/groups/:id/join-requests', authenticate, getJoinRequests);
+apiRouter.post('/groups/:id/join-requests/:requestId/review', authenticate, reviewJoinRequest);
+apiRouter.post('/groups/:id/transfer-ownership', authenticate, transferOwnership);
+apiRouter.post('/groups/:id/leave', authenticate, leaveGroup);
+apiRouter.delete('/groups/:id', authenticate, deleteGroup);
+
+// Group Chat Routes (Part 5B)
+apiRouter.get('/groups/:id/messages', authenticate, getGroupMessages);
+apiRouter.post('/groups/:id/messages', authenticate, sendGroupMessage);
+apiRouter.post('/groups/:id/messages/:messageId/pin', authenticate, togglePinGroupMessage);
+
+// Event Group Lookup (Part 5C)
+apiRouter.get('/groups/event/:eventId', optionalAuthenticate, getGroupByEventId);
+apiRouter.get('/events/:eventId/group', optionalAuthenticate, getGroupByEventId);
+
+// 16. File Uploads
 apiRouter.use('/upload', uploadRouter);
 
 export default apiRouter;

@@ -22,6 +22,7 @@ interface AuthContextType {
   registerStudent: (data: any) => Promise<any>;
   registerCollege: (data: any) => Promise<any>;
   verifyEmail: (email: string, code: string) => Promise<any>;
+  verifyMfaLogin: (email: string, otp: string) => Promise<any>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   updateStudentProfileLocal: (profile: Partial<IStudentProfile>) => void;
@@ -145,6 +146,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return verifyOtp(email, code, 'STUDENT_REGISTRATION');
   };
 
+  const verifyMfaLogin = async (email: string, otp: string) => {
+    const res = await api.post<any>('/auth/mfa/verify-login', { email, otp });
+    if (res.success && res.tokens?.accessToken) {
+      localStorage.setItem('eventhub_token', res.tokens.accessToken);
+      if (res.tokens?.refreshToken) {
+        localStorage.setItem('eventhub_refresh', res.tokens.refreshToken);
+      }
+      setUser(res.user);
+      setStudentProfile(res.studentProfile || null);
+      setCollege(res.college || null);
+      setHasAdminMemberships(Boolean(res.hasAdminMemberships));
+      setStatus('authenticated');
+    }
+    return res;
+  };
+
   const logout = () => {
     localStorage.removeItem('eventhub_token');
     localStorage.removeItem('eventhub_refresh');
@@ -208,6 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerStudent,
         registerCollege,
         verifyEmail,
+        verifyMfaLogin,
         logout,
         refreshProfile,
         updateStudentProfileLocal,

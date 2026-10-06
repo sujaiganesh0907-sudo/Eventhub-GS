@@ -64,6 +64,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 }) => {
   const {
     login,
+    verifyMfaLogin,
     requestStudentOtp,
     requestCollegeOtp,
     switchAccount,
@@ -76,6 +77,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  // MFA Challenge State during login
+  const [isMfaRequired, setIsMfaRequired] = useState(false);
+  const [mfaChallengeEmail, setMfaChallengeEmail] = useState('');
+  const [mfaChallengeOtp, setMfaChallengeOtp] = useState('');
+  const [mfaChallengeLoading, setMfaChallengeLoading] = useState(false);
+
+  // Forgot Password Modal State
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotCooldown, setForgotCooldown] = useState(0);
 
   // Student Registration Fields (Start completely empty)
   const [studentFullName, setStudentFullName] = useState('');
@@ -183,6 +202,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       const res = await login(loginEmail, loginPassword);
       if (res.success) {
         onSuccess();
+      } else if (res.requiresMfa) {
+        setIsMfaRequired(true);
+        setMfaChallengeEmail(res.email || loginEmail);
+        setMessage(res.message || 'Secondary 6-digit verification code dispatched to your email.');
       } else if (res.requiresVerification) {
         const targetEmail = res.email || loginEmail;
         const targetPurpose = role === 'student' ? 'STUDENT_REGISTRATION' : 'COLLEGE_REGISTRATION';
@@ -209,6 +232,111 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       setError(err.message || 'Error logging in.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMfaChallengeLoading(true);
+    setError(null);
+
+    try {
+      const res = await verifyMfaLogin(mfaChallengeEmail, mfaChallengeOtp.trim());
+      if (res.success) {
+        onSuccess();
+      } else {
+        setError(res.message || 'Invalid verification code.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error verifying MFA code.');
+    } finally {
+      setMfaChallengeLoading(false);
+    }
+  };
+
+  const handleRequestForgotOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    if (!forgotEmail || !forgotEmail.includes('@')) {
+      setForgotError('Please enter a valid registered email address.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await (await import('../services/api')).api.post<any>('/auth/forgot-password/request-otp', {
+        email: forgotEmail.trim(),
+      });
+
+      if (res.success) {
+        setForgotStep(2);
+        setForgotSuccess(res.message || 'Password reset verification code dispatched to your email.');
+        setForgotCooldown(60);
+        const timer = setInterval(() => {
+          setForgotCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setForgotError(res.message || 'Failed to dispatch reset code.');
+      }
+    } catch (err: any) {
+      setForgotError(err.message || 'Error requesting reset code.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    if (!forgotOtp || forgotOtp.trim().length !== 6) {
+      setForgotError('Please enter the 6-digit verification code.');
+      return;
+    }
+    if (!forgotNewPassword || forgotNewPassword.length < 8) {
+      setForgotError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError('Passwords do not match.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await (await import('../services/api')).api.post<any>('/auth/forgot-password/reset', {
+        email: forgotEmail.trim(),
+        otp: forgotOtp.trim(),
+        newPassword: forgotNewPassword,
+        confirmPassword: forgotConfirmPassword,
+      });
+
+      if (res.success) {
+        setForgotSuccess('Password reset successfully! You can now sign in with your new password.');
+        setTimeout(() => {
+          setShowForgotPassword(false);
+          setForgotStep(1);
+          setForgotOtp('');
+          setForgotNewPassword('');
+          setForgotConfirmPassword('');
+          setMessage('Password reset successful. Please sign in.');
+        }, 1500);
+      } else {
+        setForgotError(res.message || 'Failed to reset password.');
+      }
+    } catch (err: any) {
+      setForgotError(err.message || 'Error resetting password.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -518,7 +646,53 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         )}
 
         {/* 1. LOGIN MODE */}
-        {mode === 'login' && (
+        {mode === 'login' && isMfaRequired && (
+          <form onSubmit={handleVerifyMfaSubmit} className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
+              <div className="flex items-center gap-2 font-bold mb-1">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" /> Multi-Factor Authentication Required
+              </div>
+              A secondary 6-digit verification code has been dispatched to <strong>{mfaChallengeEmail}</strong>.
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                6-Digit Security Code *
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                required
+                value={mfaChallengeOtp}
+                onChange={(e) => setMfaChallengeOtp(e.target.value.replace(/\D/g, ''))}
+                placeholder="123456"
+                className="w-full tracking-widest text-center font-mono font-bold p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-base text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={mfaChallengeLoading}
+              className="w-full mt-2 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              {mfaChallengeLoading ? 'Verifying Code...' : 'Verify Code & Complete Sign In'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsMfaRequired(false);
+                setMfaChallengeOtp('');
+                setError(null);
+              }}
+              className="w-full py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer text-center"
+            >
+              Cancel & Back to Email Sign In
+            </button>
+          </form>
+        )}
+
+        {mode === 'login' && !isMfaRequired && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
@@ -538,9 +712,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-[var(--text-primary)]">Password</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(loginEmail || '');
+                    setShowForgotPassword(true);
+                  }}
+                  className="text-[11px] font-semibold text-[var(--primary-color)] hover:underline cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                 <input
@@ -999,6 +1183,147 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           />
         )}
       </div>
+
+      {/* Forgot Password Modal Dialog */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-[var(--primary-color)]" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Reset Account Password</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setForgotError(null);
+                  setForgotSuccess(null);
+                }}
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {forgotSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" /> {forgotSuccess}
+              </div>
+            )}
+
+            {forgotError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {forgotError}
+              </div>
+            )}
+
+            {forgotStep === 1 ? (
+              <form onSubmit={handleRequestForgotOtpSubmit} className="space-y-3">
+                <p className="text-xs text-[var(--text-muted)]">
+                  Enter your registered email address and we'll dispatch a secure 6-digit verification code.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                    Registered Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading || forgotCooldown > 0}
+                    className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {forgotLoading ? 'Dispatching...' : forgotCooldown > 0 ? `Wait ${forgotCooldown}s` : 'Send Reset Code'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
+                <p className="text-xs text-[var(--text-muted)]">
+                  Enter the 6-digit code dispatched to <strong>{forgotEmail}</strong> and choose a new password.
+                </p>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                    6-Digit Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    value={forgotOtp}
+                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    className="w-36 tracking-widest text-center font-mono font-bold p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={forgotNewPassword}
+                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                    placeholder="Min 8 characters"
+                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={forgotConfirmPassword}
+                    onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setForgotStep(1)}
+                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                  >
+                    Change Email
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                  >
+                    {forgotLoading ? 'Resetting...' : 'Verify & Set Password'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

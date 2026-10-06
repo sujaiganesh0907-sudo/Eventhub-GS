@@ -9,6 +9,7 @@ import {
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { generateTicketQR } from '../services/qrService';
+import { addStudentToEventGroup } from '../services/eventGroupService';
 
 export async function createPaymentOrder(req: AuthenticatedRequest, res: Response) {
   try {
@@ -109,6 +110,9 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response) {
 
     // Increment event registration count
     await Event.updateOne({ _id: event._id }, { $inc: { registeredCount: 1 } });
+
+    // PART 5C: Automatically add student to Event Group upon confirmed paid registration
+    await addStudentToEventGroup(event._id, registration.studentUserId);
 
     // Send notifications
     await Notification.create({
