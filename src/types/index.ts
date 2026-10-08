@@ -70,9 +70,14 @@ export interface ICollege {
   website?: string;
   logo: string;
   coverPhoto: string;
-  verificationStatus: 'Pending' | 'Verified' | 'Rejected';
+  verificationStatus: 'Pending' | 'Verified' | 'Rejected' | 'Changes Requested';
   isVerified?: boolean;
   rejectionReason?: string;
+  approvedEmailDomains?: string[];
+  domainVerificationToken?: string;
+  isDomainVerified?: boolean;
+  domainVerifiedAt?: string;
+  domainVerificationMethod?: 'DNS_TXT' | 'WEB_FILE' | 'MANUAL';
   superAdminId: string;
   messagePrivacy?: 'Everyone' | 'Connected' | 'Nobody';
   connectionsCount: number;
@@ -555,6 +560,8 @@ export interface IGroup {
   maxMembers?: number;
   ownerId: string;
   membersCount: number;
+  chatPermissions?: 'Everyone' | 'Admins Only' | string;
+  editPermissions?: 'All Members' | 'Admins Only' | string;
   lifecycleStatus?: 'Active' | 'Completed' | 'Cancelled' | 'Archived' | string;
   isReadOnly?: boolean;
   isMember?: boolean;

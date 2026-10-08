@@ -16,6 +16,10 @@ import {
   Sparkles,
   MapPin,
   Globe,
+  UserPlus,
+  AlertTriangle,
+  X,
+  Send,
 } from 'lucide-react';
 import { OtpVerificationView } from '../components/auth/OtpVerificationView';
 import {
@@ -128,6 +132,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(noticeMessage || null);
+
+  // Duplicate College Domain & Request Admin Access State (Requirement 8)
+  const [duplicateCollegeDomain, setDuplicateCollegeDomain] = useState<{
+    domain: string;
+    collegeName?: string;
+  } | null>(null);
+  const [showRequestAdminModal, setShowRequestAdminModal] = useState(false);
+  const [requestAdminName, setRequestAdminName] = useState('');
+  const [requestAdminEmail, setRequestAdminEmail] = useState('');
+  const [requestAdminPhone, setRequestAdminPhone] = useState('');
+  const [requestAdminMessage, setRequestAdminMessage] = useState('');
+  const [requestAdminLoading, setRequestAdminLoading] = useState(false);
+  const [requestAdminSuccess, setRequestAdminSuccess] = useState<string | null>(null);
+  const [requestAdminError, setRequestAdminError] = useState<string | null>(null);
 
   // Is environment development/demo?
   const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
@@ -479,12 +497,52 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           window.history.pushState(null, '', '/verify-otp');
         }
       } else {
+        if ((res as any).isDuplicateDomain) {
+          setDuplicateCollegeDomain({
+            domain: collegeOfficialDomain,
+            collegeName: (res as any).existingCollegeName,
+          });
+          setRequestAdminName(collegeName ? `${collegeName} Representative` : '');
+          setRequestAdminEmail(collegeEmail);
+          setRequestAdminPhone(collegePhone);
+        }
         setError(res.message || 'College registration failed.');
       }
     } catch (err: any) {
       setError(err.message || 'Unable to send verification code. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRequestAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRequestAdminLoading(true);
+    setRequestAdminError(null);
+    try {
+      const res = await (await import('../services/api')).api.post<any>('/auth/college/request-admin-access', {
+        officialDomain: duplicateCollegeDomain?.domain || collegeOfficialDomain,
+        requesterName: requestAdminName.trim(),
+        requesterEmail: requestAdminEmail.trim(),
+        requesterPhone: requestAdminPhone.trim(),
+        message: requestAdminMessage.trim(),
+      });
+      if (res.success) {
+        setRequestAdminSuccess(res.message || 'Your request has been routed to the College Super Admin.');
+        setTimeout(() => {
+          setShowRequestAdminModal(false);
+          setRequestAdminSuccess(null);
+          setMode('login');
+          setLoginEmail(requestAdminEmail);
+          setMessage('Admin access request submitted! You can sign in once your request is approved.');
+        }, 2200);
+      } else {
+        setRequestAdminError(res.message || 'Failed to submit request.');
+      }
+    } catch (err: any) {
+      setRequestAdminError(err.message || 'Unable to submit request.');
+    } finally {
+      setRequestAdminLoading(false);
     }
   };
 
@@ -993,7 +1051,43 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
             {/* COLLEGE REGISTRATION FORM */}
             {role === 'college' && (
-              <form onSubmit={handleCollegeRegister} className="space-y-3">
+              <div className="space-y-3">
+                {duplicateCollegeDomain && (
+                  <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs">
+                    <div className="font-bold flex items-center gap-1.5 mb-1 text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                      Domain Already Registered
+                    </div>
+                    <p className="text-[11px] leading-relaxed mb-2.5">
+                      The domain <span className="font-mono font-semibold">{duplicateCollegeDomain.domain}</span> is already owned by{' '}
+                      <strong>{duplicateCollegeDomain.collegeName || 'an existing college account'}</strong>.
+                      To protect institutional integrity, second Super Admin accounts cannot be created automatically.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowRequestAdminModal(true)}
+                        className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-bold text-xs shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" /> Request Admin Access
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError(null);
+                          setMessage('Please sign in with your institutional credentials.');
+                          setMode('login');
+                          setLoginEmail(collegeEmail);
+                        }}
+                        className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] text-xs font-semibold cursor-pointer"
+                      >
+                        Sign In Instead
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleCollegeRegister} className="space-y-3">
                 {/* Institution Name */}
                 <div>
                   <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
@@ -1169,7 +1263,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   </button>
                 </div>
               </form>
-            )}
+            </div>
+          )}
           </div>
         )}
 
@@ -1321,6 +1416,132 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* REQUEST ADMIN ACCESS MODAL (Requirement 8) */}
+      {showRequestAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-6 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => {
+                setShowRequestAdminModal(false);
+                setRequestAdminError(null);
+                setRequestAdminSuccess(null);
+              }}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  Request Delegated Admin Access
+                </h3>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  {duplicateCollegeDomain?.collegeName || 'Institutional Workspace'} ({duplicateCollegeDomain?.domain || collegeOfficialDomain})
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed mb-4">
+              An institutional account for this domain already exists. Complete this request to notify the primary College Super Admin to authorize and invite your account.
+            </p>
+
+            {requestAdminSuccess && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {requestAdminSuccess}
+              </div>
+            )}
+
+            {requestAdminError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {requestAdminError}
+              </div>
+            )}
+
+            <form onSubmit={handleRequestAdminSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                  Your Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={requestAdminName}
+                  onChange={(e) => setRequestAdminName(e.target.value)}
+                  placeholder="e.g. Dr. Jane Smith"
+                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                  Institutional Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={requestAdminEmail}
+                  onChange={(e) => setRequestAdminEmail(e.target.value)}
+                  placeholder={`name@${duplicateCollegeDomain?.domain || 'college.ac.in'}`}
+                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                  Contact Phone (Optional)
+                </label>
+                <input
+                  type="tel"
+                  value={requestAdminPhone}
+                  onChange={(e) => setRequestAdminPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                  Department / Reason *
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={requestAdminMessage}
+                  onChange={(e) => setRequestAdminMessage(e.target.value)}
+                  placeholder="e.g. Head of Computer Science Dept, organizing Inter-College Hackathon 2026."
+                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)] resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]">
+                <button
+                  type="button"
+                  onClick={() => setShowRequestAdminModal(false)}
+                  className="px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={requestAdminLoading}
+                  className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {requestAdminLoading ? 'Submitting...' : 'Send Request to Super Admin'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -86,6 +86,11 @@ import {
   getColleges,
   getCollegeById,
   updateCollegeProfile,
+  getDomainVerificationToken,
+  verifyCollegeDomainOwnership,
+  requestCollegeAdminAccess,
+  getCollegesPendingReview,
+  reviewCollegeAccreditation,
 } from '../controllers/collegeController';
 import {
   toggleCollegeConnection,
@@ -165,6 +170,7 @@ import {
   transferOwnership,
   leaveGroup,
   deleteGroup,
+  updateGroup,
   getGroupMessages,
   sendGroupMessage,
   togglePinGroupMessage,
@@ -287,6 +293,13 @@ apiRouter.put('/students/profile', authenticate, updateStudentProfile);
 
 // 8. Colleges routes
 apiRouter.get('/colleges', getColleges);
+apiRouter.get('/colleges/pending-review', getCollegesPendingReview);
+apiRouter.get('/colleges/domain-verification/token', authenticate, getDomainVerificationToken);
+apiRouter.post('/colleges/domain-verification/verify', authenticate, verifyCollegeDomainOwnership);
+apiRouter.post('/colleges/request-admin-access', requestCollegeAdminAccess);
+apiRouter.post('/auth/college/request-admin-access', requestCollegeAdminAccess);
+apiRouter.get('/admin/colleges/pending', getCollegesPendingReview);
+apiRouter.post('/admin/colleges/:id/review', reviewCollegeAccreditation);
 apiRouter.get('/colleges/:id', getCollegeById);
 apiRouter.put('/colleges/profile', authenticate, updateCollegeProfile);
 apiRouter.post('/colleges/:collegeId/follow', authenticate, (req, res) => {
@@ -375,6 +388,7 @@ apiRouter.post('/groups/:id/join', authenticate, joinGroup);
 apiRouter.get('/groups/:id/join-requests', authenticate, getJoinRequests);
 apiRouter.post('/groups/:id/join-requests/:requestId/review', authenticate, reviewJoinRequest);
 apiRouter.post('/groups/:id/transfer-ownership', authenticate, transferOwnership);
+apiRouter.put('/groups/:id', authenticate, updateGroup);
 apiRouter.post('/groups/:id/leave', authenticate, leaveGroup);
 apiRouter.delete('/groups/:id', authenticate, deleteGroup);
 

@@ -178,7 +178,8 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
 
   const seatsLeft = event.seatsLeft !== undefined ? event.seatsLeft : Math.max(0, event.capacity - (event.registeredCount || 0));
   const isFull = event.isFull || seatsLeft <= 0;
-  const isClosed = event.isClosed || event.deadlineStatus === 'Closed';
+  const isClosed = event.isClosed || event.deadlineStatus === 'Closed' || event.status === 'Completed' || event.status === 'Cancelled';
+  const isPublished = event.status === 'Published' || event.status === 'Approved';
   const progressPercent = Math.min(100, Math.round(((event.registeredCount || 0) / event.capacity) * 100));
 
   const posterSrc =
@@ -207,24 +208,34 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
         {/* Organizer Tools Bar */}
         {canManage && (
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setShowInsightsModal(true)}
-              className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> Analytics & Insights
-            </button>
-            <button
-              onClick={() => setShowAttendanceModal(true)}
-              className="px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-xs font-bold text-emerald-600 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Scan className="w-3.5 h-3.5" /> Check-in Desk
-            </button>
-            <button
-              onClick={() => setShowIssueCertModal(true)}
-              className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Award className="w-3.5 h-3.5" /> Issue Certificates
-            </button>
+            {isPublished && (
+              <>
+                <button
+                  onClick={() => setShowInsightsModal(true)}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> Analytics & Insights
+                </button>
+                <button
+                  onClick={() => setShowAttendanceModal(true)}
+                  className="px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-xs font-bold text-emerald-600 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Scan className="w-3.5 h-3.5" /> Check-in Desk
+                </button>
+                <button
+                  onClick={() => setShowIssueCertModal(true)}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Award className="w-3.5 h-3.5" /> Issue Certificates
+                </button>
+              </>
+            )}
+            {!isPublished && (
+              <span className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-bold flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>{event.status} Mode (Registrations & Desk Inactive)</span>
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -412,6 +423,11 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
               <CheckCircle2 className="w-5 h-5" />
               <span>You have a confirmed entry pass for this event!</span>
             </div>
+          ) : !isPublished ? (
+            <span className="text-amber-500 font-bold flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Event is currently {event.status}. Registrations open upon publishing.</span>
+            </span>
           ) : isClosed ? (
             <span className="text-red-500 font-bold">
               Registrations are officially closed for this event.
@@ -474,7 +490,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
                 <Bell className="w-4 h-4" /> Set Reminder
               </button>
             </>
-          ) : (
+          ) : isPublished ? (
             <button
               onClick={() => setShowRegModal(true)}
               disabled={isClosed || isFull}
@@ -482,7 +498,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
             >
               <Ticket className="w-4 h-4" /> Register Now
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -772,6 +788,13 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
             setShowRegModal(false);
             fetchEventData();
           }}
+          onNavigateToGroup={(groupId) => {
+            if (onNavigateToMessages) {
+              onNavigateToMessages(`group_${groupId}`);
+            } else {
+              window.location.href = `/messages?group=${groupId}`;
+            }
+          }}
         />
       )}
 
@@ -782,6 +805,13 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
           onClose={() => setShowTicketModal(false)}
           registration={userRegistration}
           event={event}
+          onNavigateToGroup={(groupId) => {
+            if (onNavigateToMessages) {
+              onNavigateToMessages(`group_${groupId}`);
+            } else {
+              window.location.href = `/messages?group=${groupId}`;
+            }
+          }}
         />
       )}
 

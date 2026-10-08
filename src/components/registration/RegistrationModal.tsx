@@ -27,6 +27,7 @@ interface RegistrationModalProps {
   onClose: () => void;
   event: IEvent;
   onRegistrationSuccess?: () => void;
+  onNavigateToGroup?: (groupId: string) => void;
 }
 
 export const RegistrationModal: React.FC<RegistrationModalProps> = ({
@@ -34,6 +35,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   onClose,
   event,
   onRegistrationSuccess,
+  onNavigateToGroup,
 }) => {
   const { user, studentProfile } = useAuth();
 
@@ -539,6 +541,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           }}
           registration={createdRegistration}
           event={event}
+          onNavigateToGroup={onNavigateToGroup}
         />
       )}
     </>

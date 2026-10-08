@@ -43,6 +43,9 @@ export async function createGroup(req: AuthenticatedRequest, res: Response) {
       maxMembers,
       rules = [],
       reuseIfExists = false,
+      chatPermissions = 'Everyone',
+      editPermissions = 'All Members',
+      memberIds = [],
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -116,6 +119,8 @@ export async function createGroup(req: AuthenticatedRequest, res: Response) {
       rules: Array.isArray(rules) ? rules : [],
       ownerId: user._id,
       membersCount: 1,
+      chatPermissions,
+      editPermissions,
       lifecycleStatus: isEventClosed ? eventDoc.status : 'Active',
       isReadOnly: Boolean(isEventClosed),
     });
@@ -129,6 +134,66 @@ export async function createGroup(req: AuthenticatedRequest, res: Response) {
       joinedAt: new Date().toISOString(),
     });
 
+    // Add eligible initial members, or send invitations if privacy requires it (Requirements 2, 3, 4)
+    let addedMembersCount = 0;
+    const invitedMembers: any[] = [];
+    if (Array.isArray(memberIds) && memberIds.length > 0) {
+      for (const mid of memberIds) {
+        if (!mid || mid === user._id) continue;
+        const targetUser = await User.findById(mid);
+        if (!targetUser) continue;
+
+        const perm = await checkGroupAddPermission(user._id, mid);
+        if (perm.allowed) {
+          await GroupMembership.create({
+            groupId: group._id,
+            userId: mid,
+            role: 'Member',
+            status: 'Active',
+            addedBy: user._id,
+            joinedAt: new Date().toISOString(),
+          });
+          addedMembersCount++;
+          await Notification.create({
+            recipientUserId: mid,
+            type: 'ADMIN_ACTION',
+            title: `Added to group "${group.name}"`,
+            message: `${user.fullName} added you to the group "${group.name}".`,
+            link: `/messages?group=${group._id}`,
+            read: false,
+          });
+        } else {
+          // User privacy requires invite
+          const existingReq = await GroupJoinRequest.findOne({ groupId: group._id, userId: mid, status: 'Pending' });
+          if (!existingReq) {
+            await GroupJoinRequest.create({
+              groupId: group._id,
+              userId: mid,
+              status: 'Pending',
+              requestedAt: new Date().toISOString(),
+            });
+          }
+          await Notification.create({
+            recipientUserId: mid,
+            type: 'ADMIN_ACTION',
+            title: `Group Invitation: "${group.name}"`,
+            message: `${user.fullName} invited you to join "${group.name}".`,
+            link: `/messages?group=${group._id}`,
+            read: false,
+          });
+          invitedMembers.push({
+            userId: mid,
+            name: targetUser.fullName,
+            reason: perm.reason || 'User privacy requires invitation',
+          });
+        }
+      }
+
+      if (addedMembersCount > 0) {
+        await Group.findByIdAndUpdate(group._id, { $inc: { membersCount: addedMembersCount } });
+      }
+    }
+
     // If Event Group, synchronize existing confirmed registered attendees!
     let syncedAttendees = 0;
     if (determinedType === 'Event' && eventDoc) {
@@ -141,6 +206,9 @@ export async function createGroup(req: AuthenticatedRequest, res: Response) {
       success: true,
       message: 'Group created successfully!',
       group: updatedGroup || group,
+      addedMembersCount,
+      invitedCount: invitedMembers.length,
+      invitedMembers,
       syncedAttendees,
     });
   } catch (error: any) {
@@ -306,9 +374,35 @@ export async function addMember(req: AuthenticatedRequest, res: Response) {
     // Check group add privacy (Requirement 4)
     const privacyCheck = await checkGroupAddPermission(user._id, targetUserId);
     if (!privacyCheck.allowed) {
+      if (req.body.inviteIfBlocked) {
+        const existingReq = await GroupJoinRequest.findOne({ groupId: id, userId: targetUserId, status: 'Pending' });
+        if (!existingReq) {
+          await GroupJoinRequest.create({
+            groupId: id,
+            userId: targetUserId,
+            status: 'Pending',
+            requestedAt: new Date().toISOString(),
+          });
+        }
+        await Notification.create({
+          recipientUserId: targetUserId,
+          type: 'ADMIN_INVITE',
+          title: `Group Invitation: "${group.name}"`,
+          message: `${user.fullName} invited you to join "${group.name}".`,
+          link: `/messages?group=${group._id}`,
+          read: false,
+        });
+        return res.status(200).json({
+          success: true,
+          invited: true,
+          message: `Invite sent to ${targetUser.fullName}. Their privacy settings require an invitation.`,
+        });
+      }
+
       return res.status(403).json({
         success: false,
         message: privacyCheck.reason || 'User privacy settings do not allow direct group addition.',
+        canInvite: true,
       });
     }
 
@@ -840,7 +934,74 @@ export async function getGroupMembers(req: AuthenticatedRequest, res: Response) 
 }
 
 /**
- * 13. Delete Group
+ * 13. Update Group Details & Permissions (Requirement 6, 12)
+ */
+export async function updateGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const group = await Group.findById(id);
+    if (!group) return res.status(404).json({ success: false, message: 'Group not found.' });
+
+    const membership = await GroupMembership.findOne({ groupId: id, userId: user._id, status: 'Active' });
+    if (!membership) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    const isOwner = group.ownerId === user._id || membership.role === 'Owner';
+    const isAdmin = membership.role === 'Admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Only group owners or admins can edit group settings.' });
+    }
+
+    // If editPermissions is Admins Only, and requester is not Owner/Admin
+    if (group.editPermissions === 'Admins Only' && !isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Only group administrators can modify group details.' });
+    }
+
+    const {
+      name,
+      description,
+      imageUrl,
+      coverUrl,
+      category,
+      visibility,
+      groupPrivacy,
+      chatPermissions,
+      editPermissions,
+      approvalRequired,
+    } = req.body;
+
+    const updateFields: any = {};
+    if (name && name.trim()) updateFields.name = name.trim();
+    if (description !== undefined) updateFields.description = description.trim();
+    if (imageUrl !== undefined) updateFields.imageUrl = imageUrl;
+    if (coverUrl !== undefined) updateFields.coverUrl = coverUrl;
+    if (category !== undefined) updateFields.category = category;
+    if (visibility !== undefined) updateFields.visibility = visibility;
+    if (groupPrivacy !== undefined) updateFields.groupPrivacy = groupPrivacy;
+    if (chatPermissions !== undefined) updateFields.chatPermissions = chatPermissions;
+    if (editPermissions !== undefined) updateFields.editPermissions = editPermissions;
+    if (approvalRequired !== undefined) updateFields.approvalRequired = Boolean(approvalRequired);
+
+    await Group.findByIdAndUpdate(id, updateFields);
+    const updated = await Group.findById(id);
+
+    return res.json({
+      success: true,
+      message: 'Group updated successfully!',
+      group: updated,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * 14. Delete Group
  */
 export async function deleteGroup(req: AuthenticatedRequest, res: Response) {
   try {
@@ -874,7 +1035,7 @@ export async function deleteGroup(req: AuthenticatedRequest, res: Response) {
 }
 
 /**
- * 14. Get Group Messages (Part 5B: Group chat access & ordering)
+ * 15. Get Group Messages (Part 5B: Group chat access & ordering, Part 6: Event card enrichment)
  */
 export async function getGroupMessages(req: AuthenticatedRequest, res: Response) {
   try {
@@ -925,20 +1086,49 @@ export async function getGroupMessages(req: AuthenticatedRequest, res: Response)
         (!m.deletedForUserIds || !m.deletedForUserIds.includes(user._id))
     );
 
-    // REQUIREMENT 7: Sanitize deleted-for-everyone messages
-    const sanitizedMessages = visibleMessages.map((m) => {
-      if (m.deletedForEveryone) {
-        return {
-          ...((m as any).toObject ? (m as any).toObject() : m),
-          text: 'This message was deleted',
-          attachmentUrl: undefined,
-          attachmentType: undefined,
-        };
-      }
-      return m;
-    });
+    // Sanitize and enrich messages
+    const sanitizedMessages = await Promise.all(
+      visibleMessages.map(async (m: any) => {
+        if (m.deletedForEveryone) {
+          return {
+            ...(m.toObject ? m.toObject() : m),
+            text: 'This message was deleted',
+            attachmentUrl: undefined,
+            attachmentType: undefined,
+            sharedEvent: null,
+          };
+        }
 
-    const pinnedMessages = sanitizedMessages.filter((m) => m.isPinned && !m.deletedForEveryone);
+        let sharedEvent = null;
+        if (m.sharedEventId) {
+          const ev = await Event.findById(m.sharedEventId);
+          if (ev) {
+            sharedEvent = {
+              _id: ev._id,
+              title: ev.title,
+              poster: ev.poster || ev.hostCollegeLogo,
+              hostCollegeName: ev.hostCollegeName,
+              eventDate: ev.eventDate,
+              startTime: ev.startTime,
+              endTime: ev.endTime,
+              eventMode: ev.eventMode,
+              venue: ev.venue || ev.meetingPlatform,
+              isFree: ev.isFree,
+              registrationFee: ev.registrationFee,
+              registrationDeadline: ev.registrationDeadline,
+              status: ev.status,
+            };
+          }
+        }
+
+        return {
+          ...(m.toObject ? m.toObject() : m),
+          sharedEvent,
+        };
+      })
+    );
+
+    const pinnedMessages = sanitizedMessages.filter((m: any) => m.isPinned && !m.deletedForEveryone);
 
     return res.json({
       success: true,
@@ -951,7 +1141,7 @@ export async function getGroupMessages(req: AuthenticatedRequest, res: Response)
 }
 
 /**
- * 15. Send Group Message (Part 5B: Announcement & Group notifications)
+ * 16. Send Group Message (Part 5B: Announcement & Group notifications, Part 6: Event sharing & Chat permissions)
  */
 export async function sendGroupMessage(req: AuthenticatedRequest, res: Response) {
   try {
@@ -959,7 +1149,7 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     const { id } = req.params;
-    const { text = '', attachmentUrl, attachmentType, isAnnouncement } = req.body;
+    const { text = '', attachmentUrl, attachmentType, isAnnouncement, sharedEventId } = req.body;
 
     const group = await Group.findById(id);
     if (!group) return res.status(404).json({ success: false, message: 'Group not found.' });
@@ -982,6 +1172,16 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
         success: false,
         message: 'You are temporarily muted from sending messages in this group.',
       });
+    }
+
+    // REQUIREMENT 12: Chat permission check (Admins Only)
+    if (group.chatPermissions === 'Admins Only') {
+      if (membership.role !== 'Owner' && membership.role !== 'Admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only group administrators can send messages in this group.',
+        });
+      }
     }
 
     // PART 5C: Event Group Lifecycle & Access Validation
@@ -1022,11 +1222,11 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
       });
     }
 
-    // Reject empty message
-    if (!text.trim() && !attachmentUrl) {
+    // Reject empty message (allow if attachment or sharedEventId is present)
+    if (!text.trim() && !attachmentUrl && !sharedEventId) {
       return res.status(400).json({
         success: false,
-        message: 'Message content or attachment is required.',
+        message: 'Message content, attachment, or shared event is required.',
       });
     }
 
@@ -1044,6 +1244,7 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
       text: text.trim(),
       attachmentUrl: attachmentUrl || undefined,
       attachmentType: attachmentType || (attachmentUrl ? 'image' : undefined),
+      sharedEventId: sharedEventId || undefined,
       isAnnouncement: Boolean(isAnnouncement),
       isPinned: false,
       readBy: [user._id],
@@ -1061,7 +1262,7 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
       status: 'Active',
     }).exec();
 
-    const preview = text.trim() || 'Sent an attachment';
+    const preview = text.trim() || (sharedEventId ? 'Shared an event' : 'Sent an attachment');
     for (const mem of activeMembers) {
       if (mem.userId !== user._id) {
         await Notification.create({
@@ -1076,7 +1277,36 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
       }
     }
 
-    return res.status(201).json({ success: true, message });
+    // Return message enriched with event if sharedEventId present
+    let enrichedEvent = null;
+    if (sharedEventId) {
+      const ev = await Event.findById(sharedEventId);
+      if (ev) {
+        enrichedEvent = {
+          _id: ev._id,
+          title: ev.title,
+          poster: ev.poster || ev.hostCollegeLogo,
+          hostCollegeName: ev.hostCollegeName,
+          eventDate: ev.eventDate,
+          startTime: ev.startTime,
+          endTime: ev.endTime,
+          eventMode: ev.eventMode,
+          venue: ev.venue || ev.meetingPlatform,
+          isFree: ev.isFree,
+          registrationFee: ev.registrationFee,
+          registrationDeadline: ev.registrationDeadline,
+          status: ev.status,
+        };
+      }
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: {
+        ...(message.toObject ? message.toObject() : message),
+        sharedEvent: enrichedEvent,
+      },
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }

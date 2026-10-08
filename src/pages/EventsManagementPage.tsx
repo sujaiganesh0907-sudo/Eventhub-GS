@@ -36,6 +36,7 @@ import {
   MoreVertical,
   Users,
   UserCheck,
+  Send,
 } from 'lucide-react';
 import { ActionMenu } from '../components/common/ActionMenu';
 import { ShareToChatModal } from '../components/common/ShareToChatModal';
@@ -106,6 +107,20 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
       }
     } catch (err: any) {
       alert(err.message || 'Failed to delete event proposal');
+    }
+  };
+
+  const handleSubmitForReview = async (event: IEvent) => {
+    try {
+      if (!confirm(`Submit "${event.title}" for review to host college?`)) return;
+      const res = await api.put<any>(`/events/${event._id}`, { submitForReview: true });
+      if (res.success) {
+        fetchData();
+      } else {
+        alert(res.message || 'Failed to submit proposal for review');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit proposal for review');
     }
   };
 
@@ -540,6 +555,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                         onViewEvent={onViewEvent}
                         onEditEvent={handleEditProposal}
                         onDeleteEvent={handleDeleteProposal}
+                        onSubmitForReview={handleSubmitForReview}
                         onViewInsights={(ev) => setSelectedEventForInsights(ev)}
                         onOpenCheckInDesk={(ev) => setSelectedEventForAttendance(ev)}
                         onShareEvent={(ev) => {
@@ -634,75 +650,118 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                                   {ev.title}
                                 </h3>
 
-                                {/* Complete 3-Dot Action Menu (Requirement 1) */}
+                                {/* Complete 3-Dot Action Menu (Requirement 7) */}
                                 <ActionMenu
-                                  items={[
-                                    {
-                                      id: 'view',
-                                      label: 'View Event',
-                                      icon: Eye,
-                                      onClick: () => onViewEvent(ev),
-                                    },
-                                    {
-                                      id: 'share',
-                                      label: 'Share Event',
-                                      icon: Share2,
-                                      onClick: () => {
-                                        setEventToShare(ev);
-                                        setShowShareModal(true);
-                                      },
-                                    },
-                                    {
-                                      id: 'edit',
-                                      label: 'Edit Event',
-                                      icon: Edit,
-                                      onClick: () => {
-                                        setEditingCollegeEvent(ev);
-                                      },
-                                    },
-                                    {
-                                      id: 'checkin',
-                                      label: 'Check-In Desk',
-                                      icon: Scan,
-                                      onClick: () => setSelectedEventForAttendance(ev),
-                                    },
-                                    {
-                                      id: 'registrations',
-                                      label: 'Registrations',
-                                      icon: Users,
-                                      onClick: () => setSelectedEventForRegistrations(ev),
-                                    },
-                                    {
-                                      id: 'attendance',
-                                      label: 'Attendance',
-                                      icon: UserCheck,
-                                      onClick: () => setSelectedEventForAttendance(ev),
-                                    },
-                                    {
-                                      id: 'certificates',
-                                      label: 'Certificates',
-                                      icon: Award,
-                                      onClick: () => setSelectedEventForCertificates(ev),
-                                    },
-                                    {
-                                      id: 'insights',
-                                      label: 'Analytics & Insights',
-                                      icon: BarChart3,
-                                      onClick: () => setSelectedEventForInsights(ev),
-                                    },
-                                    {
-                                      id: 'delete',
-                                      label: 'Delete Event',
-                                      icon: Trash2,
-                                      danger: true,
-                                      onClick: async () => {
-                                        if (confirm(`Are you sure you want to delete "${ev.title}"?`)) {
-                                          await api.delete(`/events/${ev._id}`);
-                                          fetchData();
-                                        }
-                                      },
-                                    },
-                                  ]}
+                                  items={
+                                    ev.status === 'Draft'
+                                      ? [
+                                          {
+                                            id: 'view',
+                                            label: 'Preview Event',
+                                            icon: Eye,
+                                            onClick: () => onViewEvent(ev),
+                                          },
+                                          {
+                                            id: 'edit',
+                                            label: 'Edit Draft',
+                                            icon: Edit,
+                                            onClick: () => {
+                                              setEditingCollegeEvent(ev);
+                                            },
+                                          },
+                                          {
+                                            id: 'publish',
+                                            label: 'Publish Event Now',
+                                            icon: Send,
+                                            onClick: async () => {
+                                              if (confirm(`Publish "${ev.title}" live on EVENTHUB now?`)) {
+                                                const res = await api.put<any>(`/events/${ev._id}`, { status: 'Published' });
+                                                if (res.success) fetchData();
+                                                else alert(res.message || 'Failed to publish event');
+                                              }
+                                            },
+                                          },
+                                          {
+                                            id: 'delete',
+                                            label: 'Delete Draft',
+                                            icon: Trash2,
+                                            danger: true,
+                                            onClick: async () => {
+                                              if (confirm(`Are you sure you want to delete draft "${ev.title}"?`)) {
+                                                await api.delete(`/events/${ev._id}`);
+                                                fetchData();
+                                              }
+                                            },
+                                          },
+                                        ]
+                                      : [
+                                          {
+                                            id: 'view',
+                                            label: 'View Event',
+                                            icon: Eye,
+                                            onClick: () => onViewEvent(ev),
+                                          },
+                                          {
+                                            id: 'share',
+                                            label: 'Share Event',
+                                            icon: Share2,
+                                            onClick: () => {
+                                              setEventToShare(ev);
+                                              setShowShareModal(true);
+                                            },
+                                          },
+                                          {
+                                            id: 'edit',
+                                            label: 'Edit Event',
+                                            icon: Edit,
+                                            onClick: () => {
+                                              setEditingCollegeEvent(ev);
+                                            },
+                                          },
+                                          {
+                                            id: 'checkin',
+                                            label: 'Check-In Desk',
+                                            icon: Scan,
+                                            onClick: () => setSelectedEventForAttendance(ev),
+                                          },
+                                          {
+                                            id: 'registrations',
+                                            label: 'Registrations',
+                                            icon: Users,
+                                            onClick: () => setSelectedEventForRegistrations(ev),
+                                          },
+                                          {
+                                            id: 'attendance',
+                                            label: 'Attendance',
+                                            icon: UserCheck,
+                                            onClick: () => setSelectedEventForAttendance(ev),
+                                          },
+                                          {
+                                            id: 'certificates',
+                                            label: 'Certificates',
+                                            icon: Award,
+                                            onClick: () => setSelectedEventForCertificates(ev),
+                                          },
+                                          {
+                                            id: 'insights',
+                                            label: 'Analytics & Insights',
+                                            icon: BarChart3,
+                                            onClick: () => setSelectedEventForInsights(ev),
+                                          },
+                                          {
+                                            id: 'delete',
+                                            label: 'Delete Event',
+                                            icon: Trash2,
+                                            danger: true,
+                                            onClick: async () => {
+                                              if (confirm(`Are you sure you want to delete "${ev.title}"?`)) {
+                                                await api.delete(`/events/${ev._id}`);
+                                                fetchData();
+                                              }
+                                            },
+                                          },
+                                        ]
+                                  }
                                   ariaLabel={`Options for ${ev.title}`}
                                   align="right"
                                 />
@@ -723,24 +782,36 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                           <div className="p-3 border-t border-[var(--border-color)] bg-[var(--surface-subtle)] rounded-b-2xl flex items-center justify-between gap-2">
                             <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
                               <Users className="w-3.5 h-3.5" />
-                              {ev.registeredCount || 0} / {ev.capacity}
+                              {ev.status === 'Draft' ? 'Draft (Not Live)' : `${ev.registeredCount || 0} / ${ev.capacity}`}
                             </span>
 
                             <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedEventForAttendance(ev)}
-                                className="px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors"
-                              >
-                                <Scan className="w-3 h-3" /> Desk
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedEventForRegistrations(ev)}
-                                className="px-2.5 py-1 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer hover:bg-[var(--surface-hover)] transition-colors"
-                              >
-                                <Users className="w-3 h-3 text-blue-500" /> Attendees
-                              </button>
+                              {ev.status === 'Draft' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCollegeEvent(ev)}
+                                  className="px-3 py-1 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-bold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer hover:bg-[var(--surface-hover)] transition-colors"
+                                >
+                                  <Edit className="w-3 h-3 text-[var(--primary-color)]" /> Edit Draft
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedEventForAttendance(ev)}
+                                    className="px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+                                  >
+                                    <Scan className="w-3 h-3" /> Desk
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedEventForRegistrations(ev)}
+                                    className="px-2.5 py-1 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer hover:bg-[var(--surface-hover)] transition-colors"
+                                  >
+                                    <Users className="w-3 h-3 text-blue-500" /> Attendees
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

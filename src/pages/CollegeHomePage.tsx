@@ -26,6 +26,7 @@ import {
   X,
   FileText,
   Eye,
+  Copy,
 } from 'lucide-react';
 
 interface CollegeHomePageProps {
@@ -107,6 +108,57 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
   const [requestFilter, setRequestFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected' | 'Changes Requested'>('All');
   const [actionProcessing, setActionProcessing] = useState(false);
 
+  // Requirement 11: Domain Ownership Verification State
+  const [showDomainVerifyModal, setShowDomainVerifyModal] = useState(false);
+  const [domainVerifyLoading, setDomainVerifyLoading] = useState(false);
+  const [domainVerifyMethod, setDomainVerifyMethod] = useState<'DNS_TXT' | 'WEB_FILE'>('DNS_TXT');
+  const [domainTokenData, setDomainTokenData] = useState<{
+    token: string;
+    dnsTxtRecord: string;
+    webFileUrl: string;
+    isDomainVerified: boolean;
+  } | null>(null);
+  const [domainVerifyStatus, setDomainVerifyStatus] = useState<string | null>(null);
+  const [domainVerifyError, setDomainVerifyError] = useState<string | null>(null);
+  const [copiedTxt, setCopiedTxt] = useState(false);
+
+  const handleOpenDomainVerify = async () => {
+    setShowDomainVerifyModal(true);
+    setDomainVerifyError(null);
+    setDomainVerifyStatus(null);
+    try {
+      const res = await api.get<any>('/colleges/domain-verification/token');
+      if (res.success) {
+        setDomainTokenData(res);
+      }
+    } catch (err: any) {
+      setDomainVerifyError(err.message || 'Failed to fetch domain verification token.');
+    }
+  };
+
+  const handleRunDomainVerification = async () => {
+    setDomainVerifyLoading(true);
+    setDomainVerifyError(null);
+    setDomainVerifyStatus(null);
+    try {
+      const res = await api.post<any>('/colleges/domain-verification/verify', {
+        method: domainVerifyMethod,
+      });
+      if (res.success) {
+        setDomainVerifyStatus(res.message || 'Domain ownership successfully verified!');
+        if (college) {
+          (college as any).isDomainVerified = true;
+        }
+      } else {
+        setDomainVerifyError(res.message || 'Domain ownership verification check failed.');
+      }
+    } catch (err: any) {
+      setDomainVerifyError(err.message || 'Failed to verify domain ownership.');
+    } finally {
+      setDomainVerifyLoading(false);
+    }
+  };
+
   // Request review actions
   const handleApproveProposal = async (eventId: string) => {
     try {
@@ -152,14 +204,34 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
       {/* SECTION 25: Verification Banner */}
       {isPending && (
-        <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-600 flex items-start gap-3 shadow-xs">
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-sm font-bold">Institution Verification in Progress</h3>
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">
-              Our university relations compliance team is verifying your official institutional domain ({college?.officialDomain}). Once verified, public event publishing, payment gateway settlements, and verified digital certificate signing will be fully unlocked.
-            </p>
+        <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-600 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-200">Institution Verification in Progress</h3>
+                {college?.isDomainVerified ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Domain Verified
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    Domain Proof Pending
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">
+                Our university relations compliance team is verifying your official institutional domain ({college?.officialDomain}). Once verified, public event publishing, payment settlements, and digital certificates will be fully unlocked.
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={handleOpenDomainVerify}
+            className="shrink-0 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
+          >
+            <ShieldCheck className="w-4 h-4" /> Verify Domain
+          </button>
         </div>
       )}
 
@@ -183,8 +255,13 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
                 <span title="Accredited Institution"><ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" /></span>
               )}
             </div>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              {college?.location} · Official Domain: <span className="font-mono">{college?.officialDomain}</span>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5 flex items-center flex-wrap gap-2">
+              <span>{college?.location} · Official Domain: <span className="font-mono">{college?.officialDomain}</span></span>
+              {college?.isDomainVerified && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Domain Verified
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -1015,6 +1092,170 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
             fetchDashboardData();
           }}
         />
+      )}
+
+      {/* Requirement 11: Domain Ownership Verification Modal */}
+      {showDomainVerifyModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => setShowDomainVerifyModal(false)}
+          title="Institutional Domain Ownership Proof"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              To verify administrative ownership of <span className="font-mono font-bold">{college?.officialDomain}</span>, choose a verification method below and publish the security token.
+            </p>
+
+            {domainVerifyStatus && (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {domainVerifyStatus}
+              </div>
+            )}
+
+            {domainVerifyError && (
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {domainVerifyError}
+              </div>
+            )}
+
+            {/* Method Tabs */}
+            <div className="flex border-b border-[var(--border-color)] gap-4 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setDomainVerifyMethod('DNS_TXT')}
+                className={`pb-2.5 transition-colors cursor-pointer border-b-2 ${
+                  domainVerifyMethod === 'DNS_TXT'
+                    ? 'border-[var(--primary-color)] text-[var(--primary-color)]'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                Method 1: DNS TXT Record (Recommended)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDomainVerifyMethod('WEB_FILE')}
+                className={`pb-2.5 transition-colors cursor-pointer border-b-2 ${
+                  domainVerifyMethod === 'WEB_FILE'
+                    ? 'border-[var(--primary-color)] text-[var(--primary-color)]'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                Method 2: Well-Known Web File
+              </button>
+            </div>
+
+            {domainVerifyMethod === 'DNS_TXT' ? (
+              <div className="space-y-3 bg-[var(--surface-subtle)] p-4 rounded-xl border border-[var(--border-color)]">
+                <div className="text-xs font-semibold text-[var(--text-primary)]">
+                  Add this TXT record to your institutional DNS manager:
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[var(--text-muted)] font-medium mb-1">
+                    Record Type:
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value="TXT"
+                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-mono text-[var(--text-primary)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[var(--text-muted)] font-medium mb-1">
+                    Host / Name:
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`@ or ${college?.officialDomain}`}
+                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-mono text-[var(--text-primary)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[var(--text-muted)] font-medium mb-1">
+                    TXT Value / Security Token:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={domainTokenData?.dnsTxtRecord || `eventhub-verification=${domainTokenData?.token || 'generating...'}`}
+                      className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-mono font-bold text-[var(--text-primary)] select-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rec = domainTokenData?.dnsTxtRecord || `eventhub-verification=${domainTokenData?.token || ''}`;
+                        navigator.clipboard?.writeText(rec);
+                        setCopiedTxt(true);
+                        setTimeout(() => setCopiedTxt(false), 2000);
+                      }}
+                      className="px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copiedTxt ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 bg-[var(--surface-subtle)] p-4 rounded-xl border border-[var(--border-color)]">
+                <div className="text-xs font-semibold text-[var(--text-primary)]">
+                  Upload a verification file on your official website:
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[var(--text-muted)] font-medium mb-1">
+                    File Location:
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`https://${college?.officialDomain}/.well-known/eventhub-verification.txt`}
+                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-mono text-[var(--text-primary)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[var(--text-muted)] font-medium mb-1">
+                    File Content (Exact Token):
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={domainTokenData?.token || 'generating...'}
+                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-mono font-bold text-[var(--text-primary)] select-all"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-3 border-t border-[var(--border-color)]">
+              <span className="text-[11px] text-[var(--text-muted)]">
+                Status: {college?.isDomainVerified ? 'Verified ✓' : 'Awaiting Proof'}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDomainVerifyModal(false)}
+                  className="px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={domainVerifyLoading}
+                  onClick={handleRunDomainVerification}
+                  className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {domainVerifyLoading ? 'Querying DNS / Web...' : 'Run Verification Check'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

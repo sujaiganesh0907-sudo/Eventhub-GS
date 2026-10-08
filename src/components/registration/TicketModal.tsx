@@ -1,13 +1,15 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
-import { Download, Printer, Share2, Calendar, MapPin, CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
+import { Download, Printer, Share2, Calendar, MapPin, CheckCircle2, ShieldCheck, Clock, MessageSquare, Loader2 } from 'lucide-react';
 import { IEventRegistration, IEvent } from '../../types';
+import { api } from '../../services/api';
 
 interface TicketModalProps {
   isOpen: boolean;
   onClose: () => void;
   registration: IEventRegistration;
   event?: IEvent;
+  onNavigateToGroup?: (groupId: string) => void;
 }
 
 export const TicketModal: React.FC<TicketModalProps> = ({
@@ -15,8 +17,33 @@ export const TicketModal: React.FC<TicketModalProps> = ({
   onClose,
   registration,
   event,
+  onNavigateToGroup,
 }) => {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const [eventGroup, setEventGroup] = useState<any | null>(null);
+  const [loadingGroup, setLoadingGroup] = useState(false);
+
+  const eventId = registration.eventId || event?._id;
+
+  useEffect(() => {
+    if (!isOpen || !eventId) return;
+    const checkGroup = async () => {
+      try {
+        setLoadingGroup(true);
+        const res = await api.get<any>(`/events/${eventId}/group`);
+        if (res.success && res.hasGroup && res.group) {
+          setEventGroup(res.group);
+        } else {
+          setEventGroup(null);
+        }
+      } catch (err) {
+        setEventGroup(null);
+      } finally {
+        setLoadingGroup(false);
+      }
+    };
+    checkGroup();
+  }, [isOpen, eventId]);
 
   const handlePrint = () => {
     window.print();
@@ -128,6 +155,35 @@ export const TicketModal: React.FC<TicketModalProps> = ({
             {registration.attended && (
               <div className="w-full p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-bold flex items-center justify-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" /> Attendance Verified & Scanned
+              </div>
+            )}
+
+            {/* EVENT GROUP ACCESS (Requirement 5) */}
+            {eventGroup && (
+              <div className="w-full p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-between gap-3 text-left">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">
+                    Official Participant Community
+                  </span>
+                  <p className="text-xs font-bold text-[var(--text-primary)] truncate">
+                    {eventGroup.name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onNavigateToGroup) {
+                      onNavigateToGroup(eventGroup._id);
+                    } else {
+                      window.location.href = `/messages?group=${eventGroup._id}`;
+                    }
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Join Event Group</span>
+                </button>
               </div>
             )}
           </div>

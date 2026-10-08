@@ -66,11 +66,31 @@ export interface ICollege {
   website?: string;
   logo: string;
   coverPhoto: string;
-  verificationStatus: 'Pending' | 'Verified' | 'Rejected';
+  verificationStatus: 'Pending' | 'Verified' | 'Rejected' | 'Changes Requested';
   rejectionReason?: string;
+  approvedEmailDomains?: string[]; // Pre-approved alternate email domains (e.g. ['college.ac.in'])
+  domainVerificationToken?: string; // DNS TXT token (eventhub-verification=<token>)
+  isDomainVerified?: boolean; // Domain ownership verified via DNS TXT or web token
+  domainVerifiedAt?: string;
+  domainVerificationMethod?: 'DNS_TXT' | 'WEB_FILE' | 'MANUAL';
   superAdminId: string;
   messagePrivacy?: 'Everyone' | 'Connected' | 'Nobody';
   connectionsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ICollegeAdminRequest {
+  _id: string;
+  id?: string;
+  collegeId: string;
+  collegeName: string;
+  collegeDomain: string;
+  requesterName: string;
+  requesterEmail: string;
+  requesterPhone?: string;
+  message?: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
   createdAt: string;
   updatedAt: string;
 }
@@ -648,6 +668,8 @@ export interface IGroup {
   notifications?: any;
   ownerId: string;
   membersCount: number;
+  chatPermissions?: 'Everyone' | 'Admins Only' | string;
+  editPermissions?: 'All Members' | 'Admins Only' | string;
   lifecycleStatus?: 'Active' | 'Completed' | 'Cancelled' | 'Archived' | string;
   isReadOnly?: boolean;
   createdAt: string;
@@ -706,3 +728,4 @@ export const CredentialPost = new CollectionModel<ICredentialPost>('credentialPo
 export const Group = new CollectionModel<IGroup>('groups');
 export const GroupMembership = new CollectionModel<IGroupMembership>('groupMemberships');
 export const GroupJoinRequest = new CollectionModel<IGroupJoinRequest>('groupJoinRequests');
+export const CollegeAdminRequest = new CollectionModel<ICollegeAdminRequest>('collegeAdminRequests');

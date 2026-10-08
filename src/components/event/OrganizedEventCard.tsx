@@ -15,6 +15,7 @@ import {
   Scan,
   UserCheck,
   Award,
+  Send,
 } from 'lucide-react';
 import { IEvent } from '../../types';
 import { ActionMenu, ActionMenuItem } from '../common/ActionMenu';
@@ -26,6 +27,7 @@ interface OrganizedEventCardProps {
   onViewEvent: (event: IEvent) => void;
   onEditEvent?: (event: IEvent) => void;
   onDeleteEvent?: (eventId: string) => void;
+  onSubmitForReview?: (event: IEvent) => void;
   onViewInsights?: (event: IEvent) => void;
   onOpenCheckInDesk?: (event: IEvent) => void;
   onViewRegistrations?: (event: IEvent) => void;
@@ -40,6 +42,7 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
   onViewEvent,
   onEditEvent,
   onDeleteEvent,
+  onSubmitForReview,
   onViewInsights,
   onOpenCheckInDesk,
   onViewRegistrations,
@@ -137,6 +140,14 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
 
   // Pre-approval actions or draft actions
   if (!isApproved && !isCompleted) {
+    if (onSubmitForReview && isDraft) {
+      menuItems.push({
+        id: 'submit-review',
+        label: 'Submit for Review',
+        icon: Send,
+        onClick: () => onSubmitForReview(event),
+      });
+    }
     if (onEditEvent) {
       menuItems.push({
         id: 'edit',

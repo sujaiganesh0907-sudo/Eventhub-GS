@@ -23,6 +23,7 @@ import {
   Megaphone,
   Info,
   LogOut,
+  Plus,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +40,7 @@ import {
   clearSearchHistory,
 } from '../services/searchHistory';
 import { SearchHistoryDropdown } from '../components/common/SearchHistoryDropdown';
+import { CreateGroupModal } from '../components/chat/CreateGroupModal';
 
 interface MessagesPageProps {
   initialConversationId?: string | null;
@@ -94,6 +96,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [pinnedMessages, setPinnedMessages] = useState<IMessage[]>([]);
   const [isAnnouncementMode, setIsAnnouncementMode] = useState(false);
   const [showGroupInfoModal, setShowGroupInfoModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
 
@@ -638,11 +641,22 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               {asCollegeId ? `${collegeName || 'Collegiate'} Inbox` : 'Messages & Groups'}
             </h2>
           </div>
-          {asCollegeId && (
-            <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 text-[10px] font-bold border border-blue-500/20">
-              Workspace
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {asCollegeId && (
+              <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 text-[10px] font-bold border border-blue-500/20">
+                Workspace
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowCreateGroupModal(true)}
+              className="px-2.5 py-1 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+              title="Create a new group"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Group</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher: Direct Chats vs Groups */}
@@ -718,12 +732,22 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           ) : activeTab === 'groups' ? (
             // GROUPS TAB LIST
             groups.length === 0 ? (
-              <div className="p-8 text-center space-y-2">
+              <div className="p-8 text-center space-y-3">
                 <Users className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
-                <h4 className="text-xs font-bold text-[var(--text-primary)]">No groups joined yet</h4>
-                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                  Join event and community groups to collaborate with your team.
-                </p>
+                <div>
+                  <h4 className="text-xs font-bold text-[var(--text-primary)]">No groups joined yet</h4>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">
+                    Start a study group, hackathon team, or campus circle.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95 mx-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Your First Group</span>
+                </button>
               </div>
             ) : (
               groups
@@ -1771,6 +1795,22 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* CREATE GROUP MODAL (Requirements 1, 2, 3) */}
+      {showCreateGroupModal && (
+        <CreateGroupModal
+          isOpen={showCreateGroupModal}
+          onClose={() => setShowCreateGroupModal(false)}
+          onGroupCreated={(newGroup) => {
+            setShowCreateGroupModal(false);
+            setGroups((prev) => [newGroup, ...prev.filter((g) => g._id !== newGroup._id)]);
+            setActiveTab('groups');
+            setSelectedGroupId(newGroup._id);
+            setSelectedConvId(null);
+            showToast(`Group "${newGroup.name}" created!`, 'success');
+          }}
+        />
       )}
     </div>
   );
