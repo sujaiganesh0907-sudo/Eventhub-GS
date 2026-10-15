@@ -95,6 +95,7 @@ export interface DBState {
   groups: any[];
   groupMemberships: any[];
   groupJoinRequests: any[];
+  collegeAdminRequests: any[];
 }
 
 let dbState: DBState = {
@@ -124,6 +125,7 @@ let dbState: DBState = {
   groups: [],
   groupMemberships: [],
   groupJoinRequests: [],
+  collegeAdminRequests: [],
 };
 
 // Load initial fallback state from .data/eventhub_db.json

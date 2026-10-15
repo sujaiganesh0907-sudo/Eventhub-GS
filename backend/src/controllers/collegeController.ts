@@ -342,11 +342,13 @@ export async function requestCollegeAdminAccess(req: Request, res: Response) {
     // Notify College Super Admin
     if (college.superAdminId) {
       await Notification.create({
+        recipientUserId: college.superAdminId,
         userId: college.superAdminId,
         title: 'New College Admin Access Request',
         message: `${requesterName.trim()} (${cleanEmail}) from your institution requested administrative access.`,
         type: 'ADMIN_INVITE',
         link: '/college/settings/admins',
+        read: false,
         isRead: false,
       });
     }
@@ -420,6 +422,7 @@ export async function reviewCollegeAccreditation(req: Request, res: Response) {
     // Notify Super Admin of College
     if (college.superAdminId) {
       await Notification.create({
+        recipientUserId: college.superAdminId,
         userId: college.superAdminId,
         title: `College Accreditation ${status === 'Verified' ? 'Approved' : status}`,
         message:
@@ -428,6 +431,7 @@ export async function reviewCollegeAccreditation(req: Request, res: Response) {
             : `Your college accreditation status was updated to ${status}. ${rejectionReason || ''}`,
         type: 'COLLEGE_VERIFICATION',
         link: '/college/profile',
+        read: false,
         isRead: false,
       });
     }

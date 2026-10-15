@@ -236,8 +236,8 @@ export async function runFinalAudit() {
     await User.findByIdAndUpdate(collegeAdmin._id, { adminPinHash });
 
     const adminWithPin = await User.findById(collegeAdmin._id);
-    const pinValid = await bcrypt.compare(pin, adminWithPin.adminPinHash);
-    const pinInvalid = await bcrypt.compare('9999', adminWithPin.adminPinHash);
+    const pinValid = await bcrypt.compare(pin, adminWithPin?.adminPinHash || '');
+    const pinInvalid = await bcrypt.compare('9999', adminWithPin?.adminPinHash || '');
 
     results['6. Admin PIN'] = pinValid && !pinInvalid ? 'PASS' : 'FAIL';
 

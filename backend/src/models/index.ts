@@ -12,6 +12,7 @@ export interface IUser {
   collegeId?: string; // If College Admin/Super Admin
   adminPinHash?: string; // Hashed 4-digit Admin Access PIN (never plain)
   themePreference?: string; // Stored theme preference ('classic-blue', 'neutral-slate', 'system')
+  status?: 'Active' | 'Suspended' | 'Pending' | string;
   mfaEnabled?: boolean;
   mfaSecret?: string;
   createdAt: string;
@@ -41,6 +42,7 @@ export interface IStudentProfile {
   resumePrivacy?: 'Everyone' | 'Connections' | 'Colleges only' | 'Private';
   groupAddPrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody / request only';
   groupPrivacy?: string;
+  resumeUrl?: string;
   resumeFileUrl?: string;
   resumeFileType?: string; // 'pdf' | 'doc' | 'docx' | 'image'
   resumeOriginalName?: string;
@@ -60,8 +62,13 @@ export interface ICollege {
   username?: string; // e.g. @apextech
   officialEmail: string;
   officialDomain: string;
+  domain?: string;
+  status?: string;
   contactNumber: string;
   location: string;
+  address?: string;
+  city?: string;
+  state?: string;
   bio: string;
   website?: string;
   logo: string;
@@ -74,6 +81,7 @@ export interface ICollege {
   domainVerifiedAt?: string;
   domainVerificationMethod?: 'DNS_TXT' | 'WEB_FILE' | 'MANUAL';
   superAdminId: string;
+  superAdminEmail?: string;
   messagePrivacy?: 'Everyone' | 'Connected' | 'Nobody';
   connectionsCount: number;
   createdAt: string;
@@ -406,11 +414,13 @@ export interface IAttendance {
   eventId: string;
   registrationId: string;
   studentId: string;
+  studentUserId?: string;
   studentName: string;
   studentCollege: string;
   method: 'QR_SCAN' | 'MANUAL';
   markedByUserId: string;
   status: 'Present' | 'Absent';
+  isFinalized?: boolean;
   markedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -421,20 +431,25 @@ export interface ICertificate {
   id?: string;
   certificateId: string; // Unique Credential ID
   title: string;
+  eventTitle?: string;
   eventId?: string;
   registrationId?: string;
   studentId: string;
   studentUserId?: string;
+  studentName?: string;
   collegeId?: string;
   issuingOrganization: string;
   collegeLogo?: string;
   isCollegeVerified?: boolean;
+  isVerifiedCollegeCertificate?: boolean;
   achievementType: 'Winner' | 'Runner-up' | 'Participation' | 'Excellence' | 'Appreciation' | 'Completion';
+  status?: string;
   issueDate: string;
   location?: string;
   eventName?: string;
   description?: string;
   fileUrl: string; // Cloudinary or local PDF/Image URL
+  pdfUrl?: string;
   docxFileUrl?: string; // DOCX personalized certificate URL
   coverUrl?: string; // Cover image URL for PDF/DOC/DOCX certificates
   fileType?: string; // 'pdf' | 'doc' | 'docx' | 'image'
@@ -536,6 +551,7 @@ export interface INotification {
   _id: string;
   id?: string;
   recipientUserId: string;
+  userId?: string;
   recipientRole?: 'Student' | 'College Super Admin' | 'College Admin';
   collegeId?: string;
   category?: string;
@@ -544,6 +560,7 @@ export interface INotification {
   message: string;
   link?: string;
   read: boolean;
+  isRead?: boolean;
   metadata?: any;
   createdAt: string;
   updatedAt: string;
@@ -594,12 +611,16 @@ export interface IConversation {
   id?: string;
   collegeId?: string; // If this conversation is in a College Workspace Inbox
   participants: string[]; // user IDs
+  participantIds?: string[];
   participantDetails: IConversationParticipant[];
   lastMessage?: {
     text: string;
     senderId: string;
     timestamp: string;
   };
+  lastMessageText?: string;
+  lastMessageAt?: string;
+  context?: any;
   createdAt: string;
   updatedAt: string;
 }

@@ -126,7 +126,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
       if (res.success && res.fileUrl) {
         setGroupPhoto(res.fileUrl);
       } else {
-        setError(res.message || 'Failed to upload photo.');
+        setError((res as any)?.message || 'Failed to upload photo.');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to upload group photo.');

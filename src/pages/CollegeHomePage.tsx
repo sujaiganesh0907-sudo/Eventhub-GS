@@ -1100,7 +1100,7 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
           isOpen={true}
           onClose={() => setShowDomainVerifyModal(false)}
           title="Institutional Domain Ownership Proof"
-          size="lg"
+          maxWidth="lg"
         >
           <div className="space-y-4">
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
