@@ -22,6 +22,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({
   const ticketRef = useRef<HTMLDivElement>(null);
   const [eventGroup, setEventGroup] = useState<any | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(false);
+  const [joiningGroup, setJoiningGroup] = useState(false);
 
   const eventId = registration.eventId || event?._id;
 
@@ -44,6 +45,41 @@ export const TicketModal: React.FC<TicketModalProps> = ({
     };
     checkGroup();
   }, [isOpen, eventId]);
+
+  const handleJoinOrOpenGroup = async () => {
+    if (!eventGroup) return;
+    if (eventGroup.isMember) {
+      onClose();
+      if (onNavigateToGroup) {
+        onNavigateToGroup(eventGroup._id);
+      } else {
+        window.location.href = `/messages?group=${eventGroup._id}`;
+      }
+      return;
+    }
+
+    try {
+      setJoiningGroup(true);
+      await api.post(`/groups/${eventGroup._id}/join`, {});
+      setEventGroup((prev: any) => ({ ...prev, isMember: true }));
+      onClose();
+      if (onNavigateToGroup) {
+        onNavigateToGroup(eventGroup._id);
+      } else {
+        window.location.href = `/messages?group=${eventGroup._id}`;
+      }
+    } catch (err) {
+      // If error or already member, navigate directly
+      onClose();
+      if (onNavigateToGroup) {
+        onNavigateToGroup(eventGroup._id);
+      } else {
+        window.location.href = `/messages?group=${eventGroup._id}`;
+      }
+    } finally {
+      setJoiningGroup(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -158,34 +194,50 @@ export const TicketModal: React.FC<TicketModalProps> = ({
               </div>
             )}
 
-            {/* EVENT GROUP ACCESS (Requirement 5) */}
-            {eventGroup && (
-              <div className="w-full p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-between gap-3 text-left">
-                <div className="min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">
-                    Official Participant Community
-                  </span>
-                  <p className="text-xs font-bold text-[var(--text-primary)] truncate">
-                    {eventGroup.name}
-                  </p>
+            {/* EVENT GROUP ACCESS (Requirements 8, 9, 10) */}
+            {eventGroup &&
+              (registration.status === 'Confirmed' || !registration.status) &&
+              (registration.paymentStatus === 'Completed' ||
+                registration.paymentStatus === 'Waived' ||
+                !registration.paymentStatus) && (
+                <div className="w-full p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-between gap-3 text-left">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">
+                      Official Event Community
+                    </span>
+                    <p className="text-xs font-bold text-[var(--text-primary)] truncate">
+                      {eventGroup.name}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-muted)]">
+                      {eventGroup.membersCount || 1} members · {eventGroup.chatPermissions || 'Everyone can message'}
+                    </p>
+                  </div>
+                  {eventGroup.isMember ? (
+                    <button
+                      type="button"
+                      onClick={handleJoinOrOpenGroup}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Open Event Group</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={joiningGroup}
+                      onClick={handleJoinOrOpenGroup}
+                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {joiningGroup ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      )}
+                      <span>Join Event Group</span>
+                    </button>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    if (onNavigateToGroup) {
-                      onNavigateToGroup(eventGroup._id);
-                    } else {
-                      window.location.href = `/messages?group=${eventGroup._id}`;
-                    }
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Join Event Group</span>
-                </button>
-              </div>
-            )}
+              )}
           </div>
         </div>
 

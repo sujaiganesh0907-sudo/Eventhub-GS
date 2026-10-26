@@ -379,34 +379,6 @@ export const EditStudentProfileModal: React.FC<EditStudentProfileModalProps> = (
                   {resumeFileType || 'PDF'}
                 </span>
               </div>
-
-              {/* Optional Resume Cover Image for PDF / DOC / DOCX */}
-              {isDocType && (
-                <div className="space-y-1.5 pt-2 border-t border-[var(--border-color)]/50">
-                  <FileUpload
-                    label="Resume Cover Image (Optional)"
-                    helperText="Upload a custom cover or visual thumbnail for your resume card (JPG, PNG, WEBP)"
-                    value={resumeCoverUrl}
-                    onChange={(url) => setResumeCoverUrl(url)}
-                    accept="image/jpeg,image/png,image/webp"
-                  />
-                  {resumeCoverUrl ? (
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setResumeCoverUrl('')}
-                        className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" /> Remove Custom Cover
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-[var(--text-muted)] italic text-right">
-                      Professional document placeholder cover is used when no image is uploaded
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>

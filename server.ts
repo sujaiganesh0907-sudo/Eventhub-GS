@@ -10,7 +10,37 @@ import express from 'express';
 import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 
-const PORT = Number(process.env.PORT) || 3000;
+function resolvePort(): number {
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const val = parseInt(process.argv[portArgIndex + 1], 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  const pArgIndex = process.argv.indexOf('-p');
+  if (pArgIndex !== -1 && process.argv[pArgIndex + 1]) {
+    const val = parseInt(process.argv[pArgIndex + 1], 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  if (process.env.APP_PORT) {
+    const val = parseInt(process.env.APP_PORT, 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  // If PORT is 8080 (Cloud Run container port used by Nginx), run app on default port 3000
+  if (process.env.PORT && process.env.PORT !== '8080') {
+    const val = parseInt(process.env.PORT, 10);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  return 3000;
+}
+
+function resolveHost(): string {
+  const hostArgIndex = process.argv.indexOf('--host');
+  if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
+    return process.argv[hostArgIndex + 1];
+  }
+  return '0.0.0.0';
+}
+
 const isProd = process.env.NODE_ENV === 'production';
 
 async function startServer() {
@@ -75,29 +105,25 @@ async function startServer() {
   } else {
     // In dev mode, mount Vite middleware
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: process.env.DISABLE_HMR === 'true' ? false : undefined,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    const localUrl = `http://localhost:${PORT}`;
+  const PORT = resolvePort();
+  const HOST = resolveHost();
+
+  app.listen(PORT, HOST, () => {
     console.log(`\n==================================================`);
     console.log(`  EVENTHUB Web Application is Live!`);
-    console.log(`  Directing to web browser: ${localUrl}`);
-    console.log(`  Network access:         http://0.0.0.0:${PORT}`);
+    console.log(`  Listening on http://${HOST}:${PORT}`);
     console.log(`  Database Status:        ${isMongoConnected() ? 'MongoDB Atlas (eventhub_db)' : 'Embedded Engine Fallback'}`);
     console.log(`  Cloudinary Status:      ${isCloudinaryConfigured ? 'Cloudinary Storage' : 'Local Static Fallback'}`);
     console.log(`==================================================\n`);
-
-    // In local non-CI environments, attempt to automatically open default browser
-    if (process.env.NODE_ENV !== 'production' && !process.env.CI && process.env.OPEN_BROWSER === 'true') {
-      import('child_process').then(({ exec }) => {
-        const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-        exec(`${cmd} ${localUrl}`, () => {});
-      }).catch(() => {});
-    }
 
     // Run reminder processor every 20 seconds
     setInterval(() => {

@@ -81,6 +81,7 @@ import {
   searchStudents,
   checkUsernameAvailability,
   getStudentResume,
+  deleteStudentResume,
 } from '../controllers/studentController';
 import {
   getColleges,
@@ -175,6 +176,8 @@ import {
   sendGroupMessage,
   togglePinGroupMessage,
   getGroupByEventId,
+  clearGroupChat,
+  toggleMuteGroupNotifications,
 } from '../controllers/groupController';
 import uploadRouter from './uploadRoutes';
 import { authenticate, requireRole, optionalAuthenticate, requireAdminPermission } from '../middleware/auth';
@@ -290,6 +293,8 @@ apiRouter.get('/students/me', authenticate, getStudentProfile);
 apiRouter.get('/students/search', searchStudents);
 apiRouter.get('/students/:id', optionalAuthenticate, getStudentProfile);
 apiRouter.put('/students/profile', authenticate, updateStudentProfile);
+apiRouter.delete('/students/resume', authenticate, deleteStudentResume);
+apiRouter.delete('/student/resume', authenticate, deleteStudentResume);
 
 // 8. Colleges routes
 apiRouter.get('/colleges', getColleges);
@@ -390,6 +395,8 @@ apiRouter.post('/groups/:id/join-requests/:requestId/review', authenticate, revi
 apiRouter.post('/groups/:id/transfer-ownership', authenticate, transferOwnership);
 apiRouter.put('/groups/:id', authenticate, updateGroup);
 apiRouter.post('/groups/:id/leave', authenticate, leaveGroup);
+apiRouter.post('/groups/:id/clear', authenticate, clearGroupChat);
+apiRouter.post('/groups/:id/mute', authenticate, toggleMuteGroupNotifications);
 apiRouter.delete('/groups/:id', authenticate, deleteGroup);
 
 // Group Chat Routes (Part 5B)

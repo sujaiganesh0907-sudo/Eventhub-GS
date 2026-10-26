@@ -60,30 +60,8 @@ export async function getStudentProfile(req: Request, res: Response) {
       }
     }
 
-    // Resume privacy enforcement (Requirement 11)
-    // Who can view my resume: Everyone | Connections | Colleges only | Private
-    const resumePriv = profile.resumePrivacy || 'Colleges only';
-    let canViewResume = false;
-
-    if (isOwner) {
-      canViewResume = true;
-    } else {
-      if (resumePriv === 'Everyone') {
-        canViewResume = true;
-      } else if (resumePriv === 'Connections') {
-        canViewResume = isMutualConnection;
-      } else if (resumePriv === 'Colleges only') {
-        const isCollegeViewer = Boolean(
-          authReq.user &&
-          (authReq.user.role === 'College Super Admin' ||
-           authReq.user.role === 'College Admin' ||
-           authReq.user.collegeId)
-        );
-        canViewResume = isCollegeViewer;
-      } else if (resumePriv === 'Private') {
-        canViewResume = false;
-      }
-    }
+    // Resume visibility follows general profile visibility only (Requirement 13)
+    const canViewResume = !isRestricted;
 
     const certificatesCount = await Certificate.countDocuments({ studentId: profile._id, isDraft: false });
     const registeredCount = await EventRegistration.countDocuments({ studentId: profile._id });
@@ -319,34 +297,23 @@ export async function getStudentResume(req: Request, res: Response) {
       }
     }
 
-    const resumePriv = profile.resumePrivacy || 'Colleges only';
-    let canViewResume = false;
-
-    if (isOwner) {
-      canViewResume = true;
-    } else {
-      if (resumePriv === 'Everyone') {
-        canViewResume = true;
-      } else if (resumePriv === 'Connections') {
-        canViewResume = isMutualConnection;
-      } else if (resumePriv === 'Colleges only') {
-        const isCollegeViewer = Boolean(
-          authReq.user &&
-          (authReq.user.role === 'College Super Admin' ||
-           authReq.user.role === 'College Admin' ||
-           authReq.user.collegeId)
-        );
-        canViewResume = isCollegeViewer;
-      } else if (resumePriv === 'Private') {
-        canViewResume = false;
+    const visibility = profile.profileVisibility || 'Public';
+    let isRestricted = false;
+    if (!isOwner) {
+      if (visibility === 'Private') {
+        isRestricted = true;
+      } else if (visibility === 'Connections only') {
+        isRestricted = !isMutualConnection;
+      } else if (visibility === 'EVENTHUB users') {
+        isRestricted = !currentUserId;
       }
     }
 
-    if (!canViewResume) {
+    // Resume visibility follows general profile visibility only (Requirement 13)
+    if (isRestricted) {
       return res.status(403).json({
         success: false,
-        message: 'Access to this student\'s resume is restricted by their privacy settings.',
-        resumePrivacy: resumePriv,
+        message: 'This student profile is private.',
       });
     }
 
@@ -363,6 +330,40 @@ export async function getStudentResume(req: Request, res: Response) {
         uploadedAt: profile.resumeUploadedAt || profile.updatedAt,
         coverUrl: profile.resumeCoverUrl,
       },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * Delete Student Resume (Requirement 12)
+ * Clears resume reference and metadata while preserving unrelated profile data.
+ */
+export async function deleteStudentResume(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const profile = await StudentProfile.findOne({ userId: user._id });
+    if (!profile) return res.status(404).json({ success: false, message: 'Student profile not found.' });
+
+    const updated = await StudentProfile.findByIdAndUpdate(profile._id, {
+      $set: {
+        resumeFileUrl: undefined,
+        resumeFileType: undefined,
+        resumeOriginalName: undefined,
+        resumeUploadedAt: undefined,
+        resumeUrl: undefined,
+        resumeCoverUrl: undefined,
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: 'Resume deleted successfully.',
+      profile: updated,
+      student: updated,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

@@ -103,6 +103,8 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   // Modals state
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [showDeleteResumeConfirm, setShowDeleteResumeConfirm] = useState(false);
+  const [deletingResume, setDeletingResume] = useState(false);
   const [showAddCertModal, setShowAddCertModal] = useState(false);
   const [editingCert, setEditingCert] = useState<ICertificate | null>(null);
   const [selectedCert, setSelectedCert] = useState<ICertificate | null>(null);
@@ -484,6 +486,46 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
     }
   };
 
+  const handleDeleteResume = async () => {
+    try {
+      setDeletingResume(true);
+      const res = await api.delete<any>('/students/resume');
+      if (res.success) {
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                resumeFileUrl: undefined,
+                resumeFileType: undefined,
+                resumeOriginalName: undefined,
+                resumeUploadedAt: undefined,
+                resumeUrl: undefined,
+                resumeCoverUrl: undefined,
+              }
+            : prev
+        );
+        if (updateStudentProfileLocal) {
+          updateStudentProfileLocal({
+            resumeFileUrl: undefined,
+            resumeFileType: undefined,
+            resumeOriginalName: undefined,
+            resumeUploadedAt: undefined,
+            resumeUrl: undefined,
+            resumeCoverUrl: undefined,
+          });
+        }
+        setShowDeleteResumeConfirm(false);
+        setShowResumeModal(false);
+      } else {
+        alert(res.message || 'Failed to delete resume');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error deleting resume');
+    } finally {
+      setDeletingResume(false);
+    }
+  };
+
   if (loading && !profile) {
     return (
       <div className="py-20 flex flex-col items-center justify-center space-y-3">
@@ -751,117 +793,65 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             </div>
           )}
 
-          {/* SECTION: RESUME CARD (Requirements 7, 8, 9, 10, 11) */}
-          <div className="pt-4 mt-2 border-t border-[var(--border-color)]">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                Resume & Professional Document
-              </span>
-              {isOwnProfile && profile?.resumeFileUrl && (
+          {/* SECTION: COMPACT RESUME (Requirements 9, 10, 11, 12, 13) */}
+          <div className="pt-3 mt-1 border-t border-[var(--border-color)]">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] flex items-center gap-1.5 shrink-0">
+                  <FileText className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                  Resume
+                </span>
+                {profile?.resumeFileUrl && (
+                  <span
+                    className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[150px] sm:max-w-xs"
+                    title={profile.resumeOriginalName || 'Resume Document'}
+                  >
+                    {profile.resumeOriginalName || 'Resume Document'}
+                  </span>
+                )}
+                {profile?.resumeFileUrl && (
+                  <span className="px-1.5 py-0.5 rounded-md bg-[var(--primary-color)]/10 text-[var(--primary-color)] font-bold text-[10px] uppercase shrink-0">
+                    {profile.resumeFileType || 'PDF'}
+                  </span>
+                )}
+              </div>
+
+              {profile?.resumeFileUrl ? (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowResumeModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View Resume</span>
+                  </button>
+
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteResumeConfirm(true)}
+                      className="px-3 py-1.5 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                      title="Delete Resume"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Resume</span>
+                    </button>
+                  )}
+                </div>
+              ) : isOwnProfile ? (
                 <button
                   type="button"
                   onClick={() => setShowEditModal(true)}
-                  className="text-xs font-bold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl border border-dashed border-[var(--primary-color)]/50 hover:border-[var(--primary-color)] text-[var(--primary-color)] hover:bg-[var(--primary-color)]/5 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
                 >
-                  <Edit className="w-3 h-3" /> Edit Resume
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Resume</span>
                 </button>
+              ) : (
+                <span className="text-xs text-[var(--text-muted)] italic">No resume uploaded</span>
               )}
             </div>
-
-            {profile?.resumeFileUrl ? (
-              profile.canAccessResume === false ? (
-                /* Privacy Restricted Card */
-                <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/70 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center shrink-0">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-[var(--text-primary)]">Resume is Private</h4>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                      This student has set their resume privacy to {profile.resumePrivacy || 'Colleges only'}.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                /* Clean Resume Profile Card */
-                <div
-                  onClick={() => setShowResumeModal(true)}
-                  className="group p-3 sm:p-4 rounded-2xl border border-[var(--border-color)] hover:border-[var(--primary-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-all cursor-pointer shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Cover Thumbnail or Professional Document Placeholder */}
-                    <div className="w-14 h-18 sm:w-16 sm:h-20 rounded-xl overflow-hidden border border-[var(--border-color)] bg-slate-900 shrink-0 relative flex items-center justify-center shadow-xs">
-                      {profile.resumeCoverUrl ? (
-                        <img
-                          src={profile.resumeCoverUrl}
-                          alt="Resume Cover"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-slate-400 space-y-1 p-1 text-center">
-                          <FileText className="w-6 h-6 text-blue-400" />
-                          <span className="text-[9px] font-black uppercase text-slate-300">
-                            {profile.resumeFileType || 'CV'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] transition-colors truncate">
-                          {profile.resumeOriginalName || `${profile.fullName || 'Student'} Resume`}
-                        </h4>
-                        <span className="px-2 py-0.5 rounded-md bg-[var(--primary-light)] text-[var(--primary-color)] text-[10px] font-extrabold uppercase shrink-0">
-                          {profile.resumeFileType || 'PDF'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-1.5 flex-wrap">
-                        <Clock className="w-3 h-3" />
-                        Updated {profile.resumeUploadedAt ? new Date(profile.resumeUploadedAt).toLocaleDateString() : 'Recently'}
-                        <span className="text-slate-400">·</span>
-                        <Shield className="w-3 h-3 text-blue-500" />
-                        <span>Visible to {profile.resumePrivacy || 'Colleges only'}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowResumeModal(true);
-                      }}
-                      className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> View Resume
-                    </button>
-                  </div>
-                </div>
-              )
-            ) : isOwnProfile ? (
-              <div
-                onClick={() => setShowEditModal(true)}
-                className="p-4 rounded-2xl border-2 border-dashed border-[var(--border-color)] hover:border-[var(--primary-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] transition-all cursor-pointer flex items-center justify-between gap-3 group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--surface)] text-[var(--primary-color)] border border-[var(--border-color)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-[var(--text-primary)]">Upload your Resume</h4>
-                    <p className="text-[11px] text-[var(--text-muted)]">
-                      PDF, DOC, DOCX, or Image (max 15MB) to share with collegiate recruiters
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-[var(--primary-color)] flex items-center gap-1">
-                  Upload <ChevronRight className="w-4 h-4" />
-                </span>
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
@@ -1827,7 +1817,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         </Modal>
       )}
 
-      {/* Resume View Modal (Requirements 8, 9, 10, 11) */}
+      {/* Resume View Modal (Requirements 9, 10, 11) */}
       {showResumeModal && profile?.resumeFileUrl && (
         <ResumeModal
           isOpen={showResumeModal}
@@ -1841,15 +1831,42 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           }}
           studentName={profile.fullName || 'Student'}
           isOwner={isOwnProfile}
-          privacySetting={profile.resumePrivacy || 'Colleges only'}
-          onCoverUpdated={(newCoverUrl) => {
-            setProfile((prev) => (prev ? { ...prev, resumeCoverUrl: newCoverUrl } : prev));
-            if (isOwnProfile && updateStudentProfileLocal) {
-              updateStudentProfileLocal({ resumeCoverUrl: newCoverUrl });
-            }
-          }}
-          onOpenEditModal={() => setShowEditModal(true)}
+          onDeleteResume={() => setShowDeleteResumeConfirm(true)}
         />
+      )}
+
+      {/* Delete Resume Confirmation Modal (Requirement 12) */}
+      {showDeleteResumeConfirm && (
+        <Modal
+          isOpen={showDeleteResumeConfirm}
+          onClose={() => setShowDeleteResumeConfirm(false)}
+          title="Delete Resume"
+          maxWidth="sm"
+        >
+          <div className="space-y-4 py-1">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Are you sure you want to delete your uploaded resume? This document will be permanently removed from your profile.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-color)]">
+              <button
+                type="button"
+                onClick={() => setShowDeleteResumeConfirm(false)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingResume}
+                onClick={handleDeleteResume}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {deletingResume && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Delete Resume</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

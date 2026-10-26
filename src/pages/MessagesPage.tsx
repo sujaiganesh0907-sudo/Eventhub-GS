@@ -24,6 +24,10 @@ import {
   Info,
   LogOut,
   Plus,
+  Settings,
+  Edit3,
+  Shield,
+  Lock,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -40,7 +44,11 @@ import {
   clearSearchHistory,
 } from '../services/searchHistory';
 import { SearchHistoryDropdown } from '../components/common/SearchHistoryDropdown';
+import { Modal } from '../components/common/Modal';
 import { CreateGroupModal } from '../components/chat/CreateGroupModal';
+import { GroupInfoModal } from '../components/chat/GroupInfoModal';
+import { ChatSettingsModal } from '../components/chat/ChatSettingsModal';
+import { EditGroupModal } from '../components/chat/EditGroupModal';
 
 interface MessagesPageProps {
   initialConversationId?: string | null;
@@ -96,6 +104,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [pinnedMessages, setPinnedMessages] = useState<IMessage[]>([]);
   const [isAnnouncementMode, setIsAnnouncementMode] = useState(false);
   const [showGroupInfoModal, setShowGroupInfoModal] = useState(false);
+  const [showGroupHeaderMenu, setShowGroupHeaderMenu] = useState(false);
+  const [showChatSettingsModal, setShowChatSettingsModal] = useState(false);
+  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
+  const [showClearChatConfirm, setShowClearChatConfirm] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
@@ -143,10 +156,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   // In-App Toast Feedback
   const [toast, setToast] = useState<{
     message: string;
-    type: 'success' | 'error';
+    type: 'success' | 'error' | 'info';
   } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
@@ -593,8 +606,32 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   };
 
-  const isCurrentGroupAdminOrOwner =
-    activeGroup && (activeGroup.myRole === 'Owner' || activeGroup.myRole === 'Admin');
+  const handleClearGroupChat = async () => {
+    if (!activeGroup) return;
+    try {
+      setClearingChat(true);
+      const res = await api.post<any>(`/groups/${activeGroup._id}/clear`, {});
+      if (res.success) {
+        setMessages([]);
+        setShowClearChatConfirm(false);
+        showToast('Chat history cleared for your account.', 'success');
+      } else {
+        showToast(res.message || 'Failed to clear chat.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error clearing chat.', 'error');
+    } finally {
+      setClearingChat(false);
+    }
+  };
+
+  const isCurrentGroupAdminOrOwner = Boolean(
+    activeGroup &&
+      (activeGroup.myRole === 'Owner' ||
+        activeGroup.myRole === 'Admin' ||
+        activeGroup.ownerId === user?._id ||
+        activeGroup.createdBy === user?._id)
+  );
 
   return (
     <div className="h-[calc(100vh-120px)] min-h-[550px] max-w-7xl mx-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs flex flex-col md:flex-row relative">
@@ -605,6 +642,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             className={`px-4 py-2 rounded-xl text-xs font-bold border shadow-lg flex items-center gap-2 ${
               toast.type === 'error'
                 ? 'bg-red-500/90 text-white border-red-600'
+                : toast.type === 'info'
+                ? 'bg-blue-600/95 text-white border-blue-700'
                 : 'bg-emerald-600/95 text-white border-emerald-700'
             }`}
           >
@@ -937,7 +976,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               </div>
 
               {/* Group Info / Actions */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 relative">
                 <button
                   type="button"
                   onClick={() => {
@@ -949,6 +988,130 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 >
                   <Info className="w-4 h-4" />
                 </button>
+
+                {/* 3-Dot Group Chat Menu (Requirements 1, 4) */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowGroupHeaderMenu(!showGroupHeaderMenu)}
+                    className="p-2 rounded-xl hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                    title="More Options"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {showGroupHeaderMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setShowGroupHeaderMenu(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1.5 w-52 bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl shadow-xl py-1.5 z-40 text-xs animate-in fade-in slide-in-from-top-1">
+                        {/* Group Info */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGroupHeaderMenu(false);
+                            loadGroupMembers(activeGroup._id);
+                            setShowGroupInfoModal(true);
+                          }}
+                          className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                        >
+                          <Info className="w-4 h-4 text-[var(--primary-color)]" />
+                          <span>Group Info</span>
+                        </button>
+
+                        {/* Chat Settings */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGroupHeaderMenu(false);
+                            setShowChatSettingsModal(true);
+                          }}
+                          className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                        >
+                          <Settings className="w-4 h-4 text-[var(--text-muted)]" />
+                          <span>Chat Settings</span>
+                        </button>
+
+                        {/* Owner / Admin Only Actions */}
+                        {isCurrentGroupAdminOrOwner && (
+                          <>
+                            <div className="my-1 border-t border-[var(--border-color)]" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowGroupHeaderMenu(false);
+                                loadGroupMembers(activeGroup._id);
+                                setShowGroupInfoModal(true);
+                              }}
+                              className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                            >
+                              <Users className="w-4 h-4 text-blue-500" />
+                              <span>Manage Members</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowGroupHeaderMenu(false);
+                                setShowEditGroupModal(true);
+                              }}
+                              className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                            >
+                              <Edit3 className="w-4 h-4 text-amber-500" />
+                              <span>Edit Group</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowGroupHeaderMenu(false);
+                                setShowChatSettingsModal(true);
+                              }}
+                              className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                            >
+                              <Shield className="w-4 h-4 text-emerald-500" />
+                              <span>Group Permissions</span>
+                            </button>
+                          </>
+                        )}
+
+                        <div className="my-1 border-t border-[var(--border-color)]" />
+
+                        {/* Clear Chat */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGroupHeaderMenu(false);
+                            setShowClearChatConfirm(true);
+                          }}
+                          className="w-full px-3.5 py-2 text-left hover:bg-amber-500/10 text-amber-600 flex items-center gap-2.5 cursor-pointer font-medium"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Clear Chat</span>
+                        </button>
+
+                        {/* Leave Group */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGroupHeaderMenu(false);
+                            setDeleteConfirmModal({
+                              isOpen: true,
+                              type: 'leave-group',
+                              groupId: activeGroup._id,
+                            });
+                          }}
+                          className="w-full px-3.5 py-2 text-left hover:bg-red-500/10 text-red-600 flex items-center gap-2.5 cursor-pointer font-medium"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Leave Group</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1254,6 +1417,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 <div className="py-2.5 px-4 rounded-xl bg-[var(--surface-subtle)] text-center text-xs font-semibold text-[var(--text-muted)] flex items-center justify-center gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
                   <span>This event group is read-only because the event has completed or concluded.</span>
+                </div>
+              ) : activeGroup?.chatPermissions === 'Admins Only' && !isCurrentGroupAdminOrOwner ? (
+                <div className="py-2.5 px-4 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] text-center text-xs font-semibold text-[var(--text-muted)] flex items-center justify-center gap-2">
+                  <Lock className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>Only admins can send messages in this group.</span>
                 </div>
               ) : (
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
@@ -1614,136 +1782,114 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         )}
       </div>
 
-      {/* Group Info Modal (Requirement 14) */}
+      {/* GROUP INFO MODAL (Requirements 2, 3, 8) */}
       {showGroupInfoModal && activeGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl p-5 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
-              <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-                <Info className="w-4 h-4 text-[var(--primary-color)]" />
-                <span>Group Information</span>
-              </h3>
+        <GroupInfoModal
+          isOpen={showGroupInfoModal}
+          onClose={() => setShowGroupInfoModal(false)}
+          group={activeGroup}
+          members={groupMembers}
+          loadingMembers={loadingGroupMembers}
+          currentUserId={user?._id || ''}
+          myRole={activeGroup.myRole || 'Member'}
+          onMemberUpdated={() => {
+            loadGroupMembers(activeGroup._id);
+            fetchGroups();
+          }}
+          onOpenChatSettings={() => {
+            setShowGroupInfoModal(false);
+            setShowChatSettingsModal(true);
+          }}
+          onOpenEditGroup={() => {
+            setShowGroupInfoModal(false);
+            setShowEditGroupModal(true);
+          }}
+          onLeaveGroup={() => {
+            setShowGroupInfoModal(false);
+            setDeleteConfirmModal({
+              isOpen: true,
+              type: 'leave-group',
+              groupId: activeGroup._id,
+            });
+          }}
+          onClearChat={() => {
+            setShowGroupInfoModal(false);
+            setShowClearChatConfirm(true);
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {/* CHAT SETTINGS MODAL (Requirements 1, 5) */}
+      {showChatSettingsModal && activeGroup && (
+        <ChatSettingsModal
+          isOpen={showChatSettingsModal}
+          onClose={() => setShowChatSettingsModal(false)}
+          group={activeGroup}
+          myRole={activeGroup.myRole || 'Member'}
+          initialMuted={Boolean(activeGroup.notificationsMuted)}
+          onGroupUpdated={(updated) => {
+            setActiveGroup((prev: any) => (prev ? { ...prev, ...updated } : updated));
+            setGroups((prev) => prev.map((g) => (g._id === updated._id ? { ...g, ...updated } : g)));
+          }}
+          onOpenClearChat={() => {
+            setShowChatSettingsModal(false);
+            setShowClearChatConfirm(true);
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {/* EDIT GROUP MODAL (Requirements 1, 3, 4) */}
+      {showEditGroupModal && activeGroup && (
+        <EditGroupModal
+          isOpen={showEditGroupModal}
+          onClose={() => setShowEditGroupModal(false)}
+          group={activeGroup}
+          onGroupUpdated={(updated) => {
+            setActiveGroup((prev: any) => (prev ? { ...prev, ...updated } : updated));
+            setGroups((prev) => prev.map((g) => (g._id === updated._id ? { ...g, ...updated } : g)));
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {/* CLEAR CHAT CONFIRMATION MODAL (Requirement 6) */}
+      {showClearChatConfirm && activeGroup && (
+        <Modal
+          isOpen={showClearChatConfirm}
+          onClose={() => setShowClearChatConfirm(false)}
+          title="Clear Chat History"
+          maxWidth="sm"
+        >
+          <div className="space-y-3 py-1">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Are you sure you want to clear your chat history for{' '}
+              <span className="font-bold text-[var(--text-primary)]">{activeGroup.name}</span>?
+            </p>
+            <p className="text-[11px] text-[var(--text-muted)] bg-[var(--surface-subtle)] p-2.5 rounded-xl border border-[var(--border-color)]">
+              This will only clear messages for your account. Messages will remain visible to other group members.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-color)]">
               <button
                 type="button"
-                onClick={() => setShowGroupInfoModal(false)}
-                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                onClick={() => setShowClearChatConfirm(false)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                Cancel
               </button>
-            </div>
-
-            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--primary-color)]/10 text-[var(--primary-color)] font-black text-lg flex items-center justify-center shrink-0 border border-[var(--border-color)]">
-                  {activeGroup.imageUrl ? (
-                    <img src={activeGroup.imageUrl} alt={activeGroup.name} className="w-full h-full object-cover rounded-2xl" />
-                  ) : (
-                    activeGroup.name.slice(0, 2).toUpperCase()
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
-                    {activeGroup.name}
-                  </h4>
-                  <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-                    <span>{activeGroup.type || 'Custom Group'}</span>
-                    <span>·</span>
-                    <span className="font-semibold text-emerald-600">
-                      {activeGroup.membersCount || 1} members
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {activeGroup.description && (
-                <div className="p-3 rounded-xl bg-[var(--surface-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed">
-                  {activeGroup.description}
-                </div>
-              )}
-
-              {/* Members List */}
-              <div className="space-y-2 pt-1">
-                <h5 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
-                  Group Members ({groupMembers.length})
-                </h5>
-                {loadingGroupMembers ? (
-                  <div className="py-4 text-center">
-                    <Loader2 className="w-4 h-4 animate-spin mx-auto text-[var(--primary-color)]" />
-                  </div>
-                ) : (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {groupMembers.map((mem) => (
-                      <div
-                        key={mem._id}
-                        className="flex items-center justify-between p-2 rounded-xl bg-[var(--surface-subtle)] text-xs"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <img
-                            src={mem.avatar || DEFAULT_STUDENT_AVATAR}
-                            alt={mem.fullName}
-                            className="w-7 h-7 rounded-full object-cover shrink-0 border border-[var(--border-color)]"
-                          />
-                          <div className="min-w-0">
-                            <p className="font-bold text-[var(--text-primary)] truncate">
-                              {mem.fullName}
-                            </p>
-                            <p className="text-[10px] text-[var(--text-muted)] truncate">
-                              {mem.collegeName || 'Student'}
-                            </p>
-                          </div>
-                        </div>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-sm shrink-0 ${
-                            mem.role === 'Owner'
-                              ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-                              : mem.role === 'Admin'
-                              ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
-                              : 'bg-zinc-500/10 text-zinc-600'
-                          }`}
-                        >
-                          {mem.role}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="pt-2 border-t border-[var(--border-color)] flex items-center justify-between">
-              {activeGroup.myRole === 'Owner' ? (
-                <p className="text-[11px] text-[var(--text-muted)] italic">
-                  Owner cannot leave without transferring ownership.
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowGroupInfoModal(false);
-                    setDeleteConfirmModal({
-                      isOpen: true,
-                      type: 'leave-group',
-                      groupId: activeGroup._id,
-                    });
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Leave Group</span>
-                </button>
-              )}
-
               <button
                 type="button"
-                onClick={() => setShowGroupInfoModal(false)}
-                className="px-4 py-1.5 rounded-xl bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+                disabled={clearingChat}
+                onClick={handleClearGroupChat}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
               >
-                Close
+                {clearingChat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Clear Chat</span>
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* In-App Confirmation Modal */}

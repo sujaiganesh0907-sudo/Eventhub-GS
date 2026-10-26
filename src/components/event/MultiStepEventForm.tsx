@@ -77,6 +77,13 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Event Group creation state (Requirements 8, 9)
+  const [createEventGroup, setCreateEventGroup] = useState(false);
+  const [eventGroupName, setEventGroupName] = useState('');
+  const [eventGroupDescription, setEventGroupDescription] = useState('');
+  const [eventGroupPhoto, setEventGroupPhoto] = useState('');
+  const [eventGroupChatPermissions, setEventGroupChatPermissions] = useState<'Everyone' | 'Admins Only'>('Everyone');
+
   // Form State
   const [formData, setFormData] = useState({
     // Step 1: Basic Details
@@ -394,7 +401,26 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         ? await api.put<any>(`/events/${eventToEdit._id}`, payload)
         : await api.post<any>('/events', payload);
 
-      if (res.success) {
+      if (res.success && res.event) {
+        // Automatically create official Event Group if enabled (Requirements 8, 9)
+        if (createEventGroup && !eventToEdit && !saveAsDraft) {
+          try {
+            await api.post('/groups', {
+              name: (eventGroupName.trim() || `${res.event.title} — Official Group`).trim(),
+              description: (
+                eventGroupDescription.trim() || `Official participant community for ${res.event.title}`
+              ).trim(),
+              imageUrl: eventGroupPhoto || res.event.poster || '',
+              type: 'Event',
+              eventId: res.event._id,
+              hostCollegeId: res.event.hostCollegeId || (college ? college._id : undefined),
+              chatPermissions: eventGroupChatPermissions,
+              visibility: 'Event Participants Only',
+            });
+          } catch (grpErr) {
+            console.error('Failed to create official event group:', grpErr);
+          }
+        }
         onSuccess(res.event);
       } else {
         setError(res.message || 'Failed to save event');
@@ -1536,6 +1562,96 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Requirement 8 & 9: Create Event Group Option */}
+          {!eventToEdit && !isStudent && (
+            <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[var(--text-primary)]">
+                      Create Official Event Group
+                    </h4>
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      Create an official group for this event to communicate and collaborate with attendees
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createEventGroup}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setCreateEventGroup(checked);
+                      if (checked && !eventGroupName) {
+                        setEventGroupName(`${formData.title || 'Event'} — Official Group`);
+                      }
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-zinc-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                </label>
+              </div>
+
+              {createEventGroup && (
+                <div className="space-y-3 pt-3 border-t border-indigo-500/20 text-xs animate-in fade-in">
+                  <div>
+                    <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
+                      Group Name
+                    </label>
+                    <input
+                      type="text"
+                      value={eventGroupName || `${formData.title || 'Event'} — Official Group`}
+                      onChange={(e) => setEventGroupName(e.target.value)}
+                      placeholder="e.g. Hackathon 2026 — Official Group"
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
+                      Group Description (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={eventGroupDescription}
+                      onChange={(e) => setEventGroupDescription(e.target.value)}
+                      placeholder={`Official participant community and announcements for ${formData.title || 'this event'}.`}
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] font-medium resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
+                        Who Can Send Messages
+                      </label>
+                      <select
+                        value={eventGroupChatPermissions}
+                        onChange={(e) => setEventGroupChatPermissions(e.target.value as any)}
+                        className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] font-medium"
+                      >
+                        <option value="Everyone">Everyone (All Participants)</option>
+                        <option value="Admins Only">Admins Only (Broadcast / Announcements)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
+                        Group Photo
+                      </label>
+                      <p className="text-[11px] text-[var(--text-muted)] py-2">
+                        Defaults to event poster automatically
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <p className="text-xs text-[var(--text-muted)]">
             {isStudent

@@ -708,6 +708,8 @@ export interface IGroupMembership {
   invitedBy?: string;
   addedBy?: string;
   joinedAt: string;
+  clearedAt?: string;
+  notificationsMuted?: boolean;
   createdAt: string;
   updatedAt: string;
 }

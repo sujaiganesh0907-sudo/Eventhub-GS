@@ -303,6 +303,8 @@ export async function getGroupById(req: AuthenticatedRequest, res: Response) {
       group: {
         ...((group as any).toObject ? (group as any).toObject() : group),
         membersCount,
+        myRole: membership ? membership.role : null,
+        notificationsMuted: Boolean(membership?.notificationsMuted),
         owner: owner
           ? {
               _id: owner._id,
@@ -313,6 +315,7 @@ export async function getGroupById(req: AuthenticatedRequest, res: Response) {
       },
       membership,
       currentUserRole: membership ? membership.role : null,
+      notificationsMuted: Boolean(membership?.notificationsMuted),
       pendingRequest: Boolean(pendingRequest),
     });
   } catch (error: any) {
@@ -1080,11 +1083,17 @@ export async function getGroupMessages(req: AuthenticatedRequest, res: Response)
     const allMessages = await Message.find({ groupId: id }).sort({ createdAt: 1 }).exec();
 
     // REQUIREMENT 6: Filter out messages deleted for current user
-    const visibleMessages = allMessages.filter(
+    let visibleMessages = allMessages.filter(
       (m) =>
         (!m.deletedFor || !m.deletedFor.includes(user._id)) &&
         (!m.deletedForUserIds || !m.deletedForUserIds.includes(user._id))
     );
+
+    // Requirement 6: Filter out messages created before the user cleared chat
+    if (membership.clearedAt) {
+      const clearTime = new Date(membership.clearedAt).getTime();
+      visibleMessages = visibleMessages.filter((m) => new Date(m.createdAt).getTime() > clearTime);
+    }
 
     // Sanitize and enrich messages
     const sanitizedMessages = await Promise.all(
@@ -1264,7 +1273,7 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
 
     const preview = text.trim() || (sharedEventId ? 'Shared an event' : 'Sent an attachment');
     for (const mem of activeMembers) {
-      if (mem.userId !== user._id) {
+      if (mem.userId !== user._id && !mem.notificationsMuted) {
         await Notification.create({
           recipientUserId: mem.userId,
           type: isAnnouncement ? 'ADMIN_ACTION' : 'EVENT_UPDATE',
@@ -1391,3 +1400,77 @@ export async function getGroupByEventId(req: AuthenticatedRequest, res: Response
     return res.status(500).json({ success: false, message: error.message });
   }
 }
+
+/**
+ * 18. Clear Group Chat (Per-User History Clear)
+ * Requirement 6: Hides/clears messages up to now only for the requester.
+ * Preserves shared group messages for all other members.
+ */
+export async function clearGroupChat(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const membership = await GroupMembership.findOne({
+      groupId: id,
+      userId: user._id,
+      status: 'Active',
+    });
+    if (!membership) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only active members can clear their chat history.',
+      });
+    }
+
+    const clearedAt = new Date().toISOString();
+    await GroupMembership.findByIdAndUpdate(membership._id, { clearedAt });
+
+    return res.json({
+      success: true,
+      message: 'Chat history cleared for your account.',
+      clearedAt,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * 19. Toggle / Set Group Notification Mute State
+ * Requirement 5: Mute / Unmute notifications per user/group.
+ */
+export async function toggleMuteGroupNotifications(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const { muted } = req.body;
+
+    const membership = await GroupMembership.findOne({
+      groupId: id,
+      userId: user._id,
+      status: 'Active',
+    });
+    if (!membership) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only active members can modify notification settings.',
+      });
+    }
+
+    const notificationsMuted = muted !== undefined ? Boolean(muted) : !membership.notificationsMuted;
+    await GroupMembership.findByIdAndUpdate(membership._id, { notificationsMuted });
+
+    return res.json({
+      success: true,
+      message: notificationsMuted ? 'Notifications muted for this group.' : 'Notifications unmuted for this group.',
+      notificationsMuted,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+

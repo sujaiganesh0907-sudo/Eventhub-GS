@@ -40,6 +40,7 @@ export interface IStudentProfile {
   resumePrivacy?: 'Everyone' | 'Connections' | 'Colleges only' | 'Private';
   groupAddPrivacy?: 'Everyone' | 'Connections only' | 'Same college only' | 'Nobody / request only';
   resumeFileUrl?: string;
+  resumeUrl?: string;
   resumeFileType?: string;
   resumeOriginalName?: string;
   resumeUploadedAt?: string;
