@@ -163,6 +163,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   }, [initialRole]);
 
+  // Always initialize login inputs as empty by default (Requirement 2)
+  useEffect(() => {
+    setLoginEmail('');
+    setLoginPassword('');
+    setShowLoginPassword(false);
+  }, [mode, role]);
+
   // Restore pending verification state on OTP mode or page reload (Requirement 3 & 7)
   useEffect(() => {
     if (mode === 'otp') {
@@ -628,46 +635,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           </div>
         )}
 
-        {/* One-Click Demo Accounts: Only in Dev/Demo Mode (Requirement 16) */}
-        {isDev && mode === 'login' && (
-          <div className="mb-5 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-2">
-            <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Developer Fast Sign-In
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  await switchAccount('student');
-                  onSuccess();
-                }}
-                className="px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] transition-all text-left flex items-center gap-1.5 cursor-pointer"
-              >
-                <User className="w-3.5 h-3.5 text-[var(--primary-color)] shrink-0" />
-                <div className="truncate">
-                  <span className="block font-bold">Suresh</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">Verified Student</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  await switchAccount('college-super');
-                  onSuccess();
-                }}
-                className="px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-primary)] transition-all text-left flex items-center gap-1.5 cursor-pointer"
-              >
-                <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <div className="truncate">
-                  <span className="block font-bold">Apex Tech Admin</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">Verified College</span>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Role Switcher (Student vs College) */}
         {mode !== 'otp' && (
@@ -751,7 +718,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         )}
 
         {mode === 'login' && !isMfaRequired && (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
             <div>
               <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
                 {role === 'student' ? 'Student Email' : 'Official Institutional Email'}
@@ -760,6 +727,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                 <input
                   type="email"
+                  name="user_login_email"
+                  id="user_login_email"
+                  autoComplete="off"
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
@@ -787,6 +757,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
+                  name="user_login_password"
+                  id="user_login_password"
+                  autoComplete="new-password"
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}

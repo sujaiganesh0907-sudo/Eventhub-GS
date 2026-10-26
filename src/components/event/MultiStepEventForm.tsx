@@ -48,6 +48,14 @@ const STEPS = [
   { id: 12, name: 'Review & Submit' },
 ];
 
+interface IEventRound {
+  name: string;
+  description: string;
+  duration?: string;
+  qualificationCriteria?: string;
+  judgingCriteria?: string;
+}
+
 export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   colleges: propColleges,
   eventToEdit,
@@ -57,7 +65,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   isOpen,
   isStudentProposal,
 }) => {
-  const { user, college } = useAuth();
+  const { user, college, studentProfile } = useAuth();
   const isStudent = isStudentProposal !== undefined ? isStudentProposal : user?.role === 'Student';
   const handleClose = onClose || onCancel || (() => {});
 
@@ -96,23 +104,23 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     description: '',
 
     // Step 2: Schedule
-    eventDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    startTime: '09:30',
-    endTime: '17:30',
-    registrationDeadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
-    reportingTime: '08:45 AM',
-    registrationOpensOn: new Date().toISOString().split('T')[0],
+    eventDate: '',
+    startTime: '',
+    endTime: '',
+    registrationDeadline: '',
+    reportingTime: '',
+    registrationOpensOn: '',
 
     // Step 3: Location & Mode
-    eventMode: 'Hybrid' as 'Offline' | 'Online' | 'Hybrid',
-    venue: 'Main Campus Auditorium',
-    hallRoom: 'Seminar Hall 1',
-    buildingBlock: 'Computing Complex',
-    address: 'Campus Innovation Plaza',
+    eventMode: 'Offline' as 'Offline' | 'Online' | 'Hybrid',
+    venue: '',
+    hallRoom: '',
+    buildingBlock: '',
+    address: '',
     googleMapsLink: '',
-    transportParkingNotes: 'Visitor parking available near Gate 2.',
-    meetingPlatform: 'Google Meet',
-    meetingLink: 'https://meet.google.com/xyz-abcd-efg',
+    transportParkingNotes: '',
+    meetingPlatform: '',
+    meetingLink: '',
 
     // Step 4: Registration
     registrationType: 'Individual' as 'Individual' | 'Team',
@@ -124,135 +132,96 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
 
     // Step 5: Eligibility
     educationLevel: ['UG', 'PG'],
-    departments: ['Computer Science', 'Information Technology', 'All Disciplines'],
-    eligibleYears: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
+    departments: ['All Disciplines'],
+    eligibleYears: ['All Years'],
     genderRestriction: 'None',
     institutionRestriction: 'Open to All Colleges',
-    additionalEligibilityNotes: 'Bring college student identity card.',
+    additionalEligibilityNotes: '',
 
     // Step 6: Format & Rounds
-    rulesAndGuidelines: '1. Maintain academic integrity.\n2. Arrive on time with necessary materials.',
-    hasMultipleRounds: true,
-    rounds: [
-      {
-        name: 'Round 1: Screening & Idea Pitch',
-        description: 'Preliminary presentation of project concepts and architecture.',
-        duration: '15 Mins',
-        qualificationCriteria: 'Top 50% advance to final demonstration.',
-        judgingCriteria: 'Innovation, Problem Statement, Feasibility',
-      },
-      {
-        name: 'Round 2: Prototype Evaluation',
-        description: 'Working demo before jury panel.',
-        duration: '10 Mins',
-        qualificationCriteria: 'Podium awards selection',
-        judgingCriteria: 'Execution, Completeness, Design Quality',
-      },
-    ],
-    requiredMaterials: 'Laptop with charger and development environment.',
-    thingsToCarry: 'Government/College ID card.',
+    rulesAndGuidelines: '',
+    hasMultipleRounds: false,
+    rounds: [] as IEventRound[],
+    requiredMaterials: '',
+    thingsToCarry: '',
     softwareRequirements: '',
     hardwareRequirements: '',
-    submissionRequirements: 'GitHub repository or deck PDF.',
-    dressCode: 'Smart Casuals',
+    submissionRequirements: '',
+    dressCode: '',
 
     // Step 7: Prizes & Certificates
-    prizeAvailable: true,
-    totalPrizePool: 2000,
-    firstPrize: '$1,000 + Trophy',
-    secondPrize: '$600',
-    thirdPrize: '$400',
-    specialPrize: 'Best Innovation Award ($200)',
-    prizeNotes: 'Cash prizes disbursed via direct bank transfer.',
-    certificateAvailable: true,
-    participationCertificate: true,
-    winnerCertificate: true,
-    certificateType: 'Both' as 'Digital' | 'Physical' | 'Both',
-    certificateEligibility: 'All participants attending both rounds.',
-    deliveryMethod: 'Digital download on EVENTHUB.',
+    prizeAvailable: false,
+    totalPrizePool: 0,
+    firstPrize: '',
+    secondPrize: '',
+    thirdPrize: '',
+    specialPrize: '',
+    prizeNotes: '',
+    certificateAvailable: false,
+    participationCertificate: false,
+    winnerCertificate: false,
+    certificateType: 'Digital' as 'Digital' | 'Physical' | 'Both',
+    certificateEligibility: '',
+    deliveryMethod: '',
 
     // Step 8: Coordinators & Facilities
     primaryCoordinator: {
-      name: user?.fullName || 'Event Organizer',
+      name: user?.fullName || '',
       role: 'Lead Coordinator',
-      phone: '+1 (555) 019-2834',
-      email: user?.email || 'coordinator@college.edu',
+      phone: studentProfile?.phoneNumber || '',
+      email: user?.email || '',
     },
     secondaryCoordinator: {
-      name: 'Faculty In-Charge',
-      role: 'Staff Advisor',
-      phone: '+1 (555) 982-3741',
-      email: 'faculty@college.edu',
+      name: '',
+      role: '',
+      phone: '',
+      email: '',
     },
-    helpdeskContact: '+1 (555) 000-1122',
+    helpdeskContact: '',
     facilities: {
-      food: true,
-      foodDetails: 'Complimentary lunch and high tea snacks provided.',
+      food: false,
+      foodDetails: '',
       accommodation: false,
       accommodationDetails: '',
-      transport: true,
-      transportDetails: 'Campus shuttle from central railway hub.',
-      parking: true,
-      parkingDetails: 'Free on-campus parking in Visitor Bay.',
+      transport: false,
+      transportDetails: '',
+      parking: false,
+      parkingDetails: '',
     },
-    importantNotes: 'Photography and recording permitted in designated zones.',
+    importantNotes: '',
 
     // Step 9: Payment
     paymentConfig: {
-      payeeName: college?.name || 'Collegiate Event Account',
-      upiId: 'eventhub@upi',
+      payeeName: college?.name || '',
+      upiId: '',
       paymentQr: '',
-      paymentInstructions: 'Pay online via payment gateway or UPI reference.',
-      refundPolicy: '70% refund for cancellations made 48 hours before event.',
+      paymentInstructions: '',
+      refundPolicy: '',
     },
 
     // Step 10: Custom Event Information
-    customDetails: [
-      {
-        id: 'cd_wifi',
-        label: 'Campus Wi-Fi',
-        type: 'Short Text',
-        value: 'EVENTHUB_GUEST (Password: Hack2026)',
-        description: 'Available throughout the venue',
-      },
-    ] as IEventCustomField[],
+    customDetails: [] as IEventCustomField[],
 
     // Step 11: Participant Questions
-    registrationQuestions: [
-      {
-        id: 'q_portfolio',
-        label: 'Portfolio or GitHub Profile Link',
-        type: 'Link',
-        required: true,
-        helperText: 'Share your repositories or Behance profile',
-      },
-      {
-        id: 'q_diet',
-        label: 'Lunch Preference',
-        type: 'Dropdown',
-        required: false,
-        options: ['Vegetarian', 'Non-Vegetarian', 'Vegan'],
-      },
-    ] as IParticipantQuestion[],
+    registrationQuestions: [] as IParticipantQuestion[],
   });
 
   useEffect(() => {
     if (eventToEdit) {
-      setFormData((prev) => ({
-        ...prev,
+      setFormData({
         title: eventToEdit.title || '',
-        poster: eventToEdit.poster || prev.poster,
-        targetCollegeId: eventToEdit.targetCollegeId || eventToEdit.hostCollegeId || prev.targetCollegeId,
+        poster: eventToEdit.poster || '',
+        targetCollegeId: eventToEdit.targetCollegeId || eventToEdit.hostCollegeId || '',
         category: eventToEdit.category || 'Hackathon',
         eventType: eventToEdit.eventType || 'Technical',
         tagline: eventToEdit.tagline || '',
         description: eventToEdit.description || '',
-        eventDate: eventToEdit.eventDate || prev.eventDate,
-        startTime: eventToEdit.startTime || '09:30',
-        endTime: eventToEdit.endTime || '17:30',
-        registrationDeadline: eventToEdit.registrationDeadline ? eventToEdit.registrationDeadline.slice(0, 16) : prev.registrationDeadline,
+        eventDate: eventToEdit.eventDate || '',
+        startTime: eventToEdit.startTime || '',
+        endTime: eventToEdit.endTime || '',
+        registrationDeadline: eventToEdit.registrationDeadline ? eventToEdit.registrationDeadline.slice(0, 16) : '',
         reportingTime: eventToEdit.reportingTime || '',
-        registrationOpensOn: eventToEdit.registrationOpensOn || prev.registrationOpensOn,
+        registrationOpensOn: eventToEdit.registrationOpensOn || '',
         eventMode: eventToEdit.eventMode || 'Offline',
         venue: eventToEdit.venue || '',
         hallRoom: eventToEdit.hallRoom || '',
@@ -275,40 +244,63 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         institutionRestriction: eventToEdit.institutionRestriction || 'Open to All Colleges',
         additionalEligibilityNotes: eventToEdit.additionalEligibilityNotes || '',
         rulesAndGuidelines: eventToEdit.rulesAndGuidelines || '',
-        hasMultipleRounds: eventToEdit.hasMultipleRounds || false,
-        rounds: eventToEdit.rounds || [],
+        hasMultipleRounds: Boolean(eventToEdit.hasMultipleRounds),
+        rounds: Array.isArray(eventToEdit.rounds) ? eventToEdit.rounds : [],
         requiredMaterials: eventToEdit.requiredMaterials || '',
         thingsToCarry: eventToEdit.thingsToCarry || '',
         softwareRequirements: eventToEdit.softwareRequirements || '',
         hardwareRequirements: eventToEdit.hardwareRequirements || '',
         submissionRequirements: eventToEdit.submissionRequirements || '',
         dressCode: eventToEdit.dressCode || '',
-        prizeAvailable: eventToEdit.prizeAvailable || false,
+        prizeAvailable: Boolean(eventToEdit.prizeAvailable),
         totalPrizePool: eventToEdit.totalPrizePool || 0,
         firstPrize: eventToEdit.firstPrize || '',
         secondPrize: eventToEdit.secondPrize || '',
         thirdPrize: eventToEdit.thirdPrize || '',
         specialPrize: eventToEdit.specialPrize || '',
         prizeNotes: eventToEdit.prizeNotes || '',
-        certificateAvailable: eventToEdit.certificateAvailable || false,
-        participationCertificate: eventToEdit.participationCertificate || false,
-        winnerCertificate: eventToEdit.winnerCertificate || false,
+        certificateAvailable: Boolean(eventToEdit.certificateAvailable),
+        participationCertificate: Boolean(eventToEdit.participationCertificate),
+        winnerCertificate: Boolean(eventToEdit.winnerCertificate),
         certificateType: eventToEdit.certificateType || 'Digital',
         certificateEligibility: eventToEdit.certificateEligibility || '',
         deliveryMethod: eventToEdit.deliveryMethod || '',
-        primaryCoordinator: eventToEdit.primaryCoordinator || prev.primaryCoordinator,
-        secondaryCoordinator: eventToEdit.secondaryCoordinator || prev.secondaryCoordinator,
+        primaryCoordinator: eventToEdit.primaryCoordinator || {
+          name: user?.fullName || '',
+          role: 'Lead Coordinator',
+          phone: studentProfile?.phoneNumber || '',
+          email: user?.email || '',
+        },
+        secondaryCoordinator: eventToEdit.secondaryCoordinator || {
+          name: '',
+          role: '',
+          phone: '',
+          email: '',
+        },
         helpdeskContact: eventToEdit.helpdeskContact || '',
-        facilities: eventToEdit.facilities || prev.facilities,
+        facilities: eventToEdit.facilities || {
+          food: false,
+          foodDetails: '',
+          accommodation: false,
+          accommodationDetails: '',
+          transport: false,
+          transportDetails: '',
+          parking: false,
+          parkingDetails: '',
+        },
         importantNotes: eventToEdit.importantNotes || '',
-        reportingInstructions: eventToEdit.reportingInstructions || '',
-        idRequirement: eventToEdit.idRequirement || '',
-        paymentConfig: eventToEdit.paymentConfig || prev.paymentConfig,
-        customDetails: eventToEdit.customDetails || [],
-        registrationQuestions: eventToEdit.registrationQuestions || [],
-      }));
+        paymentConfig: eventToEdit.paymentConfig || {
+          payeeName: college?.name || '',
+          upiId: '',
+          paymentQr: '',
+          paymentInstructions: '',
+          refundPolicy: '',
+        },
+        customDetails: Array.isArray(eventToEdit.customDetails) ? eventToEdit.customDetails : [],
+        registrationQuestions: Array.isArray(eventToEdit.registrationQuestions) ? eventToEdit.registrationQuestions : [],
+      });
     }
-  }, [eventToEdit]);
+  }, [eventToEdit, user, college]);
 
   const updateField = (field: string, val: any) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
@@ -364,8 +356,17 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         setError('Registration fee must be greater than 0 for paid events.');
         return false;
       }
+    } else if (currentStep === 6) {
+      if (!formData.rulesAndGuidelines.trim()) {
+        setError('Rules & guidelines are required for the competition.');
+        return false;
+      }
     } else if (currentStep === 8) {
-      if (!formData.primaryCoordinator.name || !formData.primaryCoordinator.phone || !formData.primaryCoordinator.email) {
+      if (
+        !formData.primaryCoordinator.name.trim() ||
+        !formData.primaryCoordinator.phone.trim() ||
+        !formData.primaryCoordinator.email.trim()
+      ) {
         setError('Primary coordinator name, phone, and email are required.');
         return false;
       }
@@ -392,8 +393,50 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     setError(null);
 
     try {
+      const sanitizedSecondary = formData.secondaryCoordinator?.name?.trim()
+        ? formData.secondaryCoordinator
+        : undefined;
+
+      const sanitizedCustomDetails = (formData.customDetails || []).filter(
+        (cd) => cd.label?.trim() && cd.value?.trim()
+      );
+
       const payload = {
         ...formData,
+        tagline: formData.tagline?.trim() || '',
+        reportingTime: formData.reportingTime?.trim() || '',
+        venue: formData.eventMode === 'Online' ? '' : formData.venue?.trim() || '',
+        hallRoom: formData.eventMode === 'Online' ? '' : formData.hallRoom?.trim() || '',
+        buildingBlock: formData.eventMode === 'Online' ? '' : formData.buildingBlock?.trim() || '',
+        address: formData.eventMode === 'Online' ? '' : formData.address?.trim() || '',
+        googleMapsLink: formData.eventMode === 'Online' ? '' : formData.googleMapsLink?.trim() || '',
+        transportParkingNotes: formData.eventMode === 'Online' ? '' : formData.transportParkingNotes?.trim() || '',
+        meetingPlatform: formData.eventMode === 'Offline' ? '' : formData.meetingPlatform?.trim() || '',
+        meetingLink: formData.eventMode === 'Offline' ? '' : formData.meetingLink?.trim() || '',
+        additionalEligibilityNotes: formData.additionalEligibilityNotes?.trim() || '',
+        rulesAndGuidelines: formData.rulesAndGuidelines?.trim() || '',
+        rounds: formData.hasMultipleRounds ? formData.rounds : [],
+        requiredMaterials: formData.requiredMaterials?.trim() || '',
+        thingsToCarry: formData.thingsToCarry?.trim() || '',
+        softwareRequirements: formData.softwareRequirements?.trim() || '',
+        hardwareRequirements: formData.hardwareRequirements?.trim() || '',
+        submissionRequirements: formData.submissionRequirements?.trim() || '',
+        dressCode: formData.dressCode?.trim() || '',
+        totalPrizePool: formData.prizeAvailable ? Number(formData.totalPrizePool) || 0 : 0,
+        firstPrize: formData.prizeAvailable ? formData.firstPrize?.trim() || '' : '',
+        secondPrize: formData.prizeAvailable ? formData.secondPrize?.trim() || '' : '',
+        thirdPrize: formData.prizeAvailable ? formData.thirdPrize?.trim() || '' : '',
+        specialPrize: formData.prizeAvailable ? formData.specialPrize?.trim() || '' : '',
+        prizeNotes: formData.prizeAvailable ? formData.prizeNotes?.trim() || '' : '',
+        participationCertificate: formData.certificateAvailable ? Boolean(formData.participationCertificate) : false,
+        winnerCertificate: formData.certificateAvailable ? Boolean(formData.winnerCertificate) : false,
+        certificateEligibility: formData.certificateAvailable ? formData.certificateEligibility?.trim() || '' : '',
+        deliveryMethod: formData.certificateAvailable ? formData.deliveryMethod?.trim() || '' : '',
+        secondaryCoordinator: sanitizedSecondary,
+        helpdeskContact: formData.helpdeskContact?.trim() || '',
+        facilities: formData.facilities,
+        importantNotes: formData.importantNotes?.trim() || '',
+        customDetails: sanitizedCustomDetails,
         saveAsDraft,
       };
 

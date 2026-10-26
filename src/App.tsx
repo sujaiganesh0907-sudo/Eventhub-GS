@@ -64,6 +64,9 @@ const resolveTabFromPath = (pathname: string): string => {
   if (p === '/register/college') return 'register-college';
   if (p === '/forgot-password' || p === '/reset-password') return 'auth';
   if (p.startsWith('/verify')) return 'verify';
+  if (p.match(/^\/(?:event|events)\/[^/?#]+/)) return 'view-event';
+  if (p.match(/^\/(?:college|colleges)\/[^/?#]+/)) return 'college-profile';
+  if (p === '/college/events' || p === '/events') return 'events';
   if (p === '/' || p === '/landing') {
     const hasToken = !!localStorage.getItem('eventhub_token');
     return hasToken ? 'home' : 'landing';
@@ -117,8 +120,14 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(() => {
     return resolveTabFromPath(window.location.pathname);
   });
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(() => {
+    const match = window.location.pathname.match(/\/(?:event|events)\/([^/?#]+)/);
+    return match ? match[1] : null;
+  });
+  const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(() => {
+    const match = window.location.pathname.match(/\/(?:college|colleges)\/([^/?#]+)/);
+    return match ? match[1] : null;
+  });
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
@@ -132,8 +141,15 @@ const AppContent: React.FC = () => {
   const [navHistory, setNavHistory] = useState<NavHistoryItem[]>([]);
 
   // Browser navigation sync
-  const updateUrl = (tab: string) => {
-    const targetPath = getPathForTab(tab);
+  const updateUrl = (tab: string, eventId?: string | null, collegeId?: string | null) => {
+    let targetPath = getPathForTab(tab);
+    if (tab === 'view-event') {
+      const eId = eventId !== undefined ? eventId : selectedEventId;
+      if (eId) targetPath = `/event/${eId}`;
+    } else if (tab === 'college-profile') {
+      const cId = collegeId !== undefined ? collegeId : selectedCollegeId;
+      if (cId) targetPath = `/colleges/${cId}`;
+    }
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
     }
@@ -159,12 +175,14 @@ const AppContent: React.FC = () => {
         selectedConversationId,
       },
     ]);
+    const targetEventId = details?.selectedEventId !== undefined ? details.selectedEventId : selectedEventId;
+    const targetCollegeId = details?.selectedCollegeId !== undefined ? details.selectedCollegeId : selectedCollegeId;
     if (details?.selectedEventId !== undefined) setSelectedEventId(details.selectedEventId);
     if (details?.selectedCollegeId !== undefined) setSelectedCollegeId(details.selectedCollegeId);
     if (details?.selectedStudentId !== undefined) setSelectedStudentId(details.selectedStudentId);
     if (details?.selectedConversationId !== undefined) setSelectedConversationId(details.selectedConversationId);
     setActiveTab(newTab);
-    updateUrl(newTab);
+    updateUrl(newTab, targetEventId, targetCollegeId);
   };
 
   // Go back to previous page
@@ -210,6 +228,10 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handlePopState = () => {
       const tab = resolveTabFromPath(window.location.pathname);
+      const evMatch = window.location.pathname.match(/\/(?:event|events)\/([^/?#]+)/);
+      const colMatch = window.location.pathname.match(/\/(?:college|colleges)\/([^/?#]+)/);
+      if (evMatch) setSelectedEventId(evMatch[1]);
+      if (colMatch) setSelectedCollegeId(colMatch[1]);
       setActiveTab(tab);
     };
     window.addEventListener('popstate', handlePopState);

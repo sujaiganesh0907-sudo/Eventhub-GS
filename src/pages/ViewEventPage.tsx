@@ -322,7 +322,9 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
           <div className="min-w-0">
             <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Event Date</span>
             <span className="text-sm font-bold text-[var(--text-primary)] block truncate">{formattedDate}</span>
-            <span className="text-[11px] text-[var(--text-muted)]">Check-in at {event.reportingTime || event.startTime}</span>
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {event.reportingTime ? `Reporting: ${event.reportingTime}` : `Starts at ${event.startTime}`}
+            </span>
           </div>
         </div>
 
@@ -336,7 +338,9 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
             <span className="text-sm font-bold text-[var(--text-primary)] block">
               {event.startTime} - {event.endTime}
             </span>
-            <span className="text-[11px] text-[var(--text-muted)]">Reporting: {event.reportingTime || 'On-time'}</span>
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {event.reportingTime ? `Reporting: ${event.reportingTime}` : 'Scheduled session'}
+            </span>
           </div>
         </div>
 
@@ -350,11 +354,21 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
               Mode · {event.eventMode}
             </span>
             <span className="text-sm font-bold text-[var(--text-primary)] block truncate">
-              {event.eventMode === 'Online' ? event.meetingPlatform || 'Online Platform' : event.venue || 'Campus Venue'}
+              {event.eventMode === 'Online'
+                ? event.meetingPlatform || 'Online Event'
+                : event.venue || 'Campus Venue'}
             </span>
-            <span className="text-[11px] text-[var(--text-muted)] truncate block">
-              {event.eventMode === 'Online' ? 'Meeting link sent on pass' : event.hallRoom || 'Main Auditorium'}
-            </span>
+            {event.eventMode === 'Online' ? (
+              <span className="text-[11px] text-[var(--text-muted)] truncate block">
+                Meeting link provided upon registration
+              </span>
+            ) : (
+              [event.hallRoom, event.buildingBlock, event.address].filter(Boolean).length > 0 && (
+                <span className="text-[11px] text-[var(--text-muted)] truncate block">
+                  {[event.hallRoom, event.buildingBlock, event.address].filter(Boolean).join(', ')}
+                </span>
+              )
+            )}
           </div>
         </div>
 
@@ -611,159 +625,293 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
         {/* Right 1 Col: Coordinators & Venue Contact */}
         <div className="space-y-6">
           {/* Primary Coordinator Card */}
-          <div className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-              Lead Event Coordinator
-            </h3>
-            <div className="space-y-1">
-              <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                {event.primaryCoordinator?.name}
-              </h4>
-              <p className="text-xs text-[var(--text-muted)]">{event.primaryCoordinator?.role}</p>
+          {event.primaryCoordinator?.name && (
+            <div className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                Lead Event Coordinator
+              </h3>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                  {event.primaryCoordinator.name}
+                </h4>
+                {event.primaryCoordinator.role && (
+                  <p className="text-xs text-[var(--text-muted)]">{event.primaryCoordinator.role}</p>
+                )}
+              </div>
+              <div className="space-y-2 pt-2 border-t border-[var(--border-color)] text-xs">
+                {event.primaryCoordinator.phone && (
+                  <a
+                    href={`tel:${event.primaryCoordinator.phone}`}
+                    className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--primary-color)]"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{event.primaryCoordinator.phone}</span>
+                  </a>
+                )}
+                {event.primaryCoordinator.email && (
+                  <a
+                    href={`mailto:${event.primaryCoordinator.email}`}
+                    className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--primary-color)] truncate"
+                  >
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{event.primaryCoordinator.email}</span>
+                  </a>
+                )}
+              </div>
             </div>
-            <div className="space-y-2 pt-2 border-t border-[var(--border-color)] text-xs">
-              <a
-                href={`tel:${event.primaryCoordinator?.phone}`}
-                className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--primary-color)]"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>{event.primaryCoordinator?.phone}</span>
-              </a>
-              <a
-                href={`mailto:${event.primaryCoordinator?.email}`}
-                className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--primary-color)] truncate"
-              >
-                <Mail className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{event.primaryCoordinator?.email}</span>
-              </a>
-            </div>
-          </div>
+          )}
 
-          {/* Amenities & Facilities */}
-          <div className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-              Campus Facilities
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-[var(--text-primary)]">
-                <Utensils className={`w-4 h-4 ${event.facilities?.food ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`} />
-                <span>{event.facilities?.food ? 'Meals / Refreshments Provided' : 'Food on Own Expense'}</span>
+          {/* Secondary Coordinator Card (Only if entered by organizer) */}
+          {event.secondaryCoordinator?.name && (
+            <div className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                Secondary Coordinator
+              </h3>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                  {event.secondaryCoordinator.name}
+                </h4>
+                {event.secondaryCoordinator.role && (
+                  <p className="text-xs text-[var(--text-muted)]">{event.secondaryCoordinator.role}</p>
+                )}
               </div>
-              <div className="flex items-center gap-2 text-[var(--text-primary)]">
-                <Car className={`w-4 h-4 ${event.facilities?.parking ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`} />
-                <span>{event.facilities?.parking ? 'Campus Visitor Parking Available' : 'No Reserved Parking'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-[var(--text-primary)]">
-                <Bus className={`w-4 h-4 ${event.facilities?.transport ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`} />
-                <span>{event.facilities?.transport ? 'Campus Transit Shuttles' : 'Self-Arranged Transport'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-[var(--text-primary)]">
-                <Bed className={`w-4 h-4 ${event.facilities?.accommodation ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`} />
-                <span>{event.facilities?.accommodation ? 'Hostel Lodging Available' : 'No Accommodation'}</span>
+              <div className="space-y-2 pt-2 border-t border-[var(--border-color)] text-xs">
+                {event.secondaryCoordinator.phone && (
+                  <a
+                    href={`tel:${event.secondaryCoordinator.phone}`}
+                    className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--primary-color)]"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{event.secondaryCoordinator.phone}</span>
+                  </a>
+                )}
+                {event.secondaryCoordinator.email && (
+                  <a
+                    href={`mailto:${event.secondaryCoordinator.email}`}
+                    className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--primary-color)] truncate"
+                  >
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{event.secondaryCoordinator.email}</span>
+                  </a>
+                )}
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Helpdesk Contact (Only if entered by organizer) */}
+          {event.helpdeskContact && (
+            <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-1.5 text-xs">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Event Helpdesk Support
+              </h3>
+              <p className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                <span>{event.helpdeskContact}</span>
+              </p>
+            </div>
+          )}
+
+          {/* Amenities & Facilities (Render only if at least one facility is provided) */}
+          {Boolean(
+            event.facilities &&
+              (event.facilities.food ||
+                event.facilities.parking ||
+                event.facilities.transport ||
+                event.facilities.accommodation)
+          ) && (
+            <div className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                Campus Facilities
+              </h3>
+              <div className="space-y-2 text-xs">
+                {event.facilities?.food && (
+                  <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                    <Utensils className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>{event.facilities.foodDetails || 'Meals / Refreshments Provided'}</span>
+                  </div>
+                )}
+                {event.facilities?.parking && (
+                  <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                    <Car className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>{event.facilities.parkingDetails || 'Campus Parking Available'}</span>
+                  </div>
+                )}
+                {event.facilities?.transport && (
+                  <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                    <Bus className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>{event.facilities.transportDetails || 'Campus Transit Shuttles'}</span>
+                  </div>
+                )}
+                {event.facilities?.accommodation && (
+                  <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                    <Bed className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>{event.facilities.accommodationDetails || 'Hostel Lodging Available'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* SECTION 20: "More Details" Accordion Section */}
-      <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs">
-        <button
-          type="button"
-          onClick={() => setShowMoreDetails(!showMoreDetails)}
-          className="w-full p-5 flex items-center justify-between text-left hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer"
-        >
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[var(--primary-color)]" />
-            <div>
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                More Details & Competition Format
-              </h3>
-              <p className="text-xs text-[var(--text-muted)]">
-                Rounds breakdown, judging criteria, software/hardware requirements, and rules
-              </p>
-            </div>
-          </div>
-          {showMoreDetails ? <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />}
-        </button>
-
-        {showMoreDetails && (
-          <div className="p-6 border-t border-[var(--border-color)] space-y-6 bg-[var(--surface-subtle)]/50">
-            {/* Rules & Guidelines */}
-            {event.rulesAndGuidelines && (
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                  Rules & Guidelines
-                </h4>
-                <p className="text-xs text-[var(--text-secondary)] whitespace-pre-line leading-relaxed">
-                  {event.rulesAndGuidelines}
+      {/* SECTION 20: "More Details" Accordion Section (Only render if valid details exist) */}
+      {(Boolean(event.rulesAndGuidelines) ||
+        Boolean(event.hasMultipleRounds && event.rounds && event.rounds.length > 0) ||
+        Boolean(event.requiredMaterials) ||
+        Boolean(event.thingsToCarry) ||
+        Boolean(event.softwareRequirements) ||
+        Boolean(event.hardwareRequirements) ||
+        Boolean(event.submissionRequirements) ||
+        Boolean(event.dressCode) ||
+        Boolean(event.customDetails && event.customDetails.length > 0)) && (
+        <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] overflow-hidden shadow-xs">
+          <button
+            type="button"
+            onClick={() => setShowMoreDetails(!showMoreDetails)}
+            className="w-full p-5 flex items-center justify-between text-left hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[var(--primary-color)]" />
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  More Details & Competition Format
+                </h3>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Rounds breakdown, judging criteria, software/hardware requirements, and rules
                 </p>
               </div>
-            )}
+            </div>
+            {showMoreDetails ? <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />}
+          </button>
 
-            {/* Rounds and Judging */}
-            {event.hasMultipleRounds && event.rounds && event.rounds.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                  Competition Format & Rounds
-                </h4>
-                <div className="space-y-2.5">
-                  {event.rounds.map((r, i) => (
-                    <div key={i} className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-[var(--text-primary)]">{r.name}</span>
-                        {r.duration && (
-                          <span className="text-[11px] text-[var(--text-muted)] font-mono">{r.duration}</span>
+          {showMoreDetails && (
+            <div className="p-6 border-t border-[var(--border-color)] space-y-6 bg-[var(--surface-subtle)]/50">
+              {/* Rules & Guidelines */}
+              {event.rulesAndGuidelines && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Rules & Guidelines
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)] whitespace-pre-line leading-relaxed">
+                    {event.rulesAndGuidelines}
+                  </p>
+                </div>
+              )}
+
+              {/* Rounds and Judging */}
+              {event.hasMultipleRounds && event.rounds && event.rounds.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Competition Format & Rounds
+                  </h4>
+                  <div className="space-y-2.5">
+                    {event.rounds.map((r, i) => (
+                      <div key={i} className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-[var(--text-primary)]">{r.name}</span>
+                          {r.duration && (
+                            <span className="text-[11px] text-[var(--text-muted)] font-mono">{r.duration}</span>
+                          )}
+                        </div>
+                        <p className="text-[var(--text-secondary)]">{r.description}</p>
+                        {r.judgingCriteria && (
+                          <p className="text-[11px] text-[var(--text-muted)]">
+                            <span className="font-semibold text-[var(--text-primary)]">Judging Criteria: </span>
+                            {r.judgingCriteria}
+                          </p>
                         )}
                       </div>
-                      <p className="text-[var(--text-secondary)]">{r.description}</p>
-                      {r.judgingCriteria && (
-                        <p className="text-[11px] text-[var(--text-muted)]">
-                          <span className="font-semibold text-[var(--text-primary)]">Judging Criteria: </span>
-                          {r.judgingCriteria}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Required Materials */}
-            {event.requiredMaterials && (
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                  Required Materials & Things to Carry
-                </h4>
-                <p className="text-xs text-[var(--text-secondary)]">{event.requiredMaterials}</p>
-              </div>
-            )}
-
-            {/* Custom Organizer Fields (Section 20 & 40) */}
-            {event.customDetails && event.customDetails.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-[var(--border-color)]">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                  Additional Event Information
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {event.customDetails.map((cd) => (
-                    <div key={cd.id} className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs">
-                      <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">{cd.label}</span>
-                      {cd.type === 'Link' ? (
-                        <a href={cd.value} target="_blank" rel="noreferrer" className="text-[var(--primary-color)] hover:underline flex items-center gap-1 font-semibold mt-0.5">
-                          {cd.value} <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ) : (
-                        <span className="font-bold text-[var(--text-primary)] mt-0.5 block">{cd.value}</span>
-                      )}
-                    </div>
-                  ))}
+              {/* Required Materials */}
+              {event.requiredMaterials && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Required Materials
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)]">{event.requiredMaterials}</p>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+
+              {/* Things to Carry */}
+              {event.thingsToCarry && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Things to Carry
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)]">{event.thingsToCarry}</p>
+                </div>
+              )}
+
+              {/* Software Requirements */}
+              {event.softwareRequirements && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Software Requirements
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)]">{event.softwareRequirements}</p>
+                </div>
+              )}
+
+              {/* Hardware Requirements */}
+              {event.hardwareRequirements && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Hardware Requirements
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)]">{event.hardwareRequirements}</p>
+                </div>
+              )}
+
+              {/* Submission Requirements */}
+              {event.submissionRequirements && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Submission Requirements
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)]">{event.submissionRequirements}</p>
+                </div>
+              )}
+
+              {/* Dress Code */}
+              {event.dressCode && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Dress Code
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)]">{event.dressCode}</p>
+                </div>
+              )}
+
+              {/* Custom Organizer Fields */}
+              {event.customDetails && event.customDetails.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-[var(--border-color)]">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Additional Event Information
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {event.customDetails.map((cd) => (
+                      <div key={cd.id} className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">{cd.label}</span>
+                        {cd.type === 'Link' ? (
+                          <a href={cd.value} target="_blank" rel="noreferrer" className="text-[var(--primary-color)] hover:underline flex items-center gap-1 font-semibold mt-0.5">
+                            {cd.value} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="font-bold text-[var(--text-primary)] mt-0.5 block">{cd.value}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* FULL POSTER MODAL */}
       <Modal

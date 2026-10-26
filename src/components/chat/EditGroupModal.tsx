@@ -22,6 +22,12 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   const [name, setName] = useState(group.name || '');
   const [description, setDescription] = useState(group.description || '');
   const [imageUrl, setImageUrl] = useState(group.imageUrl || '');
+  const [groupPrivacy, setGroupPrivacy] = useState<'Everyone' | 'Connections' | 'Same College' | 'Invite Only'>(
+    group.groupPrivacy || 'Everyone'
+  );
+  const [chatPermissions, setChatPermissions] = useState<'Everyone' | 'Admins Only'>(
+    group.chatPermissions || 'Everyone'
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +45,9 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
         name: name.trim(),
         description: description.trim(),
         imageUrl: imageUrl || undefined,
+        groupPrivacy,
+        visibility: groupPrivacy === 'Invite Only' ? 'Invite Only' : 'Public',
+        chatPermissions,
       });
 
       if (res.success && res.group) {
@@ -109,6 +118,38 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
             placeholder="What is this group about?"
             className="w-full px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)] transition-all font-medium resize-none"
           />
+        </div>
+
+        {/* Group Privacy */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-[var(--text-primary)]">
+            Group Privacy & Who Can Add / Join
+          </label>
+          <select
+            value={groupPrivacy}
+            onChange={(e: any) => setGroupPrivacy(e.target.value)}
+            className="w-full px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] font-medium focus:outline-hidden"
+          >
+            <option value="Everyone">Everyone (Open & Discoverable)</option>
+            <option value="Connections">Connections Only</option>
+            <option value="Same College">Same College Students</option>
+            <option value="Invite Only">Invite Only (Private)</option>
+          </select>
+        </div>
+
+        {/* Chat Messaging Permissions */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-[var(--text-primary)]">
+            Messaging Permission
+          </label>
+          <select
+            value={chatPermissions}
+            onChange={(e: any) => setChatPermissions(e.target.value)}
+            className="w-full px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] font-medium focus:outline-hidden"
+          >
+            <option value="Everyone">Everyone Can Send Messages</option>
+            <option value="Admins Only">Admins Only (Broadcast)</option>
+          </select>
         </div>
 
         {/* Footer */}

@@ -333,10 +333,11 @@ export async function addMember(req: AuthenticatedRequest, res: Response) {
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     const { id } = req.params;
-    const { targetUserId, role = 'Member' } = req.body;
+    const { role = 'Member' } = req.body;
+    const targetUserId = req.body.targetUserId || req.body.memberUserId || req.body.userId;
 
     if (!targetUserId) {
-      return res.status(400).json({ success: false, message: 'targetUserId is required.' });
+      return res.status(400).json({ success: false, message: 'targetUserId or memberUserId is required.' });
     }
 
     const group = await Group.findById(id);
