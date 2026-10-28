@@ -128,9 +128,11 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
     try {
       setLoading(true);
       if (isCollege) {
+        const activeCollege = localStorage.getItem('eventhub_active_college');
+        const query = activeCollege ? `?collegeId=${activeCollege}` : '';
         const [evRes, reqRes] = await Promise.all([
-          api.get<any>('/college/events'),
-          api.get<any>('/college/student-requests'),
+          api.get<any>(`/college/events${query}`),
+          api.get<any>(`/college/student-requests${query}`),
         ]);
         if (evRes.success) setCollegeEvents(evRes.events || []);
         if (reqRes.success) setPendingRequests(reqRes.requests || []);

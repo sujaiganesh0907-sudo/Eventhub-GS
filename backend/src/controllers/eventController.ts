@@ -542,24 +542,46 @@ export async function getCollegeEvents(req: AuthenticatedRequest, res: Response)
     const user = req.user;
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const targetCollegeId =
+    let targetCollegeId =
       (req.headers['x-college-id'] as string) ||
       (req.query.collegeId as string) ||
       user.collegeId;
 
     if (!targetCollegeId) {
+      if (user.role === 'College Super Admin') {
+        const c = await College.findOne({ superAdminId: user._id });
+        if (c) targetCollegeId = c._id;
+      }
+      if (!targetCollegeId) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) targetCollegeId = m.collegeId;
+      }
+    }
+
+    if (!targetCollegeId) {
       return res.status(403).json({ success: false, message: 'College account required' });
     }
 
-    if (user.collegeId !== targetCollegeId) {
+    let isAuthorized = false;
+    if (user.role === 'College Super Admin') {
+      const c = await College.findById(targetCollegeId);
+      if (c && (c.superAdminId === user._id || user.collegeId === targetCollegeId)) {
+        isAuthorized = true;
+      }
+    }
+    if (!isAuthorized) {
       const membership = await CollegeAdminMembership.findOne({
         collegeId: targetCollegeId,
         userId: user._id,
         status: 'Active',
       });
-      if (!membership) {
-        return res.status(403).json({ success: false, message: 'Access forbidden. Active college administration required.' });
+      if (membership) {
+        isAuthorized = true;
       }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Access forbidden. Active college administration required.' });
     }
 
     const events = await Event.find({ hostCollegeId: targetCollegeId }).sort({ createdAt: -1 }).exec();
@@ -574,24 +596,46 @@ export async function getCollegeStudentRequests(req: AuthenticatedRequest, res: 
     const user = req.user;
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const targetCollegeId =
+    let targetCollegeId =
       (req.headers['x-college-id'] as string) ||
       (req.query.collegeId as string) ||
       user.collegeId;
 
     if (!targetCollegeId) {
+      if (user.role === 'College Super Admin') {
+        const c = await College.findOne({ superAdminId: user._id });
+        if (c) targetCollegeId = c._id;
+      }
+      if (!targetCollegeId) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) targetCollegeId = m.collegeId;
+      }
+    }
+
+    if (!targetCollegeId) {
       return res.status(403).json({ success: false, message: 'College account required' });
     }
 
-    if (user.collegeId !== targetCollegeId) {
+    let isAuthorized = false;
+    if (user.role === 'College Super Admin') {
+      const c = await College.findById(targetCollegeId);
+      if (c && (c.superAdminId === user._id || user.collegeId === targetCollegeId)) {
+        isAuthorized = true;
+      }
+    }
+    if (!isAuthorized) {
       const membership = await CollegeAdminMembership.findOne({
         collegeId: targetCollegeId,
         userId: user._id,
         status: 'Active',
       });
-      if (!membership) {
-        return res.status(403).json({ success: false, message: 'Access forbidden. Active college administration required.' });
+      if (membership) {
+        isAuthorized = true;
       }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Access forbidden. Active college administration required.' });
     }
 
     const requests = await Event.find({

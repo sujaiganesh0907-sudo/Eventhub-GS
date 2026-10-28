@@ -26,6 +26,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initialFetchDone = useRef<boolean>(false);
 
+  const isFetchingRef = useRef<boolean>(false);
+
   const fetchNotifications = async () => {
     const token = localStorage.getItem('eventhub_token');
     if (!user || !isAuthenticated || status !== 'authenticated' || !token) {
@@ -35,6 +37,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       initialFetchDone.current = false;
       return;
     }
+
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
 
     try {
       setLoading(true);
@@ -68,14 +73,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.warn('Failed to fetch notifications', err);
       }
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (status === 'authenticated' && user && localStorage.getItem('eventhub_token')) {
+    if (status === 'authenticated' && user?._id && localStorage.getItem('eventhub_token')) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 15000);
+      const interval = setInterval(fetchNotifications, 20000);
       return () => clearInterval(interval);
     } else {
       setNotifications([]);
@@ -83,7 +89,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       seenIdsRef.current.clear();
       initialFetchDone.current = false;
     }
-  }, [user, isAuthenticated, status]);
+  }, [user?._id, isAuthenticated, status]);
 
   const markAsRead = async (id: string) => {
     try {

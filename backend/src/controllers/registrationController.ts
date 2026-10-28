@@ -242,19 +242,34 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
     if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
     const { eventId, search, paymentStatus, attended } = req.query;
-    const targetCollegeId =
+    let targetCollegeId =
       (req.headers['x-college-id'] as string) ||
       (req.query.collegeId as string) ||
       user.collegeId;
+
+    if (!targetCollegeId && (user.role === 'College Super Admin' || user.role === 'College Admin')) {
+      if (user.role === 'College Super Admin') {
+        const c = await College.findOne({ superAdminId: user._id });
+        if (c) targetCollegeId = c._id;
+      }
+      if (!targetCollegeId) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) targetCollegeId = m.collegeId;
+      }
+    }
 
     const filter: any = {};
 
     // Check if user is operating as an authorized College Administrator
     let isAuthorizedCollegeAdmin = false;
     if (targetCollegeId) {
-      if (user.role === 'College Super Admin' && user.collegeId === targetCollegeId) {
-        isAuthorizedCollegeAdmin = true;
-      } else {
+      if (user.role === 'College Super Admin') {
+        const c = await College.findById(targetCollegeId);
+        if (c && (c.superAdminId === user._id || user.collegeId === targetCollegeId)) {
+          isAuthorizedCollegeAdmin = true;
+        }
+      }
+      if (!isAuthorizedCollegeAdmin) {
         const membership = await CollegeAdminMembership.findOne({
           collegeId: targetCollegeId,
           userId: user._id,

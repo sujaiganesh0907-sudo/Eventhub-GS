@@ -101,6 +101,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
           // Token refresh truly failed - clear tokens and dispatch event
           localStorage.removeItem('eventhub_token');
           localStorage.removeItem('eventhub_refresh');
+          localStorage.removeItem('eventhub_active_college');
           window.dispatchEvent(new CustomEvent('eventhub:session_expired'));
         }
       } else {
@@ -116,6 +117,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
           });
         });
       }
+    } else {
+      // No refresh token available, session is definitely expired
+      localStorage.removeItem('eventhub_token');
+      localStorage.removeItem('eventhub_refresh');
+      localStorage.removeItem('eventhub_active_college');
+      window.dispatchEvent(new CustomEvent('eventhub:session_expired'));
     }
   }
 

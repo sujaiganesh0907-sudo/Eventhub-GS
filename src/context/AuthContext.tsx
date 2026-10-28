@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { IUser, IStudentProfile, ICollege } from '../types';
 import { api } from '../services/api';
 
@@ -42,28 +42,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('eventhub_token') ? 'loading' : 'unauthenticated';
   });
 
+  const refreshInFlightRef = useRef(false);
+
   const refreshProfile = useCallback(async () => {
     const token = localStorage.getItem('eventhub_token');
     if (!token) {
       setUser(null);
       setStudentProfile(null);
       setCollege(null);
+      setHasAdminMemberships(false);
       setStatus('unauthenticated');
       return;
     }
 
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+
     try {
       const res = await api.get<any>('/auth/me');
       if (res.success && res.user) {
+        if (res.college?._id || res.user.collegeId) {
+          localStorage.setItem('eventhub_active_college', res.college?._id || res.user.collegeId);
+        }
         setUser(res.user);
         setStudentProfile(res.studentProfile || null);
         setCollege(res.college || null);
         setHasAdminMemberships(Boolean(res.hasAdminMemberships));
         setStatus('authenticated');
       } else {
-        // Only clear if server returned explicit failure
         localStorage.removeItem('eventhub_token');
         localStorage.removeItem('eventhub_refresh');
+        localStorage.removeItem('eventhub_active_college');
         setUser(null);
         setStudentProfile(null);
         setCollege(null);
@@ -72,18 +81,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err: any) {
       console.warn('Session verification notice:', err?.message || err);
-      // If 401 error and refresh already failed in api.ts
-      if (err?.status === 401 && !localStorage.getItem('eventhub_token')) {
+      if (err?.status === 401) {
+        localStorage.removeItem('eventhub_token');
+        localStorage.removeItem('eventhub_refresh');
+        localStorage.removeItem('eventhub_active_college');
         setUser(null);
         setStudentProfile(null);
         setCollege(null);
+        setHasAdminMemberships(false);
         setStatus('unauthenticated');
-      } else if (!user) {
-        // If there is no existing in-memory user and request failed
-        setStatus('unauthenticated');
+      } else {
+        setStatus((prev) => (prev === 'authenticated' ? 'authenticated' : 'unauthenticated'));
       }
+    } finally {
+      refreshInFlightRef.current = false;
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     refreshProfile();
@@ -92,9 +105,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Listen for session expiration event dispatched by api.ts when refresh token fails
   useEffect(() => {
     const handleSessionExpired = () => {
+      localStorage.removeItem('eventhub_token');
+      localStorage.removeItem('eventhub_refresh');
+      localStorage.removeItem('eventhub_active_college');
       setUser(null);
       setStudentProfile(null);
       setCollege(null);
+      setHasAdminMemberships(false);
       setStatus('unauthenticated');
     };
 
@@ -108,6 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('eventhub_token', res.tokens.accessToken);
       if (res.tokens?.refreshToken) {
         localStorage.setItem('eventhub_refresh', res.tokens.refreshToken);
+      }
+      if (res.college?._id || res.user?.collegeId) {
+        localStorage.setItem('eventhub_active_college', res.college?._id || res.user.collegeId);
+      } else {
+        localStorage.removeItem('eventhub_active_college');
       }
       setUser(res.user);
       setStudentProfile(res.studentProfile || null);
@@ -188,6 +210,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('eventhub_token', res.tokens.accessToken);
       if (res.tokens.refreshToken) {
         localStorage.setItem('eventhub_refresh', res.tokens.refreshToken);
+      }
+      if (res.college?._id || res.user?.collegeId) {
+        localStorage.setItem('eventhub_active_college', res.college?._id || res.user.collegeId);
+      } else {
+        localStorage.removeItem('eventhub_active_college');
       }
       setUser(res.user);
       setStudentProfile(res.studentProfile || null);

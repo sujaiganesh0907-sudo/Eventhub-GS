@@ -666,8 +666,23 @@ export async function login(req: Request, res: Response) {
 
     if (user.role === 'Student') {
       studentProfile = await StudentProfile.findOne({ userId: user._id });
-    } else if (user.collegeId) {
-      college = await College.findById(user.collegeId);
+    } else {
+      if (user.collegeId) {
+        college = await College.findById(user.collegeId);
+      }
+      if (!college && user.role === 'College Super Admin') {
+        college = await College.findOne({ superAdminId: user._id });
+      }
+      if (!college) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) {
+          college = await College.findById(m.collegeId);
+        }
+      }
+      if (college && !user.collegeId) {
+        user.collegeId = college._id;
+        await User.findByIdAndUpdate(user._id, { collegeId: college._id });
+      }
     }
 
     const adminMembershipsCount = await CollegeAdminMembership.countDocuments({
@@ -712,8 +727,23 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
 
     if (req.user.role === 'Student') {
       studentProfile = await StudentProfile.findOne({ userId: req.user._id });
-    } else if (req.user.collegeId) {
-      college = await College.findById(req.user.collegeId);
+    } else {
+      if (req.user.collegeId) {
+        college = await College.findById(req.user.collegeId);
+      }
+      if (!college && req.user.role === 'College Super Admin') {
+        college = await College.findOne({ superAdminId: req.user._id });
+      }
+      if (!college) {
+        const m = await CollegeAdminMembership.findOne({ userId: req.user._id, status: 'Active' });
+        if (m) {
+          college = await College.findById(m.collegeId);
+        }
+      }
+      if (college && !req.user.collegeId) {
+        req.user.collegeId = college._id;
+        await User.findByIdAndUpdate(req.user._id, { collegeId: college._id });
+      }
     }
 
     const adminMembershipsCount = await CollegeAdminMembership.countDocuments({
@@ -820,8 +850,23 @@ export async function quickSwitch(req: Request, res: Response) {
         studentProfile.userId = user._id;
         await StudentProfile.findByIdAndUpdate(studentProfile._id, { userId: user._id });
       }
-    } else if (user.collegeId) {
-      college = await College.findById(user.collegeId);
+    } else {
+      if (user.collegeId) {
+        college = await College.findById(user.collegeId);
+      }
+      if (!college && user.role === 'College Super Admin') {
+        college = await College.findOne({ superAdminId: user._id });
+      }
+      if (!college) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) {
+          college = await College.findById(m.collegeId);
+        }
+      }
+      if (college && !user.collegeId) {
+        user.collegeId = college._id;
+        await User.findByIdAndUpdate(user._id, { collegeId: college._id });
+      }
     }
 
     const adminMembershipsCount = await CollegeAdminMembership.countDocuments({

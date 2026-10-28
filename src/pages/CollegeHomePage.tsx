@@ -45,6 +45,7 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
   const [events, setEvents] = useState<IEvent[]>([]);
   const [registrations, setRegistrations] = useState<IEventRegistration[]>([]);
   const [studentRequests, setStudentRequests] = useState<IEvent[]>([]);
+  const isFetchingDashboardRef = React.useRef(false);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
@@ -54,18 +55,27 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
       return;
     }
 
-    const activeCollege = localStorage.getItem('eventhub_active_college') || college?._id || user.collegeId;
-    if (!activeCollege && user.role === 'Student') {
+    // Role guard: Only college accounts should fetch college dashboard data
+    if (user.role === 'Student') {
       setLoading(false);
       return;
     }
 
+    if (isFetchingDashboardRef.current) return;
+    isFetchingDashboardRef.current = true;
+
+    const activeCollege = localStorage.getItem('eventhub_active_college') || college?._id || user.collegeId;
+    if (activeCollege) {
+      localStorage.setItem('eventhub_active_college', activeCollege);
+    }
+
     try {
       setLoading(true);
+      const query = activeCollege ? `?collegeId=${activeCollege}` : '';
       const [eventsRes, regsRes, reqsRes] = await Promise.all([
-        api.get<any>('/college/events'),
-        api.get<any>('/registrations/college'),
-        api.get<any>('/college/student-requests'),
+        api.get<any>(`/college/events${query}`),
+        api.get<any>(`/registrations/college${query}`),
+        api.get<any>(`/college/student-requests${query}`),
       ]);
 
       if (eventsRes.success) setEvents(eventsRes.events || []);
@@ -74,15 +84,16 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
     } catch (err) {
       console.error('Failed to load college dashboard data', err);
     } finally {
+      isFetchingDashboardRef.current = false;
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user && localStorage.getItem('eventhub_token')) {
+    if (user && localStorage.getItem('eventhub_token') && (user.role === 'College Super Admin' || user.role === 'College Admin')) {
       fetchDashboardData();
     }
-  }, [user, college]);
+  }, [user?._id, college?._id]);
 
   const isPending = college?.verificationStatus === 'Pending';
   const isVerified = college?.verificationStatus === 'Verified';
