@@ -8,20 +8,26 @@ import {
   MapPin,
   Users,
   Award,
-  DollarSign,
+  IndianRupee,
   Plus,
   Trash2,
   HelpCircle,
-  Upload,
   AlertCircle,
   FileText,
-  Sparkles,
   X,
+  QrCode,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  ListOrdered,
+  Eye,
+  Lock,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { ICollege, IEventCustomField, IParticipantQuestion } from '../../types';
+import { ICollege, IParticipantQuestion } from '../../types';
 import { FileUpload } from '../common/FileUpload';
 import { api } from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 
 interface MultiStepEventFormProps {
   colleges?: ICollege[];
@@ -33,28 +39,16 @@ interface MultiStepEventFormProps {
   isStudentProposal?: boolean;
 }
 
-const STEPS = [
-  { id: 1, name: 'Basic Details' },
+const WIZARD_STEPS = [
+  { id: 1, name: 'Basic Info' },
   { id: 2, name: 'Schedule' },
-  { id: 3, name: 'Mode & Venue' },
+  { id: 3, name: 'Location & Mode' },
   { id: 4, name: 'Registration' },
-  { id: 5, name: 'Eligibility' },
-  { id: 6, name: 'Format & Rounds' },
-  { id: 7, name: 'Prizes & Certs' },
-  { id: 8, name: 'Coordinators' },
-  { id: 9, name: 'Payment' },
-  { id: 10, name: 'Custom Info' },
-  { id: 11, name: 'Form Builder' },
-  { id: 12, name: 'Review & Submit' },
+  { id: 5, name: 'Rules & Prizes' },
+  { id: 6, name: 'Payment' },
+  { id: 7, name: 'Custom Details' },
+  { id: 8, name: 'Review & Publish' },
 ];
-
-interface IEventRound {
-  name: string;
-  description: string;
-  duration?: string;
-  qualificationCriteria?: string;
-  judgingCriteria?: string;
-}
 
 export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   colleges: propColleges,
@@ -62,14 +56,25 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   onSuccess,
   onCancel,
   onClose,
-  isOpen,
+  isOpen = true,
   isStudentProposal,
 }) => {
-  const { user, college, studentProfile } = useAuth();
-  const isStudent = isStudentProposal !== undefined ? isStudentProposal : user?.role === 'Student';
+  const { user, studentProfile, college } = useAuth();
+  const { showToast } = useToast();
   const handleClose = onClose || onCancel || (() => {});
 
   const [colleges, setColleges] = useState<ICollege[]>(propColleges || []);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [previewCustomForm, setPreviewCustomForm] = useState(false);
+
+  // Is this an edit of an already published event? (Requirement 11)
+  const isEditingPublished = Boolean(eventToEdit && eventToEdit.status === 'Published');
+  const [publishedNewDeadline, setPublishedNewDeadline] = useState(
+    eventToEdit?.registrationDeadline || ''
+  );
 
   useEffect(() => {
     if (!propColleges || propColleges.length === 0) {
@@ -79,27 +84,14 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     }
   }, [propColleges]);
 
-  if (isOpen !== undefined && !isOpen) return null;
-
-  const [currentStep, setCurrentStep] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Event Group creation state (Requirements 8, 9)
-  const [createEventGroup, setCreateEventGroup] = useState(false);
-  const [eventGroupName, setEventGroupName] = useState('');
-  const [eventGroupDescription, setEventGroupDescription] = useState('');
-  const [eventGroupPhoto, setEventGroupPhoto] = useState('');
-  const [eventGroupChatPermissions, setEventGroupChatPermissions] = useState<'Everyone' | 'Admins Only'>('Everyone');
-
-  // Form State
+  // Form State initialized with clean, empty values (NO hardcoded placeholder samples)
   const [formData, setFormData] = useState({
-    // Step 1: Basic Details
+    // Step 1: Basic Info
     title: '',
-    poster: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&auto=format&fit=crop&q=80',
-    targetCollegeId: colleges[0]?._id || '',
-    category: 'Hackathon',
-    eventType: 'Technical',
+    poster: '',
+    targetCollegeId: '',
+    category: 'Technical',
+    eventType: 'Symposium',
     tagline: '',
     description: '',
 
@@ -109,7 +101,6 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     endTime: '',
     registrationDeadline: '',
     reportingTime: '',
-    registrationOpensOn: '',
 
     // Step 3: Location & Mode
     eventMode: 'Offline' as 'Offline' | 'Online' | 'Hybrid',
@@ -118,55 +109,19 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     buildingBlock: '',
     address: '',
     googleMapsLink: '',
-    transportParkingNotes: '',
     meetingPlatform: '',
     meetingLink: '',
 
-    // Step 4: Registration
+    // Step 4: Registration & Coordinators
     registrationType: 'Individual' as 'Individual' | 'Team',
     minTeamSize: 2,
     maxTeamSize: 4,
-    isFree: true,
-    registrationFee: 0,
     capacity: 100,
-
-    // Step 5: Eligibility
     educationLevel: ['UG', 'PG'],
     departments: ['All Disciplines'],
     eligibleYears: ['All Years'],
-    genderRestriction: 'None',
-    institutionRestriction: 'Open to All Colleges',
-    additionalEligibilityNotes: '',
-
-    // Step 6: Format & Rounds
-    rulesAndGuidelines: '',
-    hasMultipleRounds: false,
-    rounds: [] as IEventRound[],
-    requiredMaterials: '',
-    thingsToCarry: '',
-    softwareRequirements: '',
-    hardwareRequirements: '',
-    submissionRequirements: '',
-    dressCode: '',
-
-    // Step 7: Prizes & Certificates
-    prizeAvailable: false,
-    totalPrizePool: 0,
-    firstPrize: '',
-    secondPrize: '',
-    thirdPrize: '',
-    specialPrize: '',
-    prizeNotes: '',
-    certificateAvailable: false,
-    participationCertificate: false,
-    winnerCertificate: false,
-    certificateType: 'Digital' as 'Digital' | 'Physical' | 'Both',
-    certificateEligibility: '',
-    deliveryMethod: '',
-
-    // Step 8: Coordinators & Facilities
     primaryCoordinator: {
-      name: user?.fullName || '',
+      name: user?.fullName || studentProfile?.fullName || '',
       role: 'Lead Coordinator',
       phone: studentProfile?.phoneNumber || '',
       email: user?.email || '',
@@ -177,98 +132,67 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
       phone: '',
       email: '',
     },
-    helpdeskContact: '',
-    facilities: {
-      food: false,
-      foodDetails: '',
-      accommodation: false,
-      accommodationDetails: '',
-      transport: false,
-      transportDetails: '',
-      parking: false,
-      parkingDetails: '',
-    },
-    importantNotes: '',
 
-    // Step 9: Payment
+    // Step 5: Rules & Prizes
+    rulesAndGuidelines: '',
+    prizeAvailable: false,
+    totalPrizePool: 0,
+    firstPrize: '',
+    secondPrize: '',
+    thirdPrize: '',
+    certificateAvailable: true,
+    participationCertificate: true,
+    winnerCertificate: false,
+
+    // Step 6: Payment
+    isFree: true,
+    registrationFee: 0,
     paymentConfig: {
-      payeeName: college?.name || '',
+      payeeName: college?.name || user?.fullName || '',
       upiId: '',
-      paymentQr: '',
       paymentInstructions: '',
-      refundPolicy: '',
     },
 
-    // Step 10: Custom Event Information
-    customDetails: [] as IEventCustomField[],
-
-    // Step 11: Participant Questions
+    // Step 7: Consolidated Custom Details (Google Forms style)
     registrationQuestions: [] as IParticipantQuestion[],
   });
 
+  // Sync eventToEdit when provided
   useEffect(() => {
     if (eventToEdit) {
+      setPublishedNewDeadline(eventToEdit.registrationDeadline || '');
       setFormData({
         title: eventToEdit.title || '',
         poster: eventToEdit.poster || '',
         targetCollegeId: eventToEdit.targetCollegeId || eventToEdit.hostCollegeId || '',
-        category: eventToEdit.category || 'Hackathon',
-        eventType: eventToEdit.eventType || 'Technical',
+        category: eventToEdit.category || 'Technical',
+        eventType: eventToEdit.eventType || 'Symposium',
         tagline: eventToEdit.tagline || '',
         description: eventToEdit.description || '',
         eventDate: eventToEdit.eventDate || '',
         startTime: eventToEdit.startTime || '',
         endTime: eventToEdit.endTime || '',
-        registrationDeadline: eventToEdit.registrationDeadline ? eventToEdit.registrationDeadline.slice(0, 16) : '',
+        registrationDeadline: eventToEdit.registrationDeadline || '',
         reportingTime: eventToEdit.reportingTime || '',
-        registrationOpensOn: eventToEdit.registrationOpensOn || '',
         eventMode: eventToEdit.eventMode || 'Offline',
         venue: eventToEdit.venue || '',
         hallRoom: eventToEdit.hallRoom || '',
         buildingBlock: eventToEdit.buildingBlock || '',
         address: eventToEdit.address || '',
         googleMapsLink: eventToEdit.googleMapsLink || '',
-        transportParkingNotes: eventToEdit.transportParkingNotes || '',
         meetingPlatform: eventToEdit.meetingPlatform || '',
         meetingLink: eventToEdit.meetingLink || '',
         registrationType: eventToEdit.registrationType || 'Individual',
         minTeamSize: eventToEdit.minTeamSize || 2,
         maxTeamSize: eventToEdit.maxTeamSize || 4,
-        isFree: eventToEdit.isFree !== undefined ? eventToEdit.isFree : true,
-        registrationFee: eventToEdit.registrationFee || 0,
         capacity: eventToEdit.capacity || 100,
         educationLevel: eventToEdit.educationLevel || ['UG', 'PG'],
         departments: eventToEdit.departments || ['All Disciplines'],
         eligibleYears: eventToEdit.eligibleYears || ['All Years'],
-        genderRestriction: eventToEdit.genderRestriction || 'None',
-        institutionRestriction: eventToEdit.institutionRestriction || 'Open to All Colleges',
-        additionalEligibilityNotes: eventToEdit.additionalEligibilityNotes || '',
-        rulesAndGuidelines: eventToEdit.rulesAndGuidelines || '',
-        hasMultipleRounds: Boolean(eventToEdit.hasMultipleRounds),
-        rounds: Array.isArray(eventToEdit.rounds) ? eventToEdit.rounds : [],
-        requiredMaterials: eventToEdit.requiredMaterials || '',
-        thingsToCarry: eventToEdit.thingsToCarry || '',
-        softwareRequirements: eventToEdit.softwareRequirements || '',
-        hardwareRequirements: eventToEdit.hardwareRequirements || '',
-        submissionRequirements: eventToEdit.submissionRequirements || '',
-        dressCode: eventToEdit.dressCode || '',
-        prizeAvailable: Boolean(eventToEdit.prizeAvailable),
-        totalPrizePool: eventToEdit.totalPrizePool || 0,
-        firstPrize: eventToEdit.firstPrize || '',
-        secondPrize: eventToEdit.secondPrize || '',
-        thirdPrize: eventToEdit.thirdPrize || '',
-        specialPrize: eventToEdit.specialPrize || '',
-        prizeNotes: eventToEdit.prizeNotes || '',
-        certificateAvailable: Boolean(eventToEdit.certificateAvailable),
-        participationCertificate: Boolean(eventToEdit.participationCertificate),
-        winnerCertificate: Boolean(eventToEdit.winnerCertificate),
-        certificateType: eventToEdit.certificateType || 'Digital',
-        certificateEligibility: eventToEdit.certificateEligibility || '',
-        deliveryMethod: eventToEdit.deliveryMethod || '',
         primaryCoordinator: eventToEdit.primaryCoordinator || {
           name: user?.fullName || '',
           role: 'Lead Coordinator',
-          phone: studentProfile?.phoneNumber || '',
+          phone: '',
           email: user?.email || '',
         },
         secondaryCoordinator: eventToEdit.secondaryCoordinator || {
@@ -277,1490 +201,1603 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
           phone: '',
           email: '',
         },
-        helpdeskContact: eventToEdit.helpdeskContact || '',
-        facilities: eventToEdit.facilities || {
-          food: false,
-          foodDetails: '',
-          accommodation: false,
-          accommodationDetails: '',
-          transport: false,
-          transportDetails: '',
-          parking: false,
-          parkingDetails: '',
-        },
-        importantNotes: eventToEdit.importantNotes || '',
+        rulesAndGuidelines: eventToEdit.rulesAndGuidelines || '',
+        prizeAvailable: Boolean(eventToEdit.prizeAvailable),
+        totalPrizePool: eventToEdit.totalPrizePool || 0,
+        firstPrize: eventToEdit.firstPrize || '',
+        secondPrize: eventToEdit.secondPrize || '',
+        thirdPrize: eventToEdit.thirdPrize || '',
+        certificateAvailable: eventToEdit.certificateAvailable ?? true,
+        participationCertificate: eventToEdit.participationCertificate ?? true,
+        winnerCertificate: Boolean(eventToEdit.winnerCertificate),
+        isFree: eventToEdit.isFree ?? true,
+        registrationFee: eventToEdit.registrationFee || 0,
         paymentConfig: eventToEdit.paymentConfig || {
-          payeeName: college?.name || '',
+          payeeName: college?.name || user?.fullName || '',
           upiId: '',
-          paymentQr: '',
           paymentInstructions: '',
-          refundPolicy: '',
         },
-        customDetails: Array.isArray(eventToEdit.customDetails) ? eventToEdit.customDetails : [],
-        registrationQuestions: Array.isArray(eventToEdit.registrationQuestions) ? eventToEdit.registrationQuestions : [],
+        registrationQuestions: Array.isArray(eventToEdit.registrationQuestions)
+          ? eventToEdit.registrationQuestions
+          : [],
       });
     }
-  }, [eventToEdit, user, college]);
+  }, [eventToEdit, college, user]);
+
+  if (!isOpen) return null;
 
   const updateField = (field: string, val: any) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
-  const validateCurrentStep = (): boolean => {
+  // Step Validation logic
+  const validateStep = (step: number): boolean => {
+    const errors: Record<string, string> = {};
     setError(null);
-    if (currentStep === 1) {
-      if (!formData.title.trim()) {
-        setError('Event title is required.');
-        return false;
+
+    if (step === 1) {
+      const trimmedTitle = formData.title.trim();
+      if (!trimmedTitle) {
+        errors.title = 'Event Name is required.';
+      } else if (trimmedTitle.length > 15) {
+        errors.title = 'Event Name must be maximum 15 characters.';
       }
+
       if (!formData.poster) {
-        setError('Event poster is required.');
-        return false;
+        errors.poster = 'Event Poster image is required.';
       }
-      if (!formData.description.trim()) {
-        setError('Event description is required.');
-        return false;
+
+      const trimmedDesc = formData.description.trim();
+      if (!trimmedDesc) {
+        errors.description = 'Event Description is required.';
+      } else if (trimmedDesc.length > 200) {
+        errors.description = 'Event Description must be maximum 200 characters.';
       }
-      if (isStudent && !formData.targetCollegeId) {
-        setError('Target College must be selected.');
-        return false;
+
+      if (user?.role === 'Student' && !formData.targetCollegeId) {
+        errors.targetCollegeId = 'Please select a Target College for your proposal.';
       }
-    } else if (currentStep === 2) {
-      if (!formData.eventDate) {
-        setError('Event date is required.');
-        return false;
+    } else if (step === 2) {
+      if (!formData.eventDate) errors.eventDate = 'Event Date is required.';
+      if (!formData.startTime) errors.startTime = 'Start Time is required.';
+      if (!formData.endTime) errors.endTime = 'End Time is required.';
+      if (!formData.registrationDeadline) errors.registrationDeadline = 'Registration Deadline is required.';
+
+      if (formData.eventDate && formData.startTime && formData.endTime) {
+        const start = new Date(`${formData.eventDate}T${formData.startTime}`).getTime();
+        const end = new Date(`${formData.eventDate}T${formData.endTime}`).getTime();
+        if (end <= start) {
+          errors.endTime = 'End Time must be after Start Time.';
+        }
       }
-      if (!formData.startTime || !formData.endTime) {
-        setError('Start and end times are required.');
-        return false;
+
+      if (formData.eventDate && formData.startTime && formData.registrationDeadline) {
+        const start = new Date(`${formData.eventDate}T${formData.startTime}`).getTime();
+        const deadline = new Date(formData.registrationDeadline).getTime();
+        if (deadline > start) {
+          errors.registrationDeadline = 'Registration Deadline must be before the event start time.';
+        }
       }
-      if (!formData.registrationDeadline) {
-        setError('Registration deadline is required.');
-        return false;
+    } else if (step === 3) {
+      if (formData.eventMode === 'Offline' || formData.eventMode === 'Hybrid') {
+        if (!formData.venue.trim()) {
+          errors.venue = 'Venue name is required for offline/hybrid events.';
+        }
       }
-    } else if (currentStep === 3) {
-      if ((formData.eventMode === 'Offline' || formData.eventMode === 'Hybrid') && !formData.venue.trim()) {
-        setError('Venue is required for Offline/Hybrid events.');
-        return false;
+      if (formData.eventMode === 'Online' || formData.eventMode === 'Hybrid') {
+        if (!formData.meetingLink.trim()) {
+          errors.meetingLink = 'Meeting link is required for online/hybrid events.';
+        } else if (!/^https?:\/\/.+/i.test(formData.meetingLink.trim())) {
+          errors.meetingLink = 'Enter a valid URL (starting with http:// or https://).';
+        }
       }
-      if ((formData.eventMode === 'Online' || formData.eventMode === 'Hybrid') && !formData.meetingLink.trim()) {
-        setError('Meeting link is required for Online/Hybrid events.');
-        return false;
+      if (formData.googleMapsLink && !/^https?:\/\/.+/i.test(formData.googleMapsLink.trim())) {
+        errors.googleMapsLink = 'Enter a valid URL.';
       }
-    } else if (currentStep === 4) {
-      if (formData.capacity <= 0) {
-        setError('Capacity must be at least 1 participant.');
-        return false;
+    } else if (step === 4) {
+      if (formData.registrationType === 'Team') {
+        if (formData.minTeamSize < 1) errors.minTeamSize = 'Min team size must be at least 1.';
+        if (formData.maxTeamSize < formData.minTeamSize) errors.maxTeamSize = 'Max team size cannot be less than min team size.';
       }
-      if (!formData.isFree && formData.registrationFee <= 0) {
-        setError('Registration fee must be greater than 0 for paid events.');
-        return false;
+      if (!formData.capacity || formData.capacity < 1) {
+        errors.capacity = 'Capacity must be a positive number.';
       }
-    } else if (currentStep === 6) {
+
+      if (!formData.primaryCoordinator.name.trim()) {
+        errors.coordName = 'Coordinator name is required.';
+      }
+      const phoneClean = formData.primaryCoordinator.phone.replace(/[\s\-()]/g, '');
+      if (!/^[6-9]\d{9}$/.test(phoneClean) && !/^\d{10}$/.test(phoneClean)) {
+        errors.coordPhone = 'Enter a valid 10-digit mobile number.';
+      }
+      if (!formData.primaryCoordinator.email.trim() || !/\S+@\S+\.\S+/.test(formData.primaryCoordinator.email)) {
+        errors.coordEmail = 'Enter a valid email address.';
+      }
+    } else if (step === 5) {
       if (!formData.rulesAndGuidelines.trim()) {
-        setError('Rules & guidelines are required for the competition.');
-        return false;
+        errors.rulesAndGuidelines = 'Rules and guidelines are required.';
       }
-    } else if (currentStep === 8) {
-      if (
-        !formData.primaryCoordinator.name.trim() ||
-        !formData.primaryCoordinator.phone.trim() ||
-        !formData.primaryCoordinator.email.trim()
-      ) {
-        setError('Primary coordinator name, phone, and email are required.');
-        return false;
+      if (formData.prizeAvailable && formData.totalPrizePool < 0) {
+        errors.totalPrizePool = 'Prize pool must be 0 or greater.';
       }
+    } else if (step === 6) {
+      if (!formData.isFree) {
+        if (!formData.registrationFee || formData.registrationFee <= 0) {
+          errors.registrationFee = 'Enter a valid event fee in INR (greater than 0).';
+        }
+        const upi = formData.paymentConfig.upiId.trim();
+        if (!upi || !/^[\w.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upi)) {
+          errors.upiId = 'Enter a valid UPI ID (username@provider).';
+        }
+      }
+    } else if (step === 7) {
+      // Validate Custom Details questions
+      for (let i = 0; i < formData.registrationQuestions.length; i++) {
+        const q = formData.registrationQuestions[i];
+        if (!q.label.trim()) {
+          errors[`q_${i}`] = `Question #${i + 1} requires a question title.`;
+        }
+        if (q.type === 'Select / Multiple Choice' || q.type === 'Dropdown') {
+          const validOpts = (q.options || []).filter((o) => o && o.trim());
+          if (validOpts.length === 0) {
+            errors[`q_${i}`] = `Question #${i + 1} (Multiple Choice) must have at least one option.`;
+          }
+        }
+      }
+    }
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Please resolve the errors highlighted below.');
+      return false;
     }
     return true;
   };
 
   const handleNext = () => {
-    if (validateCurrentStep()) {
-      setCurrentStep((prev) => Math.min(STEPS.length, prev + 1));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (validateStep(currentStep)) {
+      setCurrentStep((prev) => Math.min(WIZARD_STEPS.length, prev + 1));
     }
   };
 
-  const handlePrev = () => {
+  const handleBack = () => {
     setError(null);
     setCurrentStep((prev) => Math.max(1, prev - 1));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Submit Handler
   const handleSubmit = async (saveAsDraft = false) => {
-    if (!validateCurrentStep()) return;
+    if (!saveAsDraft && !validateStep(currentStep)) {
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     try {
-      const sanitizedSecondary = formData.secondaryCoordinator?.name?.trim()
-        ? formData.secondaryCoordinator
-        : undefined;
+      // If editing a published event: update deadline only
+      if (isEditingPublished) {
+        const eventStart = new Date(`${eventToEdit.eventDate}T${eventToEdit.startTime}`).getTime();
+        const deadline = new Date(publishedNewDeadline).getTime();
+        if (isNaN(deadline) || deadline > eventStart) {
+          throw new Error('Registration deadline must be before event start time.');
+        }
 
-      const sanitizedCustomDetails = (formData.customDetails || []).filter(
-        (cd) => cd.label?.trim() && cd.value?.trim()
-      );
+        const res = await api.put<any>(`/events/${eventToEdit._id}`, {
+          registrationDeadline: publishedNewDeadline,
+        });
 
-      const payload = {
-        ...formData,
-        tagline: formData.tagline?.trim() || '',
-        reportingTime: formData.reportingTime?.trim() || '',
-        venue: formData.eventMode === 'Online' ? '' : formData.venue?.trim() || '',
-        hallRoom: formData.eventMode === 'Online' ? '' : formData.hallRoom?.trim() || '',
-        buildingBlock: formData.eventMode === 'Online' ? '' : formData.buildingBlock?.trim() || '',
-        address: formData.eventMode === 'Online' ? '' : formData.address?.trim() || '',
-        googleMapsLink: formData.eventMode === 'Online' ? '' : formData.googleMapsLink?.trim() || '',
-        transportParkingNotes: formData.eventMode === 'Online' ? '' : formData.transportParkingNotes?.trim() || '',
-        meetingPlatform: formData.eventMode === 'Offline' ? '' : formData.meetingPlatform?.trim() || '',
-        meetingLink: formData.eventMode === 'Offline' ? '' : formData.meetingLink?.trim() || '',
-        additionalEligibilityNotes: formData.additionalEligibilityNotes?.trim() || '',
-        rulesAndGuidelines: formData.rulesAndGuidelines?.trim() || '',
-        rounds: formData.hasMultipleRounds ? formData.rounds : [],
-        requiredMaterials: formData.requiredMaterials?.trim() || '',
-        thingsToCarry: formData.thingsToCarry?.trim() || '',
-        softwareRequirements: formData.softwareRequirements?.trim() || '',
-        hardwareRequirements: formData.hardwareRequirements?.trim() || '',
-        submissionRequirements: formData.submissionRequirements?.trim() || '',
-        dressCode: formData.dressCode?.trim() || '',
-        totalPrizePool: formData.prizeAvailable ? Number(formData.totalPrizePool) || 0 : 0,
-        firstPrize: formData.prizeAvailable ? formData.firstPrize?.trim() || '' : '',
-        secondPrize: formData.prizeAvailable ? formData.secondPrize?.trim() || '' : '',
-        thirdPrize: formData.prizeAvailable ? formData.thirdPrize?.trim() || '' : '',
-        specialPrize: formData.prizeAvailable ? formData.specialPrize?.trim() || '' : '',
-        prizeNotes: formData.prizeAvailable ? formData.prizeNotes?.trim() || '' : '',
-        participationCertificate: formData.certificateAvailable ? Boolean(formData.participationCertificate) : false,
-        winnerCertificate: formData.certificateAvailable ? Boolean(formData.winnerCertificate) : false,
-        certificateEligibility: formData.certificateAvailable ? formData.certificateEligibility?.trim() || '' : '',
-        deliveryMethod: formData.certificateAvailable ? formData.deliveryMethod?.trim() || '' : '',
-        secondaryCoordinator: sanitizedSecondary,
-        helpdeskContact: formData.helpdeskContact?.trim() || '',
-        facilities: formData.facilities,
-        importantNotes: formData.importantNotes?.trim() || '',
-        customDetails: sanitizedCustomDetails,
+        if (res.success) {
+          showToast('Registration deadline updated successfully.', 'success');
+          onSuccess(res.event);
+          handleClose();
+        } else {
+          throw new Error(res.message || 'Failed to update registration deadline.');
+        }
+        return;
+      }
+
+      // Format custom questions
+      const sanitizedQuestions = formData.registrationQuestions.map((q) => ({
+        id: q.id,
+        label: q.label.trim(),
+        type: q.type,
+        required: Boolean(q.required),
+        helperText: q.helperText ? q.helperText.trim() : undefined,
+        options:
+          q.type === 'Select / Multiple Choice' || q.type === 'Dropdown'
+            ? (q.options || []).map((o) => o.trim()).filter(Boolean)
+            : undefined,
+      }));
+
+      const payload: any = {
+        title: formData.title.trim(),
+        poster: formData.poster,
+        category: formData.category,
+        eventType: formData.eventType,
+        tagline: formData.tagline.trim(),
+        description: formData.description.trim(),
+        eventDate: formData.eventDate,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        registrationDeadline: formData.registrationDeadline,
+        reportingTime: formData.reportingTime.trim(),
+        eventMode: formData.eventMode,
+        venue: formData.eventMode === 'Online' ? undefined : formData.venue.trim(),
+        hallRoom: formData.eventMode === 'Online' ? undefined : formData.hallRoom.trim(),
+        buildingBlock: formData.eventMode === 'Online' ? undefined : formData.buildingBlock.trim(),
+        address: formData.eventMode === 'Online' ? undefined : formData.address.trim(),
+        googleMapsLink: formData.eventMode === 'Online' ? undefined : formData.googleMapsLink.trim(),
+        meetingPlatform: formData.eventMode === 'Offline' ? undefined : formData.meetingPlatform.trim(),
+        meetingLink: formData.eventMode === 'Offline' ? undefined : formData.meetingLink.trim(),
+        registrationType: formData.registrationType,
+        minTeamSize: formData.registrationType === 'Team' ? formData.minTeamSize : undefined,
+        maxTeamSize: formData.registrationType === 'Team' ? formData.maxTeamSize : undefined,
+        capacity: Number(formData.capacity),
+        educationLevel: formData.educationLevel,
+        departments: formData.departments,
+        eligibleYears: formData.eligibleYears,
+        rulesAndGuidelines: formData.rulesAndGuidelines.trim(),
+        prizeAvailable: formData.prizeAvailable,
+        totalPrizePool: formData.prizeAvailable ? Number(formData.totalPrizePool) : 0,
+        firstPrize: formData.prizeAvailable ? formData.firstPrize.trim() : '',
+        secondPrize: formData.prizeAvailable ? formData.secondPrize.trim() : '',
+        thirdPrize: formData.prizeAvailable ? formData.thirdPrize.trim() : '',
+        certificateAvailable: formData.certificateAvailable,
+        participationCertificate: formData.certificateAvailable ? formData.participationCertificate : false,
+        winnerCertificate: formData.certificateAvailable ? formData.winnerCertificate : false,
+        isFree: formData.isFree,
+        registrationFee: formData.isFree ? 0 : Number(formData.registrationFee),
+        paymentConfig: formData.isFree
+          ? undefined
+          : {
+              payeeName: formData.paymentConfig.payeeName.trim(),
+              upiId: formData.paymentConfig.upiId.trim(),
+              paymentInstructions: formData.paymentConfig.paymentInstructions.trim(),
+            },
+        primaryCoordinator: {
+          name: formData.primaryCoordinator.name.trim(),
+          role: formData.primaryCoordinator.role.trim() || 'Lead Coordinator',
+          phone: formData.primaryCoordinator.phone.trim(),
+          email: formData.primaryCoordinator.email.trim(),
+        },
+        secondaryCoordinator: formData.secondaryCoordinator.name.trim()
+          ? {
+              name: formData.secondaryCoordinator.name.trim(),
+              role: formData.secondaryCoordinator.role.trim() || 'Coordinator',
+              phone: formData.secondaryCoordinator.phone.trim(),
+              email: formData.secondaryCoordinator.email.trim(),
+            }
+          : undefined,
+        registrationQuestions: sanitizedQuestions,
         saveAsDraft,
       };
 
-      const res = eventToEdit
-        ? await api.put<any>(`/events/${eventToEdit._id}`, payload)
-        : await api.post<any>('/events', payload);
+      if (user?.role === 'Student') {
+        payload.targetCollegeId = formData.targetCollegeId;
+      }
 
-      if (res.success && res.event) {
-        // Automatically create official Event Group if enabled (Requirements 8, 9)
-        if (createEventGroup && !eventToEdit && !saveAsDraft) {
-          try {
-            await api.post('/groups', {
-              name: (eventGroupName.trim() || `${res.event.title} — Official Group`).trim(),
-              description: (
-                eventGroupDescription.trim() || `Official participant community for ${res.event.title}`
-              ).trim(),
-              imageUrl: eventGroupPhoto || res.event.poster || '',
-              type: 'Event',
-              eventId: res.event._id,
-              hostCollegeId: res.event.hostCollegeId || (college ? college._id : undefined),
-              chatPermissions: eventGroupChatPermissions,
-              visibility: 'Event Participants Only',
-            });
-          } catch (grpErr) {
-            console.error('Failed to create official event group:', grpErr);
-          }
-        }
-        onSuccess(res.event);
+      let res: any;
+      if (eventToEdit && eventToEdit._id) {
+        res = await api.put<any>(`/events/${eventToEdit._id}`, payload);
       } else {
-        setError(res.message || 'Failed to save event');
+        res = await api.post<any>('/events', payload);
+      }
+
+      if (res.success) {
+        showToast(
+          saveAsDraft
+            ? 'Event saved as draft.'
+            : user?.role === 'Student'
+            ? 'Proposal submitted to college for approval.'
+            : 'Event published successfully!',
+          'success'
+        );
+        onSuccess(res.event);
+        handleClose();
+      } else {
+        throw new Error(res.message || 'Operation failed.');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to save event. Please verify all fields.');
+      setError(err.message || 'An error occurred while saving the event.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const formBody = (
-    <div className="max-w-4xl mx-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-5 sm:p-8 shadow-xl max-h-[90vh] overflow-y-auto">
-      {/* Header Banner */}
-      <div className="mb-6 pb-4 border-b border-[var(--border-color)] flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">
-            {eventToEdit
-              ? (isStudent ? 'Edit Student Event Proposal' : 'Edit Event')
-              : (isStudent ? 'Create Student Event Proposal' : 'Create & Publish College Event')}
-          </h2>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-            Step {currentStep} of 12: {STEPS[currentStep - 1].name}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleClose}
-          className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] p-2 rounded-lg border border-[var(--border-color)] flex items-center gap-1 cursor-pointer"
-        >
-          <X className="w-4 h-4" /> Close
-        </button>
-      </div>
+  // Helper to add custom question
+  const handleAddQuestion = () => {
+    const newQ: IParticipantQuestion = {
+      id: `q_${Date.now()}`,
+      label: '',
+      type: 'Short Text',
+      required: false,
+      helperText: '',
+      options: ['Option 1'],
+    };
+    updateField('registrationQuestions', [...formData.registrationQuestions, newQ]);
+  };
 
-      {/* Steps Breadcrumb Slider */}
-      <div className="overflow-x-auto pb-3 mb-6">
-        <div className="flex items-center gap-1.5 min-w-max">
-          {STEPS.map((s) => {
-            const isCurrent = currentStep === s.id;
-            const isDone = currentStep > s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  if (s.id < currentStep || validateCurrentStep()) {
-                    setCurrentStep(s.id);
-                  }
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  isCurrent
-                    ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-                    : isDone
-                    ? 'bg-[var(--surface-subtle)] text-[var(--text-primary)] border border-[var(--border-color)]'
-                    : 'text-[var(--text-muted)] opacity-60'
-                }`}
-              >
-                <span>{s.id}.</span>
-                <span>{s.name}</span>
-                {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+  // Generate UPI QR code preview URL
+  const upiString = `upi://pay?pa=${encodeURIComponent(
+    formData.paymentConfig.upiId.trim()
+  )}&pn=${encodeURIComponent(
+    formData.paymentConfig.payeeName || 'EVENTHUB'
+  )}&am=${formData.registrationFee}&cu=INR`;
+  const upiQrPreviewUrl = formData.paymentConfig.upiId.trim()
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiString)}`
+    : '';
 
-      {error && (
-        <div className="mb-6 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-medium flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={handleClose} />
 
-      {/* STEP 1: Basic Details */}
-      {currentStep === 1 && (
-        <div className="space-y-4">
+      {/* Modal Card */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative w-full max-w-3xl my-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-2xl text-[var(--text-primary)] transition-all max-h-[92vh] flex flex-col"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[var(--border-color)] bg-[var(--surface-subtle)]">
           <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Event Title *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => updateField('title', e.target.value)}
-              placeholder="e.g. National Autonomous Robotics Championship 2026"
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-            />
+            <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">
+              {isEditingPublished
+                ? 'Update Registration Deadline'
+                : eventToEdit
+                ? 'Edit Event'
+                : user?.role === 'Student'
+                ? 'Submit Student Event Proposal'
+                : 'Create College Event'}
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              {isEditingPublished
+                ? 'Published events are locked to preserve participant integrity. You may update the deadline.'
+                : `Step ${currentStep} of ${WIZARD_STEPS.length}: ${WIZARD_STEPS[currentStep - 1].name}`}
+            </p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Category *
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) => updateField('category', e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              >
-                <option value="Hackathon">Hackathon</option>
-                <option value="Robotics">Robotics</option>
-                <option value="Design">Design</option>
-                <option value="Technical">Technical</option>
-                <option value="Cultural">Cultural</option>
-                <option value="Workshop">Workshop</option>
-                <option value="Seminar">Seminar</option>
-                <option value="Sports">Sports</option>
-                <option value="Management">Management</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Event Type *
-              </label>
-              <input
-                type="text"
-                value={formData.eventType}
-                onChange={(e) => updateField('eventType', e.target.value)}
-                placeholder="e.g. Competitive Hackathon / Symposium"
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              />
-            </div>
-          </div>
-
-          {/* Host / Target College selection */}
-          {isStudent ? (
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Target College for Proposal Approval *
-              </label>
-              <select
-                value={formData.targetCollegeId}
-                onChange={(e) => updateField('targetCollegeId', e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              >
-                {colleges.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name} ({c.officialDomain})
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1">
-                Your proposal will be sent directly to the college administration for review.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Host College
-              </label>
-              <input
-                type="text"
-                disabled
-                value={college?.name || 'Apex Institute of Technology'}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-muted)] opacity-80"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Tagline (Optional)
-            </label>
-            <input
-              type="text"
-              value={formData.tagline}
-              onChange={(e) => updateField('tagline', e.target.value)}
-              placeholder="e.g. Build, Innovate, and Scale Real Solutions"
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-            />
-          </div>
-
-          {/* Poster Upload with real file picker */}
-          <FileUpload
-            label="Event Poster / Banner (16:9 recommended) *"
-            helperText="Upload event poster image (JPG, PNG, WEBP)"
-            value={formData.poster}
-            onChange={(url) => updateField('poster', url)}
-          />
-
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Description *
-            </label>
-            <textarea
-              rows={4}
-              value={formData.description}
-              onChange={(e) => updateField('description', e.target.value)}
-              placeholder="Detailed overview of the event, objectives, and what participants can expect..."
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      )}
 
-      {/* STEP 2: Schedule */}
-      {currentStep === 2 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Event Date *
-              </label>
-              <input
-                type="date"
-                value={formData.eventDate}
-                onChange={(e) => updateField('eventDate', e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Start Time *
-              </label>
-              <input
-                type="time"
-                value={formData.startTime}
-                onChange={(e) => updateField('startTime', e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                End Time *
-              </label>
-              <input
-                type="time"
-                value={formData.endTime}
-                onChange={(e) => updateField('endTime', e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              />
-            </div>
-          </div>
+        {/* Step Progress Indicator (Hidden in Deadline-only edit mode) */}
+        {!isEditingPublished && (
+          <div className="px-4 py-2.5 border-b border-[var(--border-color)] bg-[var(--surface)] overflow-x-auto">
+            <div className="flex items-center gap-1.5 min-w-max">
+              {WIZARD_STEPS.map((s) => {
+                const isCurrent = s.id === currentStep;
+                const isDone = s.id < currentStep;
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Registration Deadline *
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.registrationDeadline}
-                onChange={(e) => updateField('registrationDeadline', e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Reporting Time
-              </label>
-              <input
-                type="text"
-                value={formData.reportingTime}
-                onChange={(e) => updateField('reportingTime', e.target.value)}
-                placeholder="e.g. 08:30 AM"
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 3: Location & Mode */}
-      {currentStep === 3 && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-2">
-              Event Mode *
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {(['Offline', 'Online', 'Hybrid'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => updateField('eventMode', m)}
-                  className={`py-2.5 px-4 rounded-xl text-xs font-bold border text-center transition-all cursor-pointer ${
-                    formData.eventMode === m
-                      ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-                      : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {(formData.eventMode === 'Offline' || formData.eventMode === 'Hybrid') && (
-            <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-              <h4 className="text-xs font-bold uppercase text-[var(--text-primary)] tracking-wide">
-                Offline Venue Details
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Venue *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.venue}
-                    onChange={(e) => updateField('venue', e.target.value)}
-                    placeholder="e.g. Main Auditorium"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Hall / Room
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.hallRoom}
-                    onChange={(e) => updateField('hallRoom', e.target.value)}
-                    placeholder="e.g. Hall 4"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Building / Block
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.buildingBlock}
-                    onChange={(e) => updateField('buildingBlock', e.target.value)}
-                    placeholder="e.g. Science Block B"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Google Maps Link
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.googleMapsLink}
-                    onChange={(e) => updateField('googleMapsLink', e.target.value)}
-                    placeholder="https://maps.google.com/..."
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {(formData.eventMode === 'Online' || formData.eventMode === 'Hybrid') && (
-            <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-              <h4 className="text-xs font-bold uppercase text-[var(--text-primary)] tracking-wide">
-                Online Access Details
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Meeting Platform
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.meetingPlatform}
-                    onChange={(e) => updateField('meetingPlatform', e.target.value)}
-                    placeholder="e.g. Zoom / Google Meet / Discord"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Meeting Link *
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.meetingLink}
-                    onChange={(e) => updateField('meetingLink', e.target.value)}
-                    placeholder="https://meet.google.com/..."
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* STEP 4: Registration Details */}
-      {currentStep === 4 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Registration Type *
-              </label>
-              <select
-                value={formData.registrationType}
-                onChange={(e) => updateField('registrationType', e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)]"
-              >
-                <option value="Individual">Individual Participant</option>
-                <option value="Team">Team Registration</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                Capacity (Seats) *
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={formData.capacity}
-                onChange={(e) => updateField('capacity', Number(e.target.value))}
-                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)]"
-              />
-            </div>
-          </div>
-
-          {formData.registrationType === 'Team' && (
-            <div className="grid grid-cols-2 gap-4 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                  Min Team Size
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={formData.minTeamSize}
-                  onChange={(e) => updateField('minTeamSize', Number(e.target.value))}
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                  Max Team Size
-                </label>
-                <input
-                  type="number"
-                  min={formData.minTeamSize}
-                  value={formData.maxTeamSize}
-                  onChange={(e) => updateField('maxTeamSize', Number(e.target.value))}
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-[var(--text-primary)]">Free Event</h4>
-                <p className="text-[11px] text-[var(--text-muted)]">No ticket fee required for participants</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={formData.isFree}
-                onChange={(e) => updateField('isFree', e.target.checked)}
-                className="w-5 h-5 rounded-md accent-[var(--primary-color)] cursor-pointer"
-              />
-            </div>
-
-            {!formData.isFree && (
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Registration Fee ($) *
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={formData.registrationFee}
-                  onChange={(e) => updateField('registrationFee', Number(e.target.value))}
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-sm text-[var(--text-primary)] font-bold"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* STEP 5: Eligibility */}
-      {currentStep === 5 && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Eligible Education Levels
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {['School', 'Diploma', 'UG', 'PG', 'PhD'].map((lvl) => {
-                const checked = formData.educationLevel.includes(lvl);
                 return (
                   <button
-                    key={lvl}
+                    key={s.id}
                     type="button"
                     onClick={() => {
-                      const updated = checked
-                        ? formData.educationLevel.filter((l) => l !== lvl)
-                        : [...formData.educationLevel, lvl];
-                      updateField('educationLevel', updated);
+                      if (s.id < currentStep) {
+                        setCurrentStep(s.id);
+                      } else if (s.id > currentStep) {
+                        if (validateStep(currentStep)) {
+                          setCurrentStep(s.id);
+                        }
+                      }
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      checked
-                        ? 'bg-[var(--primary-color)] text-[var(--primary-text)]'
-                        : 'border border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                        : isDone
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-subtle)]'
                     }`}
                   >
-                    {lvl}
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        isCurrent
+                          ? 'bg-white/20 text-white'
+                          : isDone
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-[var(--surface-subtle)] text-[var(--text-muted)]'
+                      }`}
+                    >
+                      {isDone ? '✓' : s.id}
+                    </span>
+                    <span className="hidden sm:inline">{s.name}</span>
                   </button>
                 );
               })}
             </div>
           </div>
+        )}
 
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Eligible Departments (Comma separated)
-            </label>
-            <input
-              type="text"
-              value={formData.departments.join(', ')}
-              onChange={(e) =>
-                updateField(
-                  'departments',
-                  e.target.value.split(',').map((d) => d.trim()).filter(Boolean)
-                )
-              }
-              placeholder="e.g. Computer Science, Electronics, Mechanical"
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Additional Eligibility Notes
-            </label>
-            <textarea
-              rows={2}
-              value={formData.additionalEligibilityNotes}
-              onChange={(e) => updateField('additionalEligibilityNotes', e.target.value)}
-              placeholder="Any specific prerequisite knowledge, device restrictions, or rules..."
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)]"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* STEP 6: Format & Multiple Rounds */}
-      {currentStep === 6 && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-              Rules & Guidelines *
-            </label>
-            <textarea
-              rows={3}
-              value={formData.rulesAndGuidelines}
-              onChange={(e) => updateField('rulesAndGuidelines', e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)]"
-            />
-          </div>
-
-          <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-[var(--text-primary)]">Multiple Rounds</h4>
-                <p className="text-[11px] text-[var(--text-muted)]">Enable multi-stage competitions with qualification criteria</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={formData.hasMultipleRounds}
-                onChange={(e) => updateField('hasMultipleRounds', e.target.checked)}
-                className="w-5 h-5 rounded-md accent-[var(--primary-color)] cursor-pointer"
-              />
-            </div>
-
-            {formData.hasMultipleRounds && (
-              <div className="space-y-3 pt-2 border-t border-[var(--border-color)]">
-                {formData.rounds.map((round, idx) => (
-                  <div key={idx} className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[var(--text-primary)]">
-                        Round {idx + 1}
-                      </span>
-                      {formData.rounds.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = formData.rounds.filter((_, i) => i !== idx);
-                            updateField('rounds', updated);
-                          }}
-                          className="text-xs text-red-500 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      value={round.name}
-                      onChange={(e) => {
-                        const updated = [...formData.rounds];
-                        updated[idx].name = e.target.value;
-                        updateField('rounds', updated);
-                      }}
-                      placeholder="Round Name"
-                      className="w-full p-1.5 rounded-md border border-[var(--border-color)] text-xs text-[var(--text-primary)]"
-                    />
-                    <input
-                      type="text"
-                      value={round.description}
-                      onChange={(e) => {
-                        const updated = [...formData.rounds];
-                        updated[idx].description = e.target.value;
-                        updateField('rounds', updated);
-                      }}
-                      placeholder="Round Description & Criteria"
-                      className="w-full p-1.5 rounded-md border border-[var(--border-color)] text-xs text-[var(--text-primary)]"
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateField('rounds', [
-                      ...formData.rounds,
-                      { name: `Round ${formData.rounds.length + 1}`, description: '', duration: '', qualificationCriteria: '', judgingCriteria: '' },
-                    ]);
-                  }}
-                  className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
-                >
-                  + Add Another Round
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* STEP 7: Prizes & Certificates */}
-      {currentStep === 7 && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-[var(--text-primary)]">Prize Available</h4>
-                <p className="text-[11px] text-[var(--text-muted)]">Configure prize pool and podium awards</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={formData.prizeAvailable}
-                onChange={(e) => updateField('prizeAvailable', e.target.checked)}
-                className="w-5 h-5 rounded-md accent-[var(--primary-color)] cursor-pointer"
-              />
-            </div>
-
-            {formData.prizeAvailable && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Total Prize Pool ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.totalPrizePool}
-                    onChange={(e) => updateField('totalPrizePool', Number(e.target.value))}
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    First Prize
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.firstPrize}
-                    onChange={(e) => updateField('firstPrize', e.target.value)}
-                    placeholder="e.g. $1,000 + Certificate"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Second Prize
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.secondPrize}
-                    onChange={(e) => updateField('secondPrize', e.target.value)}
-                    placeholder="e.g. $500"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Third Prize
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.thirdPrize}
-                    onChange={(e) => updateField('thirdPrize', e.target.value)}
-                    placeholder="e.g. $250"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-[var(--text-primary)]">Certificate Available</h4>
-                <p className="text-[11px] text-[var(--text-muted)]">Issue verified participation & merit certificates</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={formData.certificateAvailable}
-                onChange={(e) => updateField('certificateAvailable', e.target.checked)}
-                className="w-5 h-5 rounded-md accent-[var(--primary-color)] cursor-pointer"
-              />
-            </div>
-
-            {formData.certificateAvailable && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="part_cert"
-                    checked={formData.participationCertificate}
-                    onChange={(e) => updateField('participationCertificate', e.target.checked)}
-                    className="w-4 h-4 rounded-sm accent-[var(--primary-color)]"
-                  />
-                  <label htmlFor="part_cert" className="text-xs font-medium text-[var(--text-primary)]">
-                    Participation Certificate
-                  </label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="win_cert"
-                    checked={formData.winnerCertificate}
-                    onChange={(e) => updateField('winnerCertificate', e.target.checked)}
-                    className="w-4 h-4 rounded-sm accent-[var(--primary-color)]"
-                  />
-                  <label htmlFor="win_cert" className="text-xs font-medium text-[var(--text-primary)]">
-                    Winner / Merit Certificate
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* STEP 8: Coordinators & Facilities */}
-      {currentStep === 8 && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-            <h4 className="text-xs font-bold uppercase text-[var(--text-primary)] tracking-wide">
-              Primary Coordinator Details *
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.primaryCoordinator.name}
-                  onChange={(e) =>
-                    updateField('primaryCoordinator', { ...formData.primaryCoordinator, name: e.target.value })
-                  }
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                  Role
-                </label>
-                <input
-                  type="text"
-                  value={formData.primaryCoordinator.role}
-                  onChange={(e) =>
-                    updateField('primaryCoordinator', { ...formData.primaryCoordinator, role: e.target.value })
-                  }
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                  Phone *
-                </label>
-                <input
-                  type="text"
-                  value={formData.primaryCoordinator.phone}
-                  onChange={(e) =>
-                    updateField('primaryCoordinator', { ...formData.primaryCoordinator, phone: e.target.value })
-                  }
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={formData.primaryCoordinator.email}
-                  onChange={(e) =>
-                    updateField('primaryCoordinator', { ...formData.primaryCoordinator, email: e.target.value })
-                  }
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-            <h4 className="text-xs font-bold uppercase text-[var(--text-primary)] tracking-wide">
-              Participant Support & Facilities
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { key: 'food', label: 'Food Provided' },
-                { key: 'accommodation', label: 'Accommodation' },
-                { key: 'transport', label: 'Transport Shuttles' },
-                { key: 'parking', label: 'Campus Parking' },
-              ].map((f) => (
-                <label key={f.key} className="flex items-center gap-2 text-xs font-medium text-[var(--text-primary)] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={(formData.facilities as any)[f.key]}
-                    onChange={(e) =>
-                      updateField('facilities', { ...formData.facilities, [f.key]: e.target.checked })
-                    }
-                    className="w-4 h-4 rounded-sm accent-[var(--primary-color)]"
-                  />
-                  <span>{f.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 9: Payment Config */}
-      {currentStep === 9 && (
-        <div className="space-y-4">
-          {formData.isFree ? (
-            <div className="p-6 text-center rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">
-                This event is marked as FREE.
-              </p>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
-                No payment configuration is required for free participant registrations.
-              </p>
-            </div>
-          ) : (
-            <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-              <h4 className="text-xs font-bold uppercase text-[var(--text-primary)] tracking-wide">
-                Organizer Payment Setup
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    Payee / Account Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.paymentConfig.payeeName}
-                    onChange={(e) =>
-                      updateField('paymentConfig', { ...formData.paymentConfig, payeeName: e.target.value })
-                    }
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                    UPI ID (Optional fallback)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.paymentConfig.upiId}
-                    onChange={(e) =>
-                      updateField('paymentConfig', { ...formData.paymentConfig, upiId: e.target.value })
-                    }
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                  Refund Policy
-                </label>
-                <input
-                  type="text"
-                  value={formData.paymentConfig.refundPolicy}
-                  onChange={(e) =>
-                    updateField('paymentConfig', { ...formData.paymentConfig, refundPolicy: e.target.value })
-                  }
-                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                />
-              </div>
+        {/* Wizard Step Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
-        </div>
-      )}
 
-      {/* STEP 10: Custom Event Information */}
-      {currentStep === 10 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                Add Custom Event Information
-              </h3>
-              <p className="text-xs text-[var(--text-muted)]">
-                Add event-specific details displayed under "Additional Event Information".
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const newField: IEventCustomField = {
-                  id: `cd_${Date.now()}`,
-                  label: '',
-                  type: 'Short Text',
-                  value: '',
-                  description: '',
-                };
-                updateField('customDetails', [...formData.customDetails, newField]);
-              }}
-              className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] text-[var(--primary-text)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Custom Detail
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {formData.customDetails.map((detail, idx) => (
-              <div key={detail.id} className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[var(--text-secondary)]">Detail #{idx + 1}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateField(
-                        'customDetails',
-                        formData.customDetails.filter((_, i) => i !== idx)
-                      );
-                    }}
-                    className="text-xs text-red-500 hover:underline flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Remove
-                  </button>
+          {/* ================= LOCKED PUBLISHED EVENT DEADLINE EDIT ================= */}
+          {isEditingPublished ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-200 text-xs space-y-1">
+                <div className="flex items-center gap-2 font-bold">
+                  <Lock className="w-4 h-4" />
+                  <span>Published Event Safeguard Active</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    value={detail.label}
-                    onChange={(e) => {
-                      const updated = [...formData.customDetails];
-                      updated[idx].label = e.target.value;
-                      updateField('customDetails', updated);
-                    }}
-                    placeholder="Label (e.g. Discord Link)"
-                    className="p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                  <select
-                    value={detail.type}
-                    onChange={(e) => {
-                      const updated = [...formData.customDetails];
-                      updated[idx].type = e.target.value as any;
-                      updateField('customDetails', updated);
-                    }}
-                    className="p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  >
-                    <option value="Short Text">Short Text</option>
-                    <option value="Long Text">Long Text</option>
-                    <option value="Link">Link / URL</option>
-                    <option value="Number">Number</option>
-                    <option value="Date">Date</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={detail.value}
-                    onChange={(e) => {
-                      const updated = [...formData.customDetails];
-                      updated[idx].value = e.target.value;
-                      updateField('customDetails', updated);
-                    }}
-                    placeholder="Value (e.g. https://discord.gg/...)"
-                    className="p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                </div>
+                <p>
+                  This event is actively published and accepting registrations. Title, venue, schedule, and pricing are locked to protect student registrations. You can extend or shorten the registration deadline.
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* STEP 11: Participant Registration Form Builder */}
-      {currentStep === 11 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                Participant Registration Questions
-              </h3>
-              <p className="text-xs text-[var(--text-muted)]">
-                Standard profile questions (Name, Email, College, Phone, Department, Year) are prefilled automatically.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const newQ: IParticipantQuestion = {
-                  id: `q_${Date.now()}`,
-                  label: '',
-                  type: 'Short Answer',
-                  required: true,
-                  helperText: '',
-                };
-                updateField('registrationQuestions', [...formData.registrationQuestions, newQ]);
-              }}
-              className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] text-[var(--primary-text)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Question
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {formData.registrationQuestions.map((q, idx) => (
-              <div key={q.id} className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[var(--text-secondary)]">Question #{idx + 1}</span>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={q.required}
-                        onChange={(e) => {
-                          const updated = [...formData.registrationQuestions];
-                          updated[idx].required = e.target.checked;
-                          updateField('registrationQuestions', updated);
-                        }}
-                        className="w-3.5 h-3.5 rounded-sm accent-[var(--primary-color)]"
-                      />
-                      <span>Required</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        updateField(
-                          'registrationQuestions',
-                          formData.registrationQuestions.filter((_, i) => i !== idx)
-                        );
-                      }}
-                      className="text-xs text-red-500 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={q.label}
-                    onChange={(e) => {
-                      const updated = [...formData.registrationQuestions];
-                      updated[idx].label = e.target.value;
-                      updateField('registrationQuestions', updated);
-                    }}
-                    placeholder="Question Label (e.g. GitHub Profile Link)"
-                    className="p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                  <select
-                    value={q.type}
-                    onChange={(e) => {
-                      const updated = [...formData.registrationQuestions];
-                      updated[idx].type = e.target.value;
-                      updateField('registrationQuestions', updated);
-                    }}
-                    className="p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  >
-                    <option value="Short Answer">Short Answer</option>
-                    <option value="Long Answer">Long Answer</option>
-                    <option value="Number">Number</option>
-                    <option value="Email">Email</option>
-                    <option value="Phone">Phone</option>
-                    <option value="Date">Date</option>
-                    <option value="Dropdown">Dropdown</option>
-                    <option value="Multiple Choice">Multiple Choice (Single Choice)</option>
-                    <option value="Checkbox">Checkbox (Multi-Select)</option>
-                    <option value="Link">Link / URL</option>
-                    <option value="File Upload">File Upload (PDF / Document)</option>
-                    <option value="Image Upload">Image Upload</option>
-                  </select>
-                </div>
-
-                {(q.type === 'Dropdown' || q.type === 'Multiple Choice' || q.type === 'Checkbox') && (
-                  <input
-                    type="text"
-                    value={(q.options || []).join(', ')}
-                    onChange={(e) => {
-                      const updated = [...formData.registrationQuestions];
-                      updated[idx].options = e.target.value.split(',').map((o) => o.trim()).filter(Boolean);
-                      updateField('registrationQuestions', updated);
-                    }}
-                    placeholder="Options (comma separated, e.g. Track A, Track B, Track C)"
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* STEP 12: Review & Submit */}
-      {currentStep === 12 && (
-        <div className="space-y-5">
-          <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-            <h3 className="text-base font-bold text-[var(--text-primary)]">{formData.title}</h3>
-            <div className="aspect-video w-full max-h-48 rounded-lg overflow-hidden bg-black flex items-center justify-center">
-              <img src={formData.poster} alt="Poster preview" className="w-full h-full object-contain" />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-[var(--text-secondary)]">
               <div>
-                <span className="font-semibold text-[var(--text-primary)]">Category: </span>
-                {formData.category}
-              </div>
-              <div>
-                <span className="font-semibold text-[var(--text-primary)]">Mode: </span>
-                {formData.eventMode}
-              </div>
-              <div>
-                <span className="font-semibold text-[var(--text-primary)]">Date: </span>
-                {formData.eventDate}
-              </div>
-              <div>
-                <span className="font-semibold text-[var(--text-primary)]">Fee: </span>
-                {formData.isFree ? 'FREE' : `$${formData.registrationFee}`}
-              </div>
-            </div>
-          </div>
-
-          {/* Requirement 8 & 9: Create Event Group Option */}
-          {!eventToEdit && !isStudent && (
-            <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                      Create Official Event Group
-                    </h4>
-                    <p className="text-[11px] text-[var(--text-muted)]">
-                      Create an official group for this event to communicate and collaborate with attendees
-                    </p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createEventGroup}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setCreateEventGroup(checked);
-                      if (checked && !eventGroupName) {
-                        setEventGroupName(`${formData.title || 'Event'} — Official Group`);
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-zinc-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                  Registration Deadline *
                 </label>
+                <input
+                  type="datetime-local"
+                  value={publishedNewDeadline}
+                  onChange={(e) => setPublishedNewDeadline(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                />
+                <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                  Event Start: {eventToEdit?.eventDate} at {eventToEdit?.startTime}
+                </p>
               </div>
 
-              {createEventGroup && (
-                <div className="space-y-3 pt-3 border-t border-indigo-500/20 text-xs animate-in fade-in">
+              <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-2 text-xs">
+                <p className="font-bold text-[var(--text-primary)]">Locked Event Summary:</p>
+                <div className="grid grid-cols-2 gap-2 text-[var(--text-secondary)]">
+                  <div><span className="font-semibold">Title:</span> {eventToEdit?.title}</div>
+                  <div><span className="font-semibold">Mode:</span> {eventToEdit?.eventMode}</div>
+                  <div><span className="font-semibold">Fee:</span> {eventToEdit?.isFree ? 'Free' : `₹${eventToEdit?.registrationFee}`}</div>
+                  <div><span className="font-semibold">Capacity:</span> {eventToEdit?.capacity} seats</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* ================= STEP 1: BASIC INFO ================= */}
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  {/* Event Name */}
                   <div>
-                    <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
-                      Group Name
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-[var(--text-primary)]">
+                        Event Name * (Max 15 characters)
+                      </label>
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          formData.title.length > 15
+                            ? 'text-red-500 font-bold'
+                            : 'text-[var(--text-muted)]'
+                        }`}
+                      >
+                        {formData.title.length} / 15
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={15}
+                      value={formData.title}
+                      onChange={(e) => updateField('title', e.target.value)}
+                      placeholder="Enter event name"
+                      className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:outline-hidden transition-all ${
+                        fieldErrors.title
+                          ? 'border-red-500'
+                          : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
+                      }`}
+                    />
+                    {fieldErrors.title && (
+                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.title}</p>
+                    )}
+                  </div>
+
+                  {/* Target College (for Student Proposals) */}
+                  {user?.role === 'Student' && (
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Target Institution for Proposal *
+                      </label>
+                      <select
+                        value={formData.targetCollegeId}
+                        onChange={(e) => updateField('targetCollegeId', e.target.value)}
+                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] focus:outline-hidden ${
+                          fieldErrors.targetCollegeId
+                            ? 'border-red-500'
+                            : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
+                        }`}
+                      >
+                        <option value="">Select Target College</option>
+                        {colleges.map((c) => (
+                          <option key={c._id} value={c._id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.targetCollegeId && (
+                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.targetCollegeId}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Category & Type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Category *
+                      </label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => updateField('category', e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                      >
+                        <option value="Technical">Technical</option>
+                        <option value="Hackathon">Hackathon</option>
+                        <option value="Cultural">Cultural</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Workshop">Workshop</option>
+                        <option value="Robotics">Robotics</option>
+                        <option value="Management">Management</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Tagline (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.tagline}
+                        onChange={(e) => updateField('tagline', e.target.value)}
+                        placeholder="Enter short event tagline"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Poster Image File Upload */}
+                  <div>
+                    <FileUpload
+                      label="Event Banner / Poster *"
+                      helperText="Upload event poster image (JPG, PNG, WEBP)"
+                      value={formData.poster}
+                      onChange={(url) => updateField('poster', url)}
+                    />
+                    {fieldErrors.poster && (
+                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.poster}</p>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-[var(--text-primary)]">
+                        Description * (Max 200 characters)
+                      </label>
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          formData.description.length > 200
+                            ? 'text-red-500 font-bold'
+                            : 'text-[var(--text-muted)]'
+                        }`}
+                      >
+                        {formData.description.length} / 200
+                      </span>
+                    </div>
+                    <textarea
+                      rows={3}
+                      maxLength={200}
+                      value={formData.description}
+                      onChange={(e) => updateField('description', e.target.value)}
+                      placeholder="Enter a brief, compelling overview of the event"
+                      className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:outline-hidden transition-all ${
+                        fieldErrors.description
+                          ? 'border-red-500'
+                          : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
+                      }`}
+                    />
+                    {fieldErrors.description && (
+                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.description}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ================= STEP 2: SCHEDULE ================= */}
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Event Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.eventDate}
+                        onChange={(e) => updateField('eventDate', e.target.value)}
+                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                          fieldErrors.eventDate ? 'border-red-500' : 'border-[var(--border-color)]'
+                        }`}
+                      />
+                      {fieldErrors.eventDate && (
+                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.eventDate}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Start Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.startTime}
+                        onChange={(e) => updateField('startTime', e.target.value)}
+                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                          fieldErrors.startTime ? 'border-red-500' : 'border-[var(--border-color)]'
+                        }`}
+                      />
+                      {fieldErrors.startTime && (
+                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.startTime}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        End Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.endTime}
+                        onChange={(e) => updateField('endTime', e.target.value)}
+                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                          fieldErrors.endTime ? 'border-red-500' : 'border-[var(--border-color)]'
+                        }`}
+                      />
+                      {fieldErrors.endTime && (
+                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.endTime}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Registration Deadline *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.registrationDeadline}
+                      onChange={(e) => updateField('registrationDeadline', e.target.value)}
+                      className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                        fieldErrors.registrationDeadline
+                          ? 'border-red-500'
+                          : 'border-[var(--border-color)]'
+                      }`}
+                    />
+                    {fieldErrors.registrationDeadline && (
+                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.registrationDeadline}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Reporting Time (Optional)
                     </label>
                     <input
                       type="text"
-                      value={eventGroupName || `${formData.title || 'Event'} — Official Group`}
-                      onChange={(e) => setEventGroupName(e.target.value)}
-                      placeholder="e.g. Hackathon 2026 — Official Group"
-                      className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] font-medium"
+                      value={formData.reportingTime}
+                      onChange={(e) => updateField('reportingTime', e.target.value)}
+                      placeholder="Enter reporting instructions or arrival details"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)]"
                     />
                   </div>
+                </div>
+              )}
 
+              {/* ================= STEP 3: LOCATION & MODE ================= */}
+              {currentStep === 3 && (
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
-                      Group Description (Optional)
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Event Mode *
                     </label>
-                    <textarea
-                      rows={2}
-                      value={eventGroupDescription}
-                      onChange={(e) => setEventGroupDescription(e.target.value)}
-                      placeholder={`Official participant community and announcements for ${formData.title || 'this event'}.`}
-                      className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] font-medium resize-none"
-                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['Offline', 'Online', 'Hybrid'] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => updateField('eventMode', m)}
+                          className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            formData.eventMode === m
+                              ? 'bg-[var(--primary-color)] text-[var(--primary-text)] border-[var(--primary-color)] shadow-xs'
+                              : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--surface)]'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
+                  {/* Offline Details */}
+                  {formData.eventMode !== 'Online' && (
+                    <div className="space-y-3 p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
+                      <p className="text-xs font-bold text-[var(--text-primary)]">Campus Venue Details</p>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                          Venue / Hall Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.venue}
+                          onChange={(e) => updateField('venue', e.target.value)}
+                          placeholder="Enter event venue"
+                          className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
+                            fieldErrors.venue ? 'border-red-500' : 'border-[var(--border-color)]'
+                          }`}
+                        />
+                        {fieldErrors.venue && (
+                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.venue}</p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                            Hall / Room Number
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.hallRoom}
+                            onChange={(e) => updateField('hallRoom', e.target.value)}
+                            placeholder="Enter room or hall number"
+                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                            Building / Block
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.buildingBlock}
+                            onChange={(e) => updateField('buildingBlock', e.target.value)}
+                            placeholder="Enter building or campus block"
+                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                          Google Maps Link (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.googleMapsLink}
+                          onChange={(e) => updateField('googleMapsLink', e.target.value)}
+                          placeholder="Enter a valid URL"
+                          className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
+                            fieldErrors.googleMapsLink ? 'border-red-500' : 'border-[var(--border-color)]'
+                          }`}
+                        />
+                        {fieldErrors.googleMapsLink && (
+                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.googleMapsLink}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Online Details */}
+                  {formData.eventMode !== 'Offline' && (
+                    <div className="space-y-3 p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
+                      <p className="text-xs font-bold text-[var(--text-primary)]">Virtual Meeting Details</p>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                          Meeting Platform
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.meetingPlatform}
+                          onChange={(e) => updateField('meetingPlatform', e.target.value)}
+                          placeholder="Enter platform name (Google Meet, Zoom, Webex)"
+                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                          Meeting Link *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.meetingLink}
+                          onChange={(e) => updateField('meetingLink', e.target.value)}
+                          placeholder="Enter a valid URL"
+                          className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
+                            fieldErrors.meetingLink ? 'border-red-500' : 'border-[var(--border-color)]'
+                          }`}
+                        />
+                        {fieldErrors.meetingLink && (
+                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.meetingLink}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ================= STEP 4: REGISTRATION & COORDINATOR ================= */}
+              {currentStep === 4 && (
+                <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
-                        Who Can Send Messages
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Registration Type *
                       </label>
                       <select
-                        value={eventGroupChatPermissions}
-                        onChange={(e) => setEventGroupChatPermissions(e.target.value as any)}
-                        className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] font-medium"
+                        value={formData.registrationType}
+                        onChange={(e) => updateField('registrationType', e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)]"
                       >
-                        <option value="Everyone">Everyone (All Participants)</option>
-                        <option value="Admins Only">Admins Only (Broadcast / Announcements)</option>
+                        <option value="Individual">Individual Participation</option>
+                        <option value="Team">Team Event</option>
                       </select>
                     </div>
+
                     <div>
-                      <label className="block text-[11px] font-bold text-[var(--text-primary)] mb-1">
-                        Group Photo
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Total Capacity / Seats *
                       </label>
-                      <p className="text-[11px] text-[var(--text-muted)] py-2">
-                        Defaults to event poster automatically
-                      </p>
+                      <input
+                        type="number"
+                        min={1}
+                        value={formData.capacity}
+                        onChange={(e) => updateField('capacity', Number(e.target.value))}
+                        className={`w-full p-2.5 rounded-xl border text-xs text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                          fieldErrors.capacity ? 'border-red-500' : 'border-[var(--border-color)]'
+                        }`}
+                      />
+                      {fieldErrors.capacity && (
+                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.capacity}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {formData.registrationType === 'Team' && (
+                    <div className="grid grid-cols-2 gap-3 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                          Min Team Members
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={formData.minTeamSize}
+                          onChange={(e) => updateField('minTeamSize', Number(e.target.value))}
+                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                          Max Team Members
+                        </label>
+                        <input
+                          type="number"
+                          min={formData.minTeamSize}
+                          value={formData.maxTeamSize}
+                          onChange={(e) => updateField('maxTeamSize', Number(e.target.value))}
+                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Primary Coordinator */}
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-2.5">
+                    <p className="text-xs font-bold text-[var(--text-primary)]">
+                      Primary Faculty / Student Coordinator *
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <input
+                          type="text"
+                          value={formData.primaryCoordinator.name}
+                          onChange={(e) =>
+                            updateField('primaryCoordinator', {
+                              ...formData.primaryCoordinator,
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="Enter coordinator name"
+                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                        />
+                        {fieldErrors.coordName && (
+                          <p className="text-[10px] text-red-500 mt-0.5">{fieldErrors.coordName}</p>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="tel"
+                          maxLength={10}
+                          value={formData.primaryCoordinator.phone}
+                          onChange={(e) =>
+                            updateField('primaryCoordinator', {
+                              ...formData.primaryCoordinator,
+                              phone: e.target.value,
+                            })
+                          }
+                          placeholder="Enter 10-digit mobile number"
+                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                        />
+                        {fieldErrors.coordPhone && (
+                          <p className="text-[10px] text-red-500 mt-0.5">{fieldErrors.coordPhone}</p>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="email"
+                          value={formData.primaryCoordinator.email}
+                          onChange={(e) =>
+                            updateField('primaryCoordinator', {
+                              ...formData.primaryCoordinator,
+                              email: e.target.value,
+                            })
+                          }
+                          placeholder="Enter email address"
+                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                        />
+                        {fieldErrors.coordEmail && (
+                          <p className="text-[10px] text-red-500 mt-0.5">{fieldErrors.coordEmail}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
-            </div>
+
+              {/* ================= STEP 5: RULES & PRIZES ================= */}
+              {currentStep === 5 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Rules & Guidelines *
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={formData.rulesAndGuidelines}
+                      onChange={(e) => updateField('rulesAndGuidelines', e.target.value)}
+                      placeholder="Specify event format, judging criteria, eligibility rules, and code of conduct"
+                      className={`w-full p-2.5 rounded-xl border text-xs text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                        fieldErrors.rulesAndGuidelines
+                          ? 'border-red-500'
+                          : 'border-[var(--border-color)]'
+                      }`}
+                    />
+                    {fieldErrors.rulesAndGuidelines && (
+                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.rulesAndGuidelines}</p>
+                    )}
+                  </div>
+
+                  {/* Prizes */}
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[var(--text-primary)]">
+                        Prize Pool & Awards
+                      </span>
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={formData.prizeAvailable}
+                          onChange={(e) => updateField('prizeAvailable', e.target.checked)}
+                          className="rounded text-[var(--primary-color)]"
+                        />
+                        Prizes Offered
+                      </label>
+                    </div>
+
+                    {formData.prizeAvailable && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                            Total Prize Pool in INR (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={formData.totalPrizePool}
+                            onChange={(e) => updateField('totalPrizePool', Number(e.target.value))}
+                            placeholder="Enter total prize pool in INR"
+                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                            First Prize / Winner Reward
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.firstPrize}
+                            onChange={(e) => updateField('firstPrize', e.target.value)}
+                            placeholder="Enter first prize details"
+                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ================= STEP 6: PAYMENT & INR ================= */}
+              {currentStep === 6 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
+                    <div>
+                      <p className="text-xs font-bold text-[var(--text-primary)]">Event Registration Fee</p>
+                      <p className="text-[11px] text-[var(--text-muted)]">
+                        Select whether this event is free for participants or requires a paid entry fee.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateField('isFree', true)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          formData.isFree
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border-color)]'
+                        }`}
+                      >
+                        Free
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateField('isFree', false)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          !formData.isFree
+                            ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                            : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border-color)]'
+                        }`}
+                      >
+                        Paid (INR ₹)
+                      </button>
+                    </div>
+                  </div>
+
+                  {!formData.isFree && (
+                    <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                          Registration Fee per Participant in Indian Rupees (₹) *
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-[var(--text-muted)]">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={formData.registrationFee || ''}
+                            onChange={(e) => updateField('registrationFee', Number(e.target.value))}
+                            placeholder="Enter event fee in INR"
+                            className={`w-full pl-7 pr-3 py-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
+                              fieldErrors.registrationFee ? 'border-red-500' : 'border-[var(--border-color)]'
+                            }`}
+                          />
+                        </div>
+                        {fieldErrors.registrationFee && (
+                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.registrationFee}</p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                            Beneficiary / College Payee Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.paymentConfig.payeeName}
+                            onChange={(e) =>
+                              updateField('paymentConfig', {
+                                ...formData.paymentConfig,
+                                payeeName: e.target.value,
+                              })
+                            }
+                            placeholder="Enter beneficiary or college name"
+                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                            Beneficiary UPI ID *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.paymentConfig.upiId}
+                            onChange={(e) =>
+                              updateField('paymentConfig', {
+                                ...formData.paymentConfig,
+                                upiId: e.target.value,
+                              })
+                            }
+                            placeholder="Enter valid UPI ID (username@provider)"
+                            className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
+                              fieldErrors.upiId ? 'border-red-500' : 'border-[var(--border-color)]'
+                            }`}
+                          />
+                          {fieldErrors.upiId && (
+                            <p className="text-[11px] text-red-500 mt-1">{fieldErrors.upiId}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Generated Live UPI QR Code Preview */}
+                      {upiQrPreviewUrl && (
+                        <div className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] flex flex-col sm:flex-row items-center gap-4">
+                          <img
+                            src={upiQrPreviewUrl}
+                            alt="Payment QR"
+                            className="w-28 h-28 rounded-lg border border-[var(--border-color)] bg-white p-1 object-contain"
+                          />
+                          <div className="text-xs space-y-1 text-center sm:text-left">
+                            <p className="font-bold text-[var(--text-primary)] flex items-center gap-1 justify-center sm:justify-start">
+                              <QrCode className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                              Auto-Generated UPI Payment QR Code
+                            </p>
+                            <p className="text-[var(--text-muted)] text-[11px]">
+                              Payee: <span className="font-semibold">{formData.paymentConfig.payeeName}</span>
+                            </p>
+                            <p className="text-[var(--text-muted)] text-[11px]">
+                              UPI ID: <span className="font-mono">{formData.paymentConfig.upiId}</span>
+                            </p>
+                            <p className="text-[var(--text-muted)] text-[11px]">
+                              Amount Due: <span className="font-bold text-[var(--primary-color)]">₹{formData.registrationFee}</span>
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                          Payment Instructions for Registrants
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={formData.paymentConfig.paymentInstructions}
+                          onChange={(e) =>
+                            updateField('paymentConfig', {
+                              ...formData.paymentConfig,
+                              paymentInstructions: e.target.value,
+                            })
+                          }
+                          placeholder="Enter instructions (e.g. pay via GPay, PhonePe, Paytm and enter transaction reference)"
+                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ================= STEP 7: CONSOLIDATED CUSTOM DETAILS (Google Forms Style) ================= */}
+              {currentStep === 7 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                        Custom Registration Details & Questions
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Default details (Name, Email, Phone, College) are collected automatically. Add custom Google Forms-style questions below.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewCustomForm(!previewCustomForm)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                          previewCustomForm
+                            ? 'bg-[var(--primary-color)] text-[var(--primary-text)] border-[var(--primary-color)]'
+                            : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] border-[var(--border-color)]'
+                        }`}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{previewCustomForm ? 'Edit Questions' : 'Preview Form'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleAddQuestion}
+                        className="px-3 py-1.5 rounded-xl bg-[var(--primary-color)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-[var(--primary-hover)] transition-colors shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Question</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {previewCustomForm ? (
+                    // Live Form Preview Mode
+                    <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        Live Registration Form Preview
+                      </p>
+                      {formData.registrationQuestions.length === 0 ? (
+                        <p className="text-xs text-[var(--text-muted)] italic">
+                          No custom questions configured. Only default profile details will be requested.
+                        </p>
+                      ) : (
+                        formData.registrationQuestions.map((q, idx) => (
+                          <div key={q.id} className="p-3 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-[var(--text-primary)]">
+                                {idx + 1}. {q.label || 'Untitled Question'}
+                                {q.required && <span className="text-red-500 ml-1">*</span>}
+                              </span>
+                              <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">
+                                {q.type}
+                              </span>
+                            </div>
+                            {q.type === 'Short Text' && (
+                              <input
+                                type="text"
+                                disabled
+                                placeholder="Short text answer..."
+                                className="w-full p-2 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] opacity-70"
+                              />
+                            )}
+                            {q.type === 'Image Upload' && (
+                              <div className="p-3 border border-dashed border-[var(--border-color)] rounded-lg text-center text-xs text-[var(--text-muted)]">
+                                Image File Upload Input (JPG, PNG, WEBP)
+                              </div>
+                            )}
+                            {q.type === 'Link' && (
+                              <input
+                                type="text"
+                                disabled
+                                placeholder="https://example.com/project"
+                                className="w-full p-2 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] opacity-70"
+                              />
+                            )}
+                            {(q.type === 'Select / Multiple Choice' || q.type === 'Dropdown') && (
+                              <div className="space-y-1 pl-2">
+                                {(q.options || ['Option 1']).map((opt, oIdx) => (
+                                  <label key={oIdx} className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                                    <input type="radio" disabled name={`preview_${q.id}`} />
+                                    <span>{opt || `Option ${oIdx + 1}`}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    // Edit Questions List
+                    <div className="space-y-3">
+                      {formData.registrationQuestions.length === 0 ? (
+                        <div className="p-8 text-center border border-dashed border-[var(--border-color)] rounded-xl text-xs text-[var(--text-muted)] space-y-2">
+                          <p>No custom questions added yet.</p>
+                          <button
+                            type="button"
+                            onClick={handleAddQuestion}
+                            className="text-xs font-bold text-[var(--primary-color)] hover:underline cursor-pointer"
+                          >
+                            + Click here to add your first question
+                          </button>
+                        </div>
+                      ) : (
+                        formData.registrationQuestions.map((q, qIdx) => (
+                          <div
+                            key={q.id}
+                            className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3 transition-all"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-[var(--text-secondary)]">
+                                Question #{qIdx + 1}
+                              </span>
+                              <div className="flex items-center gap-3">
+                                {/* Required Toggle */}
+                                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => {
+                                      const updated = [...formData.registrationQuestions];
+                                      updated[qIdx].required = e.target.checked;
+                                      updateField('registrationQuestions', updated);
+                                    }}
+                                    className="rounded text-[var(--primary-color)]"
+                                  />
+                                  <span>Required</span>
+                                </label>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = formData.registrationQuestions.filter(
+                                      (_, i) => i !== qIdx
+                                    );
+                                    updateField('registrationQuestions', updated);
+                                  }}
+                                  className="text-red-500 hover:text-red-700 p-1 text-xs flex items-center gap-1 cursor-pointer"
+                                  title="Delete question"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              {/* Question Title */}
+                              <div className="sm:col-span-2">
+                                <input
+                                  type="text"
+                                  value={q.label}
+                                  onChange={(e) => {
+                                    const updated = [...formData.registrationQuestions];
+                                    updated[qIdx].label = e.target.value;
+                                    updateField('registrationQuestions', updated);
+                                  }}
+                                  placeholder="Enter custom question label or title"
+                                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                                />
+                              </div>
+
+                              {/* Question Type */}
+                              <div>
+                                <select
+                                  value={q.type}
+                                  onChange={(e) => {
+                                    const updated = [...formData.registrationQuestions];
+                                    updated[qIdx].type = e.target.value;
+                                    if (
+                                      (e.target.value === 'Select / Multiple Choice' ||
+                                        e.target.value === 'Dropdown') &&
+                                      (!updated[qIdx].options || updated[qIdx].options?.length === 0)
+                                    ) {
+                                      updated[qIdx].options = ['Option 1'];
+                                    }
+                                    updateField('registrationQuestions', updated);
+                                  }}
+                                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                                >
+                                  <option value="Short Text">Short Text</option>
+                                  <option value="Image Upload">Image Upload</option>
+                                  <option value="Link">Link (URL)</option>
+                                  <option value="Select / Multiple Choice">Select / Multiple Choice</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {fieldErrors[`q_${qIdx}`] && (
+                              <p className="text-[11px] text-red-500 font-semibold">
+                                {fieldErrors[`q_${qIdx}`]}
+                              </p>
+                            )}
+
+                            {/* Multiple Choice Options Builder */}
+                            {(q.type === 'Select / Multiple Choice' || q.type === 'Dropdown') && (
+                              <div className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] space-y-2">
+                                <p className="text-[11px] font-bold text-[var(--text-secondary)]">
+                                  Configured Options
+                                </p>
+                                <div className="space-y-1.5">
+                                  {(q.options || []).map((opt, optIdx) => (
+                                    <div key={optIdx} className="flex items-center gap-2">
+                                      <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                                        {optIdx + 1}.
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={opt}
+                                        onChange={(e) => {
+                                          const updated = [...formData.registrationQuestions];
+                                          const opts = [...(updated[qIdx].options || [])];
+                                          opts[optIdx] = e.target.value;
+                                          updated[qIdx].options = opts;
+                                          updateField('registrationQuestions', updated);
+                                        }}
+                                        placeholder={`Enter option ${optIdx + 1} text`}
+                                        className="flex-1 p-1.5 rounded-md border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs"
+                                      />
+                                      <button
+                                        type="button"
+                                        disabled={(q.options || []).length <= 1}
+                                        onClick={() => {
+                                          const updated = [...formData.registrationQuestions];
+                                          const opts = (updated[qIdx].options || []).filter(
+                                            (_, i) => i !== optIdx
+                                          );
+                                          updated[qIdx].options = opts;
+                                          updateField('registrationQuestions', updated);
+                                        }}
+                                        className="p-1 text-red-500 hover:text-red-700 disabled:opacity-30 cursor-pointer"
+                                        title="Remove option"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...formData.registrationQuestions];
+                                    const opts = [...(updated[qIdx].options || [])];
+                                    opts.push(`Option ${opts.length + 1}`);
+                                    updated[qIdx].options = opts;
+                                    updateField('registrationQuestions', updated);
+                                  }}
+                                  className="mt-1 text-xs font-semibold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Plus className="w-3 h-3" /> Add Option
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ================= STEP 8: REVIEW & PUBLISH ================= */}
+              {currentStep === 8 && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
+                    <div className="flex items-center gap-3">
+                      {formData.poster && (
+                        <img
+                          src={formData.poster}
+                          alt="Poster Preview"
+                          className="w-20 h-20 rounded-xl object-cover border border-[var(--border-color)]"
+                        />
+                      )}
+                      <div>
+                        <h3 className="text-base font-extrabold text-[var(--text-primary)]">
+                          {formData.title || 'Untitled Event'}
+                        </h3>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          {formData.category} · {formData.eventMode} · {formData.registrationType}
+                        </p>
+                        <p className="text-xs font-bold text-[var(--primary-color)] mt-0.5">
+                          {formData.isFree ? 'Free Admission' : `₹${formData.registrationFee} INR`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[var(--border-color)] grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-[var(--text-muted)]">Event Date:</span>{' '}
+                        <span className="font-semibold">{formData.eventDate} ({formData.startTime} - {formData.endTime})</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-muted)]">Deadline:</span>{' '}
+                        <span className="font-semibold">{formData.registrationDeadline}</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-muted)]">Venue:</span>{' '}
+                        <span className="font-semibold">{formData.eventMode === 'Online' ? formData.meetingPlatform || 'Online' : formData.venue}</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-muted)]">Capacity:</span>{' '}
+                        <span className="font-semibold">{formData.capacity} Seats</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-muted)]">Coordinator:</span>{' '}
+                        <span className="font-semibold">{formData.primaryCoordinator.name} ({formData.primaryCoordinator.phone})</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-muted)]">Custom Questions:</span>{' '}
+                        <span className="font-semibold">{formData.registrationQuestions.length} Questions</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 text-xs flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>
+                      {user?.role === 'Student'
+                        ? 'Ready to submit! Your proposal will be reviewed by the target college administration.'
+                        : 'All event details verified. Ready to publish immediately to EVENTHUB discovery.'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
-
-          <p className="text-xs text-[var(--text-muted)]">
-            {isStudent
-              ? 'Submitting this proposal will send it to the Target College administrator for official review and approval.'
-              : 'Submitting will immediately publish this event live on EVENTHUB under your verified college profile.'}
-          </p>
-        </div>
-      )}
-
-      {/* Footer Navigation Buttons */}
-      <div className="flex items-center justify-between gap-3 pt-6 mt-6 border-t border-[var(--border-color)]">
-        <div>
-          {currentStep > 1 && (
-            <button
-              type="button"
-              onClick={handlePrev}
-              className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentStep < 12 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-semibold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
-            >
-              Next Step <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <>
+        {/* Footer Navigation Controls */}
+        <div className="flex items-center justify-between p-4 border-t border-[var(--border-color)] bg-[var(--surface-subtle)]">
+          {isEditingPublished ? (
+            <div className="flex items-center justify-end w-full gap-2">
               <button
                 type="button"
-                disabled={submitting}
-                onClick={() => handleSubmit(true)}
-                className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+                onClick={handleClose}
+                className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface)] cursor-pointer"
               >
-                Save as Draft
+                Cancel
               </button>
               <button
                 type="button"
                 disabled={submitting}
                 onClick={() => handleSubmit(false)}
-                className="px-6 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all cursor-pointer shadow-xs"
               >
-                {submitting ? 'Submitting...' : isStudent ? 'Submit for Approval' : 'Publish Event'}
+                {submitting ? 'Updating...' : 'Update Deadline'}
               </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface)] flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => handleSubmit(true)}
+                  className="px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-secondary)] transition-colors cursor-pointer"
+                >
+                  Save Draft
+                </button>
+
+                {currentStep < WIZARD_STEPS.length ? (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => handleSubmit(false)}
+                    className="px-6 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all cursor-pointer shadow-md"
+                  >
+                    {submitting
+                      ? 'Publishing...'
+                      : user?.role === 'Student'
+                      ? 'Submit Proposal'
+                      : 'Publish Event'}
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
     </div>
   );
-
-  if (isOpen !== undefined) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs overflow-y-auto animate-in fade-in">
-        <div className="w-full max-w-4xl my-auto">
-          {formBody}
-        </div>
-      </div>
-    );
-  }
-
-  return formBody;
 };

@@ -225,8 +225,43 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
       }
     }
 
+    body.title = (body.title || '').trim();
+    if (!body.title) {
+      return res.status(400).json({ success: false, message: 'Event Name is required.' });
+    }
+    if (body.title.length > 15) {
+      return res.status(400).json({ success: false, message: 'Event Name must be maximum 15 characters.' });
+    }
+
+    body.description = (body.description || '').trim();
+    if (!body.description) {
+      return res.status(400).json({ success: false, message: 'Event Description is required.' });
+    }
+    if (body.description.length > 200) {
+      return res.status(400).json({ success: false, message: 'Event Description must be maximum 200 characters.' });
+    }
+
     if (!body.primaryCoordinator || !body.primaryCoordinator.name || !body.primaryCoordinator.phone || !body.primaryCoordinator.email) {
       return res.status(400).json({ success: false, message: 'Primary coordinator details (name, phone, email) are required.' });
+    }
+
+    const coordPhone = String(body.primaryCoordinator.phone).replace(/[\s\-()]/g, '');
+    if (!/^[6-9]\d{9}$/.test(coordPhone) && !/^\d{10}$/.test(coordPhone)) {
+      return res.status(400).json({ success: false, message: 'Coordinator phone number must be exactly 10 digits.' });
+    }
+
+    if (body.meetingLink && !/^https?:\/\/.+/i.test(body.meetingLink.trim())) {
+      return res.status(400).json({ success: false, message: 'Meeting link must be a valid HTTP or HTTPS URL.' });
+    }
+
+    if (!body.isFree) {
+      const fee = Number(body.registrationFee);
+      if (isNaN(fee) || fee <= 0) {
+        return res.status(400).json({ success: false, message: 'Paid events must have a valid registration fee in INR.' });
+      }
+      if (!body.paymentConfig?.upiId || !/^[\w.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(body.paymentConfig.upiId.trim())) {
+        return res.status(400).json({ success: false, message: 'A valid Beneficiary UPI ID (e.g. name@bank) is required for paid events.' });
+      }
     }
 
     // Date validation
@@ -731,8 +766,61 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
       nextStatus = body.status;
     }
 
-    // When Published, protect critical fields (hostCollege, payment structure, registration type)
+    // When Published, protect all fields and allow ONLY the registration deadline to be changed
     const isPublished = event.status === 'Published';
+    if (isPublished) {
+      if (!body.registrationDeadline) {
+        return res.status(400).json({
+          success: false,
+          message: 'Published events are locked. Only the registration deadline can be modified.',
+        });
+      }
+      const newDeadline = new Date(body.registrationDeadline).getTime();
+      const eventStart = new Date(`${event.eventDate}T${event.startTime}`).getTime();
+      if (isNaN(newDeadline) || newDeadline > eventStart) {
+        return res.status(400).json({
+          success: false,
+          message: 'Registration deadline must be before the event start time.',
+        });
+      }
+
+      const updated = await Event.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            registrationDeadline: body.registrationDeadline,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+        { new: true }
+      );
+
+      return res.json({
+        success: true,
+        message: 'Registration deadline updated successfully.',
+        event: enrichEvent(updated || event),
+      });
+    }
+
+    // Validation for drafts and pre-publication edits
+    if (body.title !== undefined) {
+      body.title = body.title.trim();
+      if (body.title && body.title.length > 15) {
+        return res.status(400).json({ success: false, message: 'Event Name must be maximum 15 characters.' });
+      }
+    }
+    if (body.description !== undefined) {
+      body.description = body.description.trim();
+      if (body.description && body.description.length > 200) {
+        return res.status(400).json({ success: false, message: 'Event Description must be maximum 200 characters.' });
+      }
+    }
+    if (body.primaryCoordinator?.phone) {
+      const coordPhone = String(body.primaryCoordinator.phone).replace(/[\s\-()]/g, '');
+      if (!/^[6-9]\d{9}$/.test(coordPhone) && !/^\d{10}$/.test(coordPhone)) {
+        return res.status(400).json({ success: false, message: 'Coordinator phone number must be exactly 10 digits.' });
+      }
+    }
 
     const updated = await Event.findByIdAndUpdate(
       id,

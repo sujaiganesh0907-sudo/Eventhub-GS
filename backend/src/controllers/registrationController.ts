@@ -48,7 +48,7 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
     // Check deadline
     const deadline = new Date(event.registrationDeadline).getTime();
     if (Date.now() > deadline) {
-      return res.status(400).json({ success: false, message: 'Registration deadline for this event has passed.' });
+      return res.status(400).json({ success: false, message: 'Registration Closed. The registration deadline for this event has passed.' });
     }
 
     // Check capacity
@@ -77,11 +77,43 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
       });
     }
 
-    // Validate required questions
+    // Validate default registration fields
+    const studentName = (req.body.studentName || studentProfile.fullName || user.fullName || '').trim();
+    const studentEmail = (req.body.studentEmail || studentProfile.email || user.email || '').trim();
+    const rawPhone = (req.body.studentPhone || req.body.phone || studentProfile.phoneNumber || '').trim();
+    const studentPhone = rawPhone.replace(/[\s\-()]/g, '');
+    const studentCollege = (req.body.studentCollege || req.body.collegeName || studentProfile.collegeName || '').trim();
+
+    if (!studentName) {
+      return res.status(400).json({ success: false, message: 'Full Name is required for registration.' });
+    }
+    if (!studentEmail) {
+      return res.status(400).json({ success: false, message: 'Email Address is required for registration.' });
+    }
+    if (!studentCollege) {
+      return res.status(400).json({ success: false, message: 'College Name is required for registration.' });
+    }
+    if (!studentPhone || (!/^[6-9]\d{9}$/.test(studentPhone) && !/^\d{10}$/.test(studentPhone))) {
+      return res.status(400).json({ success: false, message: 'A valid 10-digit mobile number is required for registration.' });
+    }
+
+    // Save phone to profile if profile currently has no phone
+    if (!studentProfile.phoneNumber && studentPhone) {
+      await StudentProfile.findByIdAndUpdate(studentProfile._id, { phoneNumber: studentPhone });
+    }
+
+    // Validate custom registration questions
     if (event.registrationQuestions && event.registrationQuestions.length > 0) {
       for (const q of event.registrationQuestions) {
-        if (q.required && (!customResponses[q.id] || String(customResponses[q.id]).trim() === '')) {
+        const val = customResponses[q.id];
+        const isEmpty = val === undefined || val === null || String(val).trim() === '';
+        if (q.required && isEmpty) {
           return res.status(400).json({ success: false, message: `Please answer required question: "${q.label}"` });
+        }
+        if (!isEmpty && (q.type === 'Link' || (q as any).type === 'URL')) {
+          if (!/^https?:\/\/.+/i.test(String(val).trim())) {
+            return res.status(400).json({ success: false, message: `Answer for "${q.label}" must be a valid URL.` });
+          }
         }
       }
     }
@@ -100,12 +132,12 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
       studentId: studentProfile._id,
       studentUserId: user._id,
       collegeId: event.hostCollegeId,
-      studentName: studentProfile.fullName,
-      studentEmail: studentProfile.email,
-      studentPhone: studentProfile.phoneNumber,
-      studentCollege: studentProfile.collegeName,
-      studentDepartment: studentProfile.department,
-      studentYear: studentProfile.yearOfStudy,
+      studentName,
+      studentEmail,
+      studentPhone,
+      studentCollege,
+      studentDepartment: studentProfile.department || req.body.studentDepartment || 'General',
+      studentYear: studentProfile.yearOfStudy || req.body.studentYear || '1st Year',
       registrationType,
       teamName: registrationType === 'Team' ? teamName : undefined,
       teamMembers: registrationType === 'Team' ? teamMembers : undefined,

@@ -91,7 +91,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           <div className="pt-2 border-t border-[var(--border-color)] flex items-center justify-between">
             <span className="text-xs font-bold text-[var(--text-primary)]">Total Amount:</span>
             <span className="text-base font-extrabold text-[var(--primary-color)]">
-              ${amount.toFixed(2)} USD
+              ₹{amount.toFixed(2)} INR
             </span>
           </div>
         </div>
@@ -122,7 +122,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   : 'border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
               }`}
             >
-              <ShieldCheck className="w-4 h-4" /> Instant UPI / NetBanking
+              <ShieldCheck className="w-4 h-4" /> Instant UPI / QR
             </button>
           </div>
         </div>
@@ -152,9 +152,24 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-secondary)]">
-            <p className="font-semibold text-[var(--text-primary)]">UPI Auto-Approve Gateway</p>
-            <p className="text-[11px] mt-0.5">Click Pay Now to simulate instantaneous verified bank authorization.</p>
+          <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-secondary)] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[var(--text-primary)]">Beneficiary UPI ID:</span>
+              <span className="font-mono font-bold text-[var(--primary-color)]">eventhub.college@upi</span>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-3 p-2 bg-[var(--surface)] rounded-xl border border-[var(--border-color)]">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
+                  `upi://pay?pa=eventhub.college@upi&pn=EventHub&am=${amount}&cu=INR`
+                )}`}
+                alt="UPI Payment QR"
+                className="w-20 h-20 rounded-lg p-1 bg-white border border-slate-200"
+              />
+              <div className="text-[11px] space-y-1">
+                <p className="font-medium text-[var(--text-primary)]">Scan using GPay, PhonePe, Paytm, or BHIM</p>
+                <p className="text-[var(--text-muted)]">Instant verification with automatic entry ticket generation upon clicking Pay Now below.</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -187,7 +202,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </>
             ) : (
               <>
-                <ShieldCheck className="w-4 h-4" /> Pay ${amount.toFixed(2)} & Get QR Ticket
+                <ShieldCheck className="w-4 h-4" /> Pay ₹{amount.toFixed(2)} & Get QR Ticket
               </>
             )}
           </button>

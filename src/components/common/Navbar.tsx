@@ -47,6 +47,8 @@ interface NavbarProps {
   onSelectCollege?: (collegeId: string) => void;
   onSelectEvent?: (event: any) => void;
   unreadMessagesCount?: number;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -67,6 +69,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectCollege,
   onSelectEvent,
   unreadMessagesCount = 0,
+  onToggleSidebar,
+  isSidebarCollapsed = false,
 }) => {
   const { user, studentProfile, college, isAuthenticated, hasAdminAccess } = useAuth();
   const notif = useNotifications();
@@ -188,15 +192,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-30 w-full border-b border-[var(--border-color)] bg-[var(--surface)]/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5">
       <div className="flex items-center justify-between gap-4 max-w-[1440px] w-full mx-auto">
-        {/* Brand / Logo */}
-        <div className="flex items-center gap-2.5">
+        {/* Brand / Logo + Sidebar Toggle */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {isAuthenticated && (
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] md:hidden cursor-pointer"
-              aria-label="Toggle navigation menu"
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] border border-transparent hover:border-[var(--border-color)] transition-all cursor-pointer"
+              title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Menu className="w-5 h-5" />
             </button>
           )}
           <div
@@ -362,48 +368,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Right Section: Messages, Notifications Bell & Avatar / Sign In */}
+        {/* Right Section: Profile Avatar & Status / Sign In */}
         <div className="flex items-center gap-2.5">
           {isAuthenticated ? (
             <>
-              {/* MESSAGES BUTTON (Requirement 9) — Hidden on public/login pages */}
-              {!hideMessages && (
-                <button
-                  onClick={() => {
-                    if (onMessagesClick) onMessagesClick();
-                    else if (onSelectTab) onSelectTab('messages');
-                  }}
-                  className="relative p-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                  aria-label="Messages"
-                  title="Messages & Chats"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {unreadMessagesCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-                      {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {/* Notifications Button */}
-              <button
-                onClick={() => {
-                  if (onNotificationsClick) onNotificationsClick();
-                  else if (onSelectTab) onSelectTab('notifications');
-                }}
-                className="relative p-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] transition-colors cursor-pointer"
-                aria-label="Notifications"
-                title="Notifications"
-              >
-                <Bell className="w-4 h-4" />
-                {effectiveUnread > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-                    {effectiveUnread > 9 ? '9+' : effectiveUnread}
-                  </span>
-                )}
-              </button>
-
               {/* Profile / Avatar Button */}
               <button
                 onClick={() => {

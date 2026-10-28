@@ -48,22 +48,30 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const [teamMembers, setTeamMembers] = useState<string[]>(['']);
   const [customResponses, setCustomResponses] = useState<Record<string, any>>({});
 
+  // Profile data prefill (NO fabricated defaults)
+  const studentName = studentProfile?.fullName || user?.fullName || '';
+  const studentEmail = user?.email || '';
+  const [phone, setPhone] = useState(studentProfile?.phoneNumber || '');
+  const [collegeName, setCollegeName] = useState(studentProfile?.collegeName || '');
+  const studentDepartment = studentProfile?.department || '';
+  const studentYear = studentProfile?.yearOfStudy || '';
+
   // Payment & Ticket Modals State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [createdRegistration, setCreatedRegistration] = useState<IEventRegistration | null>(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
 
-  // Profile data prefill
-  const studentName = studentProfile?.fullName || user?.fullName || '';
-  const studentEmail = user?.email || '';
-  const studentPhone = studentProfile?.phoneNumber || '+1 (555) 019-2834';
-  const studentCollege = studentProfile?.collegeName || 'Apex Institute of Technology';
-  const studentDepartment = studentProfile?.department || 'Computer Science';
-  const studentYear = studentProfile?.yearOfStudy || '3rd Year';
-
   const handleNext = () => {
     setError(null);
     if (step === 1) {
+      if (!phone.trim() || !/^\d{10}$/.test(phone.trim())) {
+        setError('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+      if (!collegeName.trim()) {
+        setError('Please provide your college name.');
+        return;
+      }
       if (event.registrationType === 'Team' && !teamName.trim()) {
         setError('Team Name is required for team registration.');
         return;
@@ -83,6 +91,13 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           setError(`Please answer the required question: "${q.label}"`);
           return;
         }
+
+        if (q.type === 'Link' || q.type === 'URL') {
+          if (val && typeof val === 'string' && val.trim() && !/^https?:\/\//i.test(val.trim())) {
+            setError(`Please enter a valid URL starting with https:// for "${q.label}"`);
+            return;
+          }
+        }
       }
       setStep(3);
     }
@@ -99,6 +114,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         teamName: event.registrationType === 'Team' ? teamName : undefined,
         teamMembers: event.registrationType === 'Team' ? teamMembers.filter(Boolean) : undefined,
         customResponses,
+        phone: phone.trim(),
+        collegeName: collegeName.trim(),
       };
 
       const res = await api.post<any>('/registrations', payload);
@@ -157,33 +174,58 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
               <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase text-[var(--text-secondary)] tracking-wider">
-                    Student Information (Prefilled from Profile)
+                    Student Information (Verified Identity)
                   </span>
                   <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified Profile
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-[var(--text-muted)] block text-[10px]">Full Name</span>
-                    <span className="font-semibold text-[var(--text-primary)]">{studentName}</span>
+                    <span className="text-[var(--text-muted)] block text-[10px] mb-1 font-semibold">Full Name</span>
+                    <div className="p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-medium text-[var(--text-primary)]">
+                      {studentName || 'Student'}
+                    </div>
                   </div>
                   <div>
-                    <span className="text-[var(--text-muted)] block text-[10px]">Email</span>
-                    <span className="font-semibold text-[var(--text-primary)]">{studentEmail}</span>
+                    <span className="text-[var(--text-muted)] block text-[10px] mb-1 font-semibold">Email Address</span>
+                    <div className="p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-medium text-[var(--text-primary)]">
+                      {studentEmail || 'student@domain.edu'}
+                    </div>
                   </div>
                   <div>
-                    <span className="text-[var(--text-muted)] block text-[10px]">College</span>
-                    <span className="font-semibold text-[var(--text-primary)]">{studentCollege}</span>
+                    <label className="text-[var(--text-muted)] block text-[10px] mb-1 font-semibold">
+                      10-Digit Mobile Number *
+                    </label>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Enter 10-digit mobile number"
+                      className="w-full p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-mono text-xs text-[var(--text-primary)]"
+                    />
                   </div>
                   <div>
-                    <span className="text-[var(--text-muted)] block text-[10px]">Department & Year</span>
-                    <span className="font-semibold text-[var(--text-primary)]">
-                      {studentDepartment} · {studentYear}
-                    </span>
+                    <label className="text-[var(--text-muted)] block text-[10px] mb-1 font-semibold">
+                      College Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={collegeName}
+                      onChange={(e) => setCollegeName(e.target.value)}
+                      placeholder="Enter institution / college name"
+                      className="w-full p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] text-xs text-[var(--text-primary)]"
+                    />
                   </div>
                 </div>
+
+                {(studentDepartment || studentYear) && (
+                  <div className="text-[11px] text-[var(--text-muted)] pt-1">
+                    Academic Focus: <span className="text-[var(--text-primary)] font-medium">{[studentDepartment, studentYear].filter(Boolean).join(' · ')}</span>
+                  </div>
+                )}
               </div>
 
               {/* Team Registration Extra Fields */}
@@ -201,7 +243,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                       type="text"
                       value={teamName}
                       onChange={(e) => setTeamName(e.target.value)}
-                      placeholder="e.g. CyberVanguard"
+                      placeholder="Enter team name"
                       className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
                     />
                   </div>
@@ -458,7 +500,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 <div className="pt-2 border-t border-[var(--border-color)] flex items-center justify-between">
                   <span className="text-xs font-bold text-[var(--text-primary)]">Registration Fee:</span>
                   <span className="text-base font-extrabold text-[var(--primary-color)]">
-                    {event.isFree ? 'FREE' : `$${event.registrationFee}`}
+                    {event.isFree ? 'FREE' : `₹${event.registrationFee}`}
                   </span>
                 </div>
               </div>
@@ -511,7 +553,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 ) : event.isFree ? (
                   'Confirm Registration'
                 ) : (
-                  `Proceed to Pay $${event.registrationFee}`
+                  `Proceed to Pay ₹${event.registrationFee}`
                 )}
               </button>
             )}

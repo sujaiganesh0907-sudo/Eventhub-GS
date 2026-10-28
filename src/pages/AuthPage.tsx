@@ -836,7 +836,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       type="text"
                       value={studentUsername}
                       onChange={(e) => setStudentUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
-                      placeholder="e.g. sureshm2006"
+                      placeholder="Enter chosen username"
                       className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
                     />
                   </div>
@@ -1090,7 +1090,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
                   />
                   <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                    e.g. yourcollege.edu (institutional email domain must match this domain)
+                    Institutional domain must match your university email (such as apextech.edu)
                   </p>
                 </div>
 
@@ -1451,7 +1451,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   required
                   value={requestAdminName}
                   onChange={(e) => setRequestAdminName(e.target.value)}
-                  placeholder="e.g. Dr. Jane Smith"
+                  placeholder="Enter administrator full name"
                   className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
                 />
               </div>
@@ -1492,7 +1492,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   rows={2}
                   value={requestAdminMessage}
                   onChange={(e) => setRequestAdminMessage(e.target.value)}
-                  placeholder="e.g. Head of Computer Science Dept, organizing Inter-College Hackathon 2026."
+                  placeholder="State your role and reason for college registration access"
                   className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)] resize-none"
                 />
               </div>

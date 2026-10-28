@@ -257,7 +257,7 @@ export const AddAdminModal: React.FC<AddAdminModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Type username (e.g. sureshm2006) or student name..."
+                placeholder="Search by student username or full name..."
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--primary-color)]"
               />
               {searching && (

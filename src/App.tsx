@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
+import { ToastProvider } from './context/ToastContext';
 import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
 import { BottomNav } from './components/common/BottomNav';
@@ -139,6 +140,30 @@ const AppContent: React.FC = () => {
 
   // Navigation history stack for seamless return to previous page (Requirement 17)
   const [navHistory, setNavHistory] = useState<NavHistoryItem[]>([]);
+
+  // Collapsible Sidebar state (ChatGPT style, with responsive mobile drawer)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('eventhub_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsMobileSidebarOpen((prev) => !prev);
+    } else {
+      setIsSidebarCollapsed((prev) => {
+        const next = !prev;
+        try {
+          localStorage.setItem('eventhub_sidebar_collapsed', String(next));
+        } catch {}
+        return next;
+      });
+    }
+  };
 
   // Browser navigation sync
   const updateUrl = (tab: string, eventId?: string | null, collegeId?: string | null) => {
@@ -428,14 +453,20 @@ const AppContent: React.FC = () => {
         onSelectStudent={(sId) => handleViewStudent(sId)}
         onSelectCollege={(cId) => handleViewCollege(cId)}
         onSelectEvent={(ev) => handleViewEvent(ev)}
+        onToggleSidebar={handleToggleSidebar}
+        isSidebarCollapsed={isSidebarCollapsed}
       />
 
       {/* Main Body with Sidebar */}
       <div className="flex-1 flex max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 gap-6">
         {/* Desktop Sidebar (Only when authenticated and on non-public routes) */}
         {isAuthenticated && !isPublicRoute(activeTab) && (
-          <aside className="hidden md:block w-60 shrink-0">
-            <div className="sticky top-20">
+          <aside
+            className={`hidden md:block transition-all duration-300 ease-in-out shrink-0 ${
+              isSidebarCollapsed ? 'w-16' : 'w-60'
+            }`}
+          >
+            <div className="sticky top-20 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
               <Sidebar
                 activeTab={activeTab}
                 onSelectTab={(tab) => {
@@ -454,9 +485,40 @@ const AppContent: React.FC = () => {
                 unreadNotifications={unreadCount}
                 unreadMessages={unreadMessagesCount}
                 onCreateEventClick={() => handleOpenCreateEvent(isStudent)}
+                isCollapsed={isSidebarCollapsed}
+                onToggleCollapse={handleToggleSidebar}
               />
             </div>
           </aside>
+        )}
+
+        {/* Mobile Sidebar Drawer */}
+        {isAuthenticated && !isPublicRoute(activeTab) && isMobileSidebarOpen && (
+          <Sidebar
+            activeTab={activeTab}
+            onSelectTab={(tab) => {
+              setIsMobileSidebarOpen(false);
+              if (tab === 'messages') {
+                handleOpenMessages();
+              } else if (tab === 'profile') {
+                pushNavState(isCollege ? 'college-profile' : 'profile', {
+                  selectedCollegeId: null,
+                  selectedStudentId: null,
+                });
+              } else {
+                pushNavState(tab);
+              }
+            }}
+            isCollege={isCollege}
+            unreadNotifications={unreadCount}
+            unreadMessages={unreadMessagesCount}
+            onCreateEventClick={() => {
+              setIsMobileSidebarOpen(false);
+              handleOpenCreateEvent(isStudent);
+            }}
+            isMobileOpen={isMobileSidebarOpen}
+            onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          />
         )}
 
         {/* Main Routed Content Area */}
@@ -729,7 +791,9 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <NotificationProvider>
-          <AppContent />
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
         </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>

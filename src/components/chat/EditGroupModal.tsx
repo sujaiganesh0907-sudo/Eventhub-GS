@@ -101,7 +101,7 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. AI Research Group"
+            placeholder="Enter updated group name"
             className="w-full px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)] transition-all font-medium"
           />
         </div>

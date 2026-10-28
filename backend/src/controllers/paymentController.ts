@@ -41,7 +41,7 @@ export async function createPaymentOrder(req: AuthenticatedRequest, res: Respons
       eventId: event._id,
       studentId: registration.studentId,
       amount,
-      currency: 'USD',
+      currency: 'INR',
       gatewayStatus: 'Created',
       verificationStatus: 'Pending',
       paymentMethod: 'GATEWAY_CARD_UPI',
@@ -52,7 +52,7 @@ export async function createPaymentOrder(req: AuthenticatedRequest, res: Respons
       order: {
         orderId: payment.orderId,
         amount,
-        currency: 'USD',
+        currency: 'INR',
         eventTitle: event.title,
         registrationId: registration.registrationId,
         payeeConfig: event.paymentConfig || {},

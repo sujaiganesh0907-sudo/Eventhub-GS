@@ -140,7 +140,7 @@ export const AddPlacementPostModal: React.FC<AddPlacementPostModalProps> = ({
               type="text"
               value={packageLPA}
               onChange={(e) => setPackageLPA(e.target.value)}
-              placeholder="Enter package compensation (e.g. 18 LPA)"
+              placeholder="Enter compensation package (in LPA)"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>

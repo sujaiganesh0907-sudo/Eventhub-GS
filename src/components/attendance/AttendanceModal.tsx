@@ -590,7 +590,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
                     Manual Pass ID / Secure QR Token Entry
                   </label>
                   <p className="text-[11px] text-[var(--text-muted)]">
-                    Enter the student's Registration ID (e.g. EH-2026-XXXX) or paste the Pass Token directly.
+                    Enter the student's Registration ID or paste the Pass Token directly.
                   </p>
 
                   <div className="flex gap-2 pt-2">
@@ -599,7 +599,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
                       value={qrTokenInput}
                       onChange={(e) => setQrTokenInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleVerifyTicket()}
-                      placeholder="e.g. EH-2026-ABCDEF or paste token"
+                      placeholder="Enter Registration ID or paste token"
                       className="grow p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)] font-mono focus:outline-hidden"
                     />
                     <button

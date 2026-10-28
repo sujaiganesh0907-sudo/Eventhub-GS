@@ -49,6 +49,7 @@ import { CreateGroupModal } from '../components/chat/CreateGroupModal';
 import { GroupInfoModal } from '../components/chat/GroupInfoModal';
 import { ChatSettingsModal } from '../components/chat/ChatSettingsModal';
 import { EditGroupModal } from '../components/chat/EditGroupModal';
+import { ChatEmptyIllustration } from '../components/chat/ChatEmptyIllustration';
 
 interface MessagesPageProps {
   initialConversationId?: string | null;
@@ -1769,15 +1770,34 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             </div>
           </>
         ) : (
-          // ================= EMPTY STATE =================
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)]">
-              <MessageSquare className="w-8 h-8 opacity-60" />
+          // ================= REDESIGNED CAMPUS CHAT EMPTY STATE =================
+          <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center select-none animate-in fade-in duration-300">
+            <div className="max-w-md mx-auto space-y-4">
+              <ChatEmptyIllustration className="w-56 h-40 sm:w-64 sm:h-44" />
+
+              <div className="space-y-1.5">
+                <h3 className="text-base sm:text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
+                  Campus Chats & Collaboration
+                </h3>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed max-w-sm mx-auto">
+                  Select a direct conversation or event group to coordinate with teammates, discuss project ideas, and receive official campus announcements.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-center gap-2 text-[11px] text-[var(--text-secondary)]">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-color)] font-medium">
+                  Direct Messages
+                </span>
+                <span className="text-[var(--text-muted)]">·</span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-color)] font-medium">
+                  Event Team Groups
+                </span>
+                <span className="text-[var(--text-muted)]">·</span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-color)] font-medium">
+                  Announcements
+                </span>
+              </div>
             </div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">Your Messages & Groups</h3>
-            <p className="text-xs text-[var(--text-muted)] max-w-sm">
-              Select a direct chat or group from the sidebar to start collaborating.
-            </p>
           </div>
         )}
       </div>

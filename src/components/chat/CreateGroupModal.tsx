@@ -370,7 +370,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                   type="text"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="e.g. AI Research Study Circle, Hackathon Team Apollo"
+                  placeholder="Enter group name"
                   maxLength={60}
                   className="w-full px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-[var(--primary-color)]"
                 />

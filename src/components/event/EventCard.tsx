@@ -42,7 +42,8 @@ export const EventCard: React.FC<EventCardProps> = ({
 
   const seatsLeft = event.seatsLeft !== undefined ? event.seatsLeft : Math.max(0, event.capacity - (event.registeredCount || 0));
   const isFull = event.isFull || seatsLeft <= 0;
-  const isClosed = event.isClosed || event.deadlineStatus === 'Closed';
+  const isDeadlinePassed = Boolean(event.registrationDeadline && new Date(event.registrationDeadline).getTime() < Date.now());
+  const isClosed = event.isClosed || event.deadlineStatus === 'Closed' || isDeadlinePassed;
 
   // Format date readable
   const formattedDate = event.eventDate
@@ -101,7 +102,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                     : 'bg-indigo-600/90 text-white'
                 }`}
               >
-                {event.isFree ? 'FREE' : `$${event.registrationFee}`}
+                {event.isFree ? 'FREE' : `₹${event.registrationFee}`}
               </span>
             </div>
           </div>
@@ -203,6 +204,12 @@ export const EventCard: React.FC<EventCardProps> = ({
               >
                 Register
               </button>
+            )}
+
+            {onRegister && !isRegistered && isClosed && (
+              <span className="px-2.5 py-1 text-xs font-medium text-[var(--text-muted)] bg-[var(--surface-subtle)] border border-[var(--border-color)] rounded-lg">
+                Registration Closed
+              </span>
             )}
 
             {isRegistered && (

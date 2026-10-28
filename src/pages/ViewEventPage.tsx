@@ -178,7 +178,8 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
 
   const seatsLeft = event.seatsLeft !== undefined ? event.seatsLeft : Math.max(0, event.capacity - (event.registeredCount || 0));
   const isFull = event.isFull || seatsLeft <= 0;
-  const isClosed = event.isClosed || event.deadlineStatus === 'Closed' || event.status === 'Completed' || event.status === 'Cancelled';
+  const isDeadlinePassed = Boolean(event.registrationDeadline && new Date(event.registrationDeadline).getTime() < Date.now());
+  const isClosed = event.isClosed || event.deadlineStatus === 'Closed' || event.status === 'Completed' || event.status === 'Cancelled' || isDeadlinePassed;
   const isPublished = event.status === 'Published' || event.status === 'Approved';
   const progressPercent = Math.min(100, Math.round(((event.registeredCount || 0) / event.capacity) * 100));
 
@@ -295,7 +296,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
                   : 'bg-indigo-500/10 text-indigo-600'
               }`}
             >
-              {event.isFree ? 'FREE ENTRY' : `$${event.registrationFee} FEE`}
+              {event.isFree ? 'FREE ENTRY' : `₹${event.registrationFee} FEE`}
             </span>
           </div>
         </div>
@@ -380,7 +381,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
           <div className="min-w-0">
             <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Registration Fee</span>
             <span className="text-base font-black text-[var(--primary-color)] block">
-              {event.isFree ? 'FREE REGISTRATION' : `$${event.registrationFee} USD`}
+              {event.isFree ? 'FREE REGISTRATION' : `₹${event.registrationFee} INR`}
             </span>
             <span className="text-[11px] text-[var(--text-muted)]">
               {event.registrationType} pass
@@ -510,7 +511,7 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
               disabled={isClosed || isFull}
               className="px-8 py-3 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-extrabold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Ticket className="w-4 h-4" /> Register Now
+              <Ticket className="w-4 h-4" /> {isClosed ? 'Registration Closed' : isFull ? 'Event Full' : 'Register Now'}
             </button>
           ) : null}
         </div>
