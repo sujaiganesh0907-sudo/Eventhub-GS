@@ -49,33 +49,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const notif = useNotifications();
   const effectiveUnread = unreadNotifications !== undefined ? unreadNotifications : notif.unreadCount;
 
-  const isStudent = user?.role === 'Student';
-  const isCollege =
+  const isParticipant = user?.role === 'Student';
+  const isApprover =
     propIsCollege !== undefined
       ? propIsCollege
       : user?.role === 'College Super Admin' || user?.role === 'College Admin';
+  const isOrganizer = user?.role === 'Organizer';
 
-  const studentNavItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'events', label: 'Events', icon: Calendar },
+  const participantNavItems = [
+    { id: 'home', label: 'Discover', icon: Home },
+    { id: 'events', label: 'My Events', icon: Calendar },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
     { id: 'colleges', label: 'Colleges', icon: Building2 },
-    { id: 'profile', label: 'Student Profile', icon: User },
+    { id: 'profile', label: 'Participant Profile', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: effectiveUnread },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  const collegeNavItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'events', label: 'Events', icon: Calendar },
+  const approverNavItems = [
+    { id: 'home', label: 'Approver Hub', icon: Home },
+    { id: 'events', label: 'Manage Events', icon: Calendar },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
     { id: 'colleges', label: 'Colleges', icon: Building2 },
-    { id: 'college-profile', label: 'College Profile', icon: Building2 },
+    { id: 'college-profile', label: 'Institution Profile', icon: Building2 },
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: effectiveUnread },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  const navItems = isCollege ? collegeNavItems : studentNavItems;
+  const organizerNavItems = [
+    { id: 'home', label: 'Organizer Hub', icon: Home },
+    { id: 'events', label: 'Organized Events', icon: Calendar },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
+    { id: 'colleges', label: 'Partner Colleges', icon: Building2 },
+    { id: 'profile', label: 'Organizer Profile', icon: User },
+    { id: 'notifications', label: 'Notifications', icon: Bell, badge: effectiveUnread },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
+
+  const navItems = isApprover ? approverNavItems : isOrganizer ? organizerNavItems : participantNavItems;
 
   const handleNavClick = (tabId: string) => {
     onSelectTab(tabId);
@@ -126,14 +137,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="relative shrink-0">
               <img
                 src={
-                  isStudent
+                  isParticipant
                     ? studentProfile?.profilePhoto || DEFAULT_STUDENT_AVATAR
-                    : college?.logo || DEFAULT_COLLEGE_LOGO
+                    : isApprover
+                    ? college?.logo || DEFAULT_COLLEGE_LOGO
+                    : DEFAULT_STUDENT_AVATAR
                 }
                 alt="Avatar"
                 className="w-8 h-8 rounded-lg object-cover border border-[var(--border-color)]"
               />
-              {isCollege && college?.verificationStatus === 'Verified' && (
+              {isApprover && college?.verificationStatus === 'Verified' && (
                 <span className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-blue-600 text-white">
                   <ShieldCheck className="w-2.5 h-2.5" />
                 </span>
@@ -143,13 +156,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!collapsed && (
               <div className="grow min-w-0">
                 <p className="text-xs font-bold text-[var(--text-primary)] truncate">
-                  {isStudent
+                  {isParticipant
                     ? studentProfile?.fullName || user.fullName
-                    : college?.name || user.fullName}
+                    : isApprover
+                    ? college?.name || user.fullName
+                    : user.fullName}
                 </p>
                 <p className="text-[10px] text-[var(--text-muted)] truncate flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
-                  <span className="truncate">{user.role}</span>
+                  <span className="truncate">
+                    {isParticipant ? 'Participant' : isApprover ? 'Approver' : 'Organizer'}
+                  </span>
                 </p>
               </div>
             )}
@@ -214,30 +231,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider mb-1.5 flex items-center gap-1">
                 <Repeat className="w-3 h-3" /> Quick Switch
               </p>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1">
                 <button
                   type="button"
                   onClick={() => switchAccount('student')}
-                  title="Switch to Student Account"
-                  className={`text-[10px] font-medium py-1 px-1.5 rounded-lg border text-center transition-colors cursor-pointer truncate ${
-                    user?.role === 'Student'
+                  title="Switch to Participant Account"
+                  className={`text-[9px] font-semibold py-1 px-1 rounded-lg border text-center transition-colors cursor-pointer truncate ${
+                    isParticipant
                       ? 'bg-[var(--primary-light)] border-[var(--primary-color)] text-[var(--primary-color)] font-bold'
                       : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
                   }`}
                 >
-                  Student
+                  Participant
                 </button>
                 <button
                   type="button"
                   onClick={() => switchAccount('college-super')}
-                  title="Switch to College Admin"
-                  className={`text-[10px] font-medium py-1 px-1.5 rounded-lg border text-center transition-colors cursor-pointer truncate ${
-                    user?.role === 'College Super Admin'
+                  title="Switch to Approver (College)"
+                  className={`text-[9px] font-semibold py-1 px-1 rounded-lg border text-center transition-colors cursor-pointer truncate ${
+                    isApprover
                       ? 'bg-[var(--primary-light)] border-[var(--primary-color)] text-[var(--primary-color)] font-bold'
                       : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
                   }`}
                 >
-                  Admin
+                  Approver
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchAccount('organizer')}
+                  title="Switch to Organizer"
+                  className={`text-[9px] font-semibold py-1 px-1 rounded-lg border text-center transition-colors cursor-pointer truncate ${
+                    isOrganizer
+                      ? 'bg-[var(--primary-light)] border-[var(--primary-color)] text-[var(--primary-color)] font-bold'
+                      : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+                  }`}
+                >
+                  Organizer
                 </button>
               </div>
             </div>

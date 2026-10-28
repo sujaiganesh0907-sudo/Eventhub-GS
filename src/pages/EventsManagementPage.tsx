@@ -52,11 +52,11 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   onViewEvent,
   onNavigateToMessages,
 }) => {
-  const { user, isCollege, isStudent } = useAuth();
+  const { user, isCollege, isStudent, isOrganizer } = useAuth();
 
   // Tabs
   const [activeTab, setActiveTab] = useState<string>(
-    isCollege ? 'published' : 'registered'
+    isCollege ? 'published' : (isOrganizer ? 'proposals' : 'registered')
   );
   const [studentRegSubTab, setStudentRegSubTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [studentProposalSubTab, setStudentProposalSubTab] = useState<'all' | 'drafts' | 'pending' | 'approved'>('all');
@@ -136,6 +136,9 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
         ]);
         if (evRes.success) setCollegeEvents(evRes.events || []);
         if (reqRes.success) setPendingRequests(reqRes.requests || []);
+      } else if (isOrganizer) {
+        const propRes = await api.get<any>('/organizer/events');
+        if (propRes.success) setStudentProposals(propRes.events || []);
       } else {
         const [regRes, propRes, remRes] = await Promise.all([
           api.get<any>('/registrations/student'),
@@ -155,7 +158,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
 
   useEffect(() => {
     fetchData();
-  }, [isCollege, isStudent]);
+  }, [isCollege, isStudent, isOrganizer]);
 
   // College handles student proposals
   const handleApproveProposal = async (eventId: string) => {
@@ -248,16 +251,18 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
       ) : (
         <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('registered')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'registered'
-                  ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
-              }`}
-            >
-              My Registered Passes ({registrations.length})
-            </button>
+            {!isOrganizer && (
+              <button
+                onClick={() => setActiveTab('registered')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'registered'
+                    ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+                }`}
+              >
+                My Registered Passes ({registrations.length})
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('proposals')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -266,7 +271,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                   : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
               }`}
             >
-              My Proposed Events ({studentProposals.length})
+              {isOrganizer ? `Organized Events (${studentProposals.length})` : `My Proposed Events (${studentProposals.length})`}
             </button>
           </div>
 

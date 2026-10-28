@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { IUser, IStudentProfile, ICollege } from '../types';
+import { IUser, IStudentProfile, ICollege, IOrganizerProfile } from '../types';
 import { api } from '../services/api';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -9,25 +9,31 @@ interface AuthContextType {
   user: IUser | null;
   studentProfile: IStudentProfile | null;
   college: ICollege | null;
+  organizerProfile: IOrganizerProfile | null;
   loading: boolean;
   isAuthenticated: boolean;
   isCollege: boolean;
   isStudent: boolean;
+  isParticipant: boolean;
+  isApprover: boolean;
+  isOrganizer: boolean;
   hasAdminAccess: boolean;
   login: (email: string, password: string) => Promise<any>;
   requestStudentOtp: (data: any) => Promise<any>;
   requestCollegeOtp: (data: any) => Promise<any>;
-  verifyOtp: (email: string, otp: string, purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION') => Promise<any>;
-  resendOtp: (email: string, purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION') => Promise<any>;
+  requestOrganizerOtp: (data: any) => Promise<any>;
+  verifyOtp: (email: string, otp: string, purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'ORGANIZER_REGISTRATION') => Promise<any>;
+  resendOtp: (email: string, purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'ORGANIZER_REGISTRATION') => Promise<any>;
   registerStudent: (data: any) => Promise<any>;
   registerCollege: (data: any) => Promise<any>;
+  registerOrganizer: (data: any) => Promise<any>;
   verifyEmail: (email: string, code: string) => Promise<any>;
   verifyMfaLogin: (email: string, otp: string) => Promise<any>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   updateStudentProfileLocal: (profile: Partial<IStudentProfile>) => void;
   updateCollegeProfileLocal: (college: Partial<ICollege>) => void;
-  switchAccount: (role: 'student' | 'college-super') => Promise<void>;
+  switchAccount: (role: 'student' | 'college-super' | 'organizer') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<IUser | null>(null);
   const [studentProfile, setStudentProfile] = useState<IStudentProfile | null>(null);
   const [college, setCollege] = useState<ICollege | null>(null);
+  const [organizerProfile, setOrganizerProfile] = useState<IOrganizerProfile | null>(null);
   const [hasAdminMemberships, setHasAdminMemberships] = useState(false);
   const [status, setStatus] = useState<AuthStatus>(() => {
     // If token exists in storage at boot time, we start in 'loading' to restore session
@@ -50,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setStudentProfile(null);
       setCollege(null);
+      setOrganizerProfile(null);
       setHasAdminMemberships(false);
       setStatus('unauthenticated');
       return;
@@ -67,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(res.user);
         setStudentProfile(res.studentProfile || null);
         setCollege(res.college || null);
+        setOrganizerProfile(res.organizerProfile || null);
         setHasAdminMemberships(Boolean(res.hasAdminMemberships));
         setStatus('authenticated');
       } else {
@@ -76,6 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setStudentProfile(null);
         setCollege(null);
+        setOrganizerProfile(null);
         setHasAdminMemberships(false);
         setStatus('unauthenticated');
       }
@@ -88,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setStudentProfile(null);
         setCollege(null);
+        setOrganizerProfile(null);
         setHasAdminMemberships(false);
         setStatus('unauthenticated');
       } else {
@@ -111,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setStudentProfile(null);
       setCollege(null);
+      setOrganizerProfile(null);
       setHasAdminMemberships(false);
       setStatus('unauthenticated');
     };
@@ -134,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setStudentProfile(res.studentProfile || null);
       setCollege(res.college || null);
+      setOrganizerProfile(res.organizerProfile || null);
       setHasAdminMemberships(Boolean(res.hasAdminMemberships));
       setStatus('authenticated');
     }
@@ -148,11 +161,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return api.post<any>('/auth/register/college/request-otp', data);
   };
 
-  const verifyOtp = async (email: string, otp: string, purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION') => {
+  const requestOrganizerOtp = async (data: any) => {
+    return api.post<any>('/auth/register/organizer/request-otp', data);
+  };
+
+  const verifyOtp = async (
+    email: string,
+    otp: string,
+    purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'ORGANIZER_REGISTRATION'
+  ) => {
     return api.post<any>('/auth/verify-otp', { email, otp, purpose });
   };
 
-  const resendOtp = async (email: string, purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION') => {
+  const resendOtp = async (
+    email: string,
+    purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'ORGANIZER_REGISTRATION'
+  ) => {
     return api.post<any>('/auth/resend-otp', { email, purpose });
   };
 
@@ -162,6 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const registerCollege = async (data: any) => {
     return requestCollegeOtp(data);
+  };
+
+  const registerOrganizer = async (data: any) => {
+    return requestOrganizerOtp(data);
   };
 
   const verifyEmail = async (email: string, code: string) => {
@@ -178,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setStudentProfile(res.studentProfile || null);
       setCollege(res.college || null);
+      setOrganizerProfile(res.organizerProfile || null);
       setHasAdminMemberships(Boolean(res.hasAdminMemberships));
       setStatus('authenticated');
     }
@@ -191,6 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setStudentProfile(null);
     setCollege(null);
+    setOrganizerProfile(null);
     setHasAdminMemberships(false);
     setStatus('unauthenticated');
   };
@@ -203,7 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCollege((prev) => (prev ? { ...prev, ...updated } : (updated as ICollege)));
   };
 
-  const switchAccount = async (target: 'student' | 'college-super') => {
+  const switchAccount = async (target: 'student' | 'college-super' | 'organizer') => {
     localStorage.removeItem('eventhub_active_college');
     const res = await api.post<any>('/auth/quick-switch', { target });
     if (res.success && res.tokens?.accessToken) {
@@ -219,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setStudentProfile(res.studentProfile || null);
       setCollege(res.college || null);
+      setOrganizerProfile(res.organizerProfile || null);
       setHasAdminMemberships(Boolean(res.hasAdminMemberships));
       setStatus('authenticated');
     } else {
@@ -227,9 +258,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAuthenticated = status === 'authenticated' && !!user;
-  const isCollege = user?.role === 'College Super Admin' || user?.role === 'College Admin';
-  const isStudent = user?.role === 'Student' || (!user && false);
-  const hasAdminAccess = isCollege || hasAdminMemberships;
+  const isApprover = user?.role === 'College Super Admin' || user?.role === 'College Admin';
+  const isParticipant = user?.role === 'Student';
+  const isOrganizer = user?.role === 'Organizer';
+  const isCollege = isApprover;
+  const isStudent = isParticipant;
+  const hasAdminAccess = isApprover || hasAdminMemberships;
   const loading = status === 'loading';
 
   return (
@@ -239,18 +273,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         studentProfile,
         college,
+        organizerProfile,
         loading,
         isAuthenticated,
         isCollege,
         isStudent,
+        isParticipant,
+        isApprover,
+        isOrganizer,
         hasAdminAccess,
         login,
         requestStudentOtp,
         requestCollegeOtp,
+        requestOrganizerOtp,
         verifyOtp,
         resendOtp,
         registerStudent,
         registerCollege,
+        registerOrganizer,
         verifyEmail,
         verifyMfaLogin,
         logout,

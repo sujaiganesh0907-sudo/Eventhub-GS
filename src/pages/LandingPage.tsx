@@ -144,51 +144,54 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* Feature Pillars */}
+      {/* Feature Pillars: 3-Role Architecture */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full space-y-12">
         <div className="text-center space-y-2">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
-            Engineered for Students & University Organizers
+            A Unified Ecosystem for 3 Distinct Roles
           </h2>
           <p className="text-sm text-[var(--text-secondary)] max-w-xl mx-auto">
-            Everything needed to discover events, manage registrations, track attendance, and showcase awards.
+            Tailored workflows for students, college venue administrators, and independent event organizations.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] space-y-3 shadow-xs">
             <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 w-fit">
-              <Compass className="w-6 h-6" />
+              <Users className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">
-              Cross-Campus Discovery
-            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600">Role 1</span>
+              <h3 className="text-base font-bold text-[var(--text-primary)]">Participant</h3>
+            </div>
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              Explore hackathons, workshops, and symposiums hosted across accredited institutions with real-time seat availability and eligibility tracking.
+              Explore inter-college hackathons, competitions, and workshops with instant QR passes, real-time seat tracking, and verified digital certificates.
             </p>
           </div>
 
           <div className="p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] space-y-3 shadow-xs">
             <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 w-fit">
-              <QrCode className="w-6 h-6" />
+              <Building2 className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">
-              Secure QR Entry Passes
-            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600">Role 2</span>
+              <h3 className="text-base font-bold text-[var(--text-primary)]">Approver (College)</h3>
+            </div>
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              Encrypted QR codes generated on registration. Scan at entrance desks for zero-queue, fraud-proof participant check-in.
+              Review and authorize external proposals, approve campus venues with 1-click feedback, manage attendance scanning, and issue accredited digital certificates.
             </p>
           </div>
 
           <div className="p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] space-y-3 shadow-xs">
             <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600 w-fit">
-              <Award className="w-6 h-6" />
+              <Sparkles className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">
-              Verified Digital Credentials
-            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600">Role 3</span>
+              <h3 className="text-base font-bold text-[var(--text-primary)]">Organizer</h3>
+            </div>
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              Organizers issue digitally verified participation and merit awards directly to student profiles upon attendance confirmation.
+              External companies and tech guilds can propose events directly to host colleges, collect registrations in INR (₹), and track proposal approvals with email notifications.
             </p>
           </div>
         </div>

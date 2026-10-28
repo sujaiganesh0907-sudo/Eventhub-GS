@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { User, StudentProfile, College, CollegeAdminMembership, OtpVerification } from '../models/index';
+import { User, StudentProfile, College, CollegeAdminMembership, OtpVerification, OrganizerProfile } from '../models/index';
 import { generateTokens, verifyRefreshToken, AuthenticatedRequest } from '../middleware/auth';
 import { sendOtpEmail } from '../services/emailService';
 import {
@@ -18,6 +18,105 @@ import {
 
 function generate6DigitOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Organizer Registration: Request Email Verification OTP
+ */
+export async function requestOrganizerOtp(req: Request, res: Response) {
+  try {
+    const {
+      fullName,
+      organizationName,
+      organizationType,
+      email,
+      phoneNumber,
+      website,
+      location,
+      bio,
+      password,
+      confirmPassword,
+    } = req.body;
+
+    if (!fullName || !organizationName || !email || !phoneNumber || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name, organization name, email, phone number, and password are required.',
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Passwords do not match.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const otp = generate6DigitOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const resendAvailableAt = new Date(Date.now() + 60 * 1000).toISOString();
+
+    const payload = {
+      fullName: fullName.trim(),
+      organizationName: organizationName.trim(),
+      organizationType: organizationType || 'Company',
+      email: cleanEmail,
+      phoneNumber: phoneNumber.trim(),
+      website: website ? String(website).trim() : '',
+      location: location ? String(location).trim() : '',
+      bio: bio ? String(bio).trim() : '',
+      passwordHash,
+    };
+
+    const existingOtp = await OtpVerification.findOne({ email: cleanEmail, purpose: 'ORGANIZER_REGISTRATION' });
+    if (existingOtp) {
+      await OtpVerification.findByIdAndUpdate(existingOtp._id, {
+        otpHash,
+        payload,
+        expiresAt,
+        resendAvailableAt,
+        attempts: 0,
+        verified: false,
+      });
+    } else {
+      await OtpVerification.create({
+        email: cleanEmail,
+        otpHash,
+        purpose: 'ORGANIZER_REGISTRATION',
+        payload,
+        expiresAt,
+        resendAvailableAt,
+        attempts: 0,
+        verified: false,
+      });
+    }
+
+    await sendOtpEmail({
+      email: cleanEmail,
+      otp,
+      recipientName: fullName.trim(),
+      purpose: 'ORGANIZER_REGISTRATION',
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Verification code sent to your email.',
+      email: cleanEmail,
+      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otp } : {}),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Organizer registration failed.' });
+  }
 }
 
 /**
@@ -495,6 +594,33 @@ export async function verifyOtp(req: Request, res: Response) {
         role: 'College Super Admin',
         collegeId: college._id,
       });
+    } else if (record.purpose === 'ORGANIZER_REGISTRATION') {
+      const user = await User.create({
+        email: cleanEmail,
+        passwordHash: record.payload.passwordHash,
+        role: 'Organizer',
+        fullName: record.payload.fullName,
+        isEmailVerified: true,
+      });
+
+      await OrganizerProfile.create({
+        userId: user._id,
+        organizationName: record.payload.organizationName,
+        organizationType: record.payload.organizationType || 'Company',
+        officialEmail: cleanEmail,
+        phoneNumber: record.payload.phoneNumber,
+        website: record.payload.website || '',
+        location: record.payload.location || '',
+        bio: record.payload.bio || '',
+        verified: true,
+        eventsOrganizedCount: 0,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Email verified successfully! You can now sign in as an Event Organizer.',
+        role: 'Organizer',
+      });
     }
 
     return res.json({ success: true, message: 'Verified successfully.' });
@@ -663,9 +789,12 @@ export async function login(req: Request, res: Response) {
 
     let studentProfile = null;
     let college = null;
+    let organizerProfile = null;
 
     if (user.role === 'Student') {
       studentProfile = await StudentProfile.findOne({ userId: user._id });
+    } else if (user.role === 'Organizer') {
+      organizerProfile = await OrganizerProfile.findOne({ userId: user._id });
     } else {
       if (user.collegeId) {
         college = await College.findById(user.collegeId);
@@ -706,6 +835,7 @@ export async function login(req: Request, res: Response) {
       },
       studentProfile,
       college,
+      organizerProfile,
       hasAdminMemberships,
     });
   } catch (error: any) {
@@ -724,9 +854,12 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
 
     let studentProfile = null;
     let college = null;
+    let organizerProfile = null;
 
     if (req.user.role === 'Student') {
       studentProfile = await StudentProfile.findOne({ userId: req.user._id });
+    } else if (req.user.role === 'Organizer') {
+      organizerProfile = await OrganizerProfile.findOne({ userId: req.user._id });
     } else {
       if (req.user.collegeId) {
         college = await College.findById(req.user.collegeId);
@@ -765,6 +898,7 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
       },
       studentProfile,
       college,
+      organizerProfile,
       hasAdminMemberships,
     });
   } catch (error: any) {
@@ -807,11 +941,37 @@ export async function quickSwitch(req: Request, res: Response) {
       targetEmail = 'sureshmanikkavasagam123@gmail.com';
     } else if (target === 'college-super') {
       targetEmail = 'admin@apextech.edu';
+    } else if (target === 'organizer') {
+      targetEmail = 'organizer@eventhub.org';
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid quick switch target. Allowed: student, college-super' });
+      return res.status(400).json({ success: false, message: 'Invalid quick switch target. Allowed: student, college-super, organizer' });
     }
 
-    const user = await User.findOne({ email: targetEmail });
+    let user = await User.findOne({ email: targetEmail });
+    if (!user && target === 'organizer') {
+      const defaultHash = await bcrypt.hash('Organizer@123', 10);
+      const createdUser = await User.create({
+        email: 'organizer@eventhub.org',
+        fullName: 'Alex Vance',
+        role: 'Organizer',
+        passwordHash: defaultHash,
+        isEmailVerified: true,
+      });
+      user = createdUser;
+      await OrganizerProfile.create({
+        userId: createdUser._id,
+        organizationName: 'TechNexus Community',
+        organizationType: 'Community',
+        officialEmail: createdUser.email,
+        phoneNumber: '9876543210',
+        website: 'https://technexus.org',
+        location: 'Bengaluru, India',
+        bio: 'Fostering inter-college hackathons and developer summits across India.',
+        eventsOrganizedCount: 3,
+        verified: true,
+      });
+    }
+
     if (!user) {
       return res.status(404).json({ success: false, message: `Account for ${targetEmail} not found.` });
     }
@@ -820,6 +980,7 @@ export async function quickSwitch(req: Request, res: Response) {
 
     let studentProfile = null;
     let college = null;
+    let organizerProfile = null;
 
     if (user.role === 'Student') {
       studentProfile = await StudentProfile.findOne({
@@ -849,6 +1010,24 @@ export async function quickSwitch(req: Request, res: Response) {
       } else if (!studentProfile.userId || studentProfile.userId !== user._id) {
         studentProfile.userId = user._id;
         await StudentProfile.findByIdAndUpdate(studentProfile._id, { userId: user._id });
+      }
+    } else if (user.role === 'Organizer') {
+      organizerProfile = await OrganizerProfile.findOne({
+        $or: [{ userId: user._id }, { officialEmail: user.email }],
+      });
+      if (!organizerProfile) {
+        organizerProfile = await OrganizerProfile.create({
+          userId: user._id,
+          organizationName: 'TechNexus Community',
+          organizationType: 'Community',
+          officialEmail: user.email,
+          phoneNumber: '9876543210',
+          website: 'https://technexus.org',
+          location: 'Bengaluru, India',
+          bio: 'Fostering inter-college hackathons and developer summits across India.',
+          eventsOrganizedCount: 3,
+          verified: true,
+        });
       }
     } else {
       if (user.collegeId) {
@@ -890,6 +1069,7 @@ export async function quickSwitch(req: Request, res: Response) {
       },
       studentProfile,
       college,
+      organizerProfile,
       hasAdminMemberships,
     });
   } catch (error: any) {

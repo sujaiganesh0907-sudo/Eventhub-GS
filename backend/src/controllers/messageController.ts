@@ -13,6 +13,7 @@ import {
   CollegeAdminMembership,
   GroupMembership,
   IConversationParticipant,
+  OrganizerProfile,
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
@@ -57,6 +58,15 @@ export async function getParticipantDetails(
       name: profile?.fullName || user.fullName,
       username: profile?.username || undefined,
       avatar: profile?.profilePhoto || '',
+    };
+  } else if (user.role === 'Organizer') {
+    const profile = await OrganizerProfile.findOne({ userId });
+    return {
+      userId,
+      role: user.role,
+      name: profile?.organizationName || user.fullName,
+      username: undefined,
+      avatar: profile?.logo || '',
     };
   } else {
     const college = user.collegeId ? await College.findById(user.collegeId) : null;

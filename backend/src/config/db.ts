@@ -96,6 +96,7 @@ export interface DBState {
   groupMemberships: any[];
   groupJoinRequests: any[];
   collegeAdminRequests: any[];
+  organizerProfiles: any[];
 }
 
 let dbState: DBState = {
@@ -126,6 +127,7 @@ let dbState: DBState = {
   groupMemberships: [],
   groupJoinRequests: [],
   collegeAdminRequests: [],
+  organizerProfiles: [],
 };
 
 // Load initial fallback state from .data/eventhub_db.json
@@ -335,7 +337,10 @@ export class ModelQuery<T> {
       return docs.map((d) => normalizeDoc<T>(d));
     }
 
-    let items = this.fallbackItems || (dbState[this.collectionName] as T[]).filter((item) => matchFilter(item, this.filter));
+    if (!dbState[this.collectionName]) {
+      (dbState as any)[this.collectionName] = [];
+    }
+    let items = this.fallbackItems || ((dbState[this.collectionName] || []) as T[]).filter((item) => matchFilter(item, this.filter));
     if (this.skipCount) items = items.slice(this.skipCount);
     if (this.limitCount !== undefined) items = items.slice(0, this.limitCount);
     return items;
@@ -357,6 +362,9 @@ export class CollectionModel<T extends { _id?: string; id?: string }> {
   }
 
   private get fallbackItems(): T[] {
+    if (!dbState[this.collectionName]) {
+      (dbState as any)[this.collectionName] = [];
+    }
     return dbState[this.collectionName] as T[];
   }
 

@@ -5,7 +5,7 @@ export type ThemeMode =
   | 'light'
   | 'dark';
 
-export type UserRole = 'Student' | 'College Super Admin' | 'College Admin';
+export type UserRole = 'Student' | 'College Super Admin' | 'College Admin' | 'Organizer';
 
 export interface IUser {
   id: string;
@@ -15,6 +15,25 @@ export interface IUser {
   fullName: string;
   collegeId?: string;
   mfaEnabled?: boolean;
+}
+
+export interface IOrganizerProfile {
+  _id: string;
+  id?: string;
+  userId: string;
+  organizationName: string;
+  organizationType?: string;
+  website?: string;
+  officialEmail?: string;
+  phoneNumber?: string;
+  location?: string;
+  bio?: string;
+  logo?: string;
+  coverPhoto?: string;
+  verified?: boolean;
+  eventsOrganizedCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface IStudentProfile {
@@ -212,8 +231,9 @@ export interface IEvent {
   };
   customDetails: IEventCustomField[];
   registrationQuestions: IParticipantQuestion[];
-  creatorRole: 'Student' | 'College';
+  creatorRole: 'Student' | 'College' | 'Organizer';
   creatorUserId: string;
+  organizerOrganization?: string;
   targetCollegeId?: string;
   status: 'Draft' | 'Pending Approval' | 'Changes Requested' | 'Approved' | 'Published' | 'Rejected' | 'Completed' | 'Cancelled';
   rejectionReason?: string;

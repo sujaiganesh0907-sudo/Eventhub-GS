@@ -161,3 +161,249 @@ export async function sendCertificateEmail(options: SendCertificateOptions): Pro
     return { success: false, error: error.message };
   }
 }
+
+export interface SendProposalSubmittedOptions {
+  approverEmail: string;
+  approverName?: string;
+  collegeName: string;
+  eventTitle: string;
+  organizerName: string;
+  organizerRole: string; // 'Participant' | 'Organizer'
+  eventDate: string;
+  venue?: string;
+  category: string;
+  proposalId: string;
+}
+
+export async function sendProposalSubmittedEmail(options: SendProposalSubmittedOptions): Promise<{ success: boolean; error?: string }> {
+  const {
+    approverEmail,
+    collegeName,
+    eventTitle,
+    organizerName,
+    organizerRole,
+    eventDate,
+    venue,
+    category,
+    proposalId,
+  } = options;
+
+  try {
+    if (!approverEmail || !approverEmail.includes('@')) {
+      return { success: false, error: 'Invalid approver email.' };
+    }
+
+    console.log(`\n======================================================`);
+    console.log(`[EMAIL SERVICE] NEW PROPOSAL SUBMISSION ALERT`);
+    console.log(`To Approver: ${approverEmail} (${collegeName})`);
+    console.log(`Event: "${eventTitle}" (${category})`);
+    console.log(`Proposed by: ${organizerName} [Role: ${organizerRole}]`);
+    console.log(`Date: ${eventDate} | Venue: ${venue || 'Campus Venue Requested'}`);
+    console.log(`Proposal ID: ${proposalId}`);
+    console.log(`======================================================\n`);
+
+    if (transporter) {
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: approverEmail,
+        subject: `[EVENTHUB] Action Required: New Event Proposal "${eventTitle}" for ${collegeName}`,
+        text: `Hello ${collegeName} Event Approver,\n\nA new event proposal has been submitted for your review:\n\nTitle: ${eventTitle}\nSubmitted by: ${organizerName} (${organizerRole})\nCategory: ${category}\nRequested Date: ${eventDate}\nVenue: ${venue || 'Campus Venue Requested'}\n\nPlease review and approve/reject this proposal on your EVENTHUB Approver Dashboard.\n\nBest regards,\nEVENTHUB Platform`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 580px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <span style="font-size: 18px; font-weight: 800; color: #2563eb; letter-spacing: -0.5px;">EVENTHUB</span>
+              <span style="font-size: 11px; font-weight: 700; background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 9999px;">APPROVER NOTICE</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 12px 0; font-size: 20px;">New Event Proposal Awaiting Review</h2>
+            <p style="font-size: 14px; line-height: 1.5; color: #475569; margin: 0 0 16px 0;">
+              <strong>${organizerName}</strong> (${organizerRole}) has submitted a venue event proposal for <strong>${collegeName}</strong>.
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr>
+                  <td style="color: #64748b; padding: 6px 0;">Event Title</td>
+                  <td style="color: #0f172a; font-weight: 700; text-align: right;">${eventTitle}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; padding: 6px 0;">Category</td>
+                  <td style="color: #0f172a; font-weight: 600; text-align: right;">${category}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; padding: 6px 0;">Proposed Date</td>
+                  <td style="color: #0f172a; font-weight: 600; text-align: right;">${eventDate}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; padding: 6px 0;">Requested Venue</td>
+                  <td style="color: #0f172a; font-weight: 600; text-align: right;">${venue || 'Campus Venue Requested'}</td>
+                </tr>
+              </table>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-top: 20px;">
+              Please sign in to your EVENTHUB Approver Dashboard to review requirements, verify safety, and approve or reject this proposal.
+            </p>
+          </div>
+        `,
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[EMAIL SERVICE PROPOSAL ERROR]', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export interface SendProposalDecisionOptions {
+  recipientEmail: string;
+  recipientName: string;
+  eventTitle: string;
+  collegeName: string;
+  status: 'Approved' | 'Rejected' | string;
+  rejectionReason?: string;
+  eventId: string;
+}
+
+export async function sendProposalDecisionEmail(options: SendProposalDecisionOptions): Promise<{ success: boolean; error?: string }> {
+  const {
+    recipientEmail,
+    recipientName,
+    eventTitle,
+    collegeName,
+    status,
+    rejectionReason,
+    eventId,
+  } = options;
+
+  try {
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return { success: false, error: 'Invalid recipient email.' };
+    }
+
+    const isApproved = status === 'Approved';
+
+    console.log(`\n======================================================`);
+    console.log(`[EMAIL SERVICE] PROPOSAL DECISION DISPATCH`);
+    console.log(`To: ${recipientEmail} (${recipientName})`);
+    console.log(`Event: "${eventTitle}"`);
+    console.log(`Approver: ${collegeName}`);
+    console.log(`Decision: ${isApproved ? 'APPROVED & PUBLISHED' : 'REJECTED'}`);
+    if (!isApproved && rejectionReason) console.log(`Feedback: ${rejectionReason}`);
+    console.log(`======================================================\n`);
+
+    if (transporter) {
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: recipientEmail,
+        subject: isApproved
+          ? `[EVENTHUB] Congratulations! Your Proposal "${eventTitle}" was Approved by ${collegeName}`
+          : `[EVENTHUB] Update on Your Proposal "${eventTitle}" for ${collegeName}`,
+        text: isApproved
+          ? `Hello ${recipientName},\n\nGreat news! Your event proposal "${eventTitle}" has been APPROVED by ${collegeName} and is now published live on EVENTHUB!\n\nYou can view and manage your event details on your dashboard.\n\nBest regards,\n${collegeName} & EVENTHUB`
+          : `Hello ${recipientName},\n\nYour event proposal "${eventTitle}" was reviewed by ${collegeName} and was not approved at this time.\n\nFeedback / Reason: ${rejectionReason || 'Venue or schedule conflict.'}\n\nYou may revise your proposal and resubmit for reconsideration.\n\nBest regards,\n${collegeName} & EVENTHUB`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 580px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <div style="margin-bottom: 16px;">
+              <span style="font-size: 18px; font-weight: 800; color: #2563eb; letter-spacing: -0.5px;">EVENTHUB</span>
+            </div>
+            <h2 style="color: ${isApproved ? '#059669' : '#dc2626'}; margin: 0 0 12px 0; font-size: 20px;">
+              ${isApproved ? 'Proposal Approved & Published' : 'Proposal Revision Needed'}
+            </h2>
+            <p style="font-size: 14px; line-height: 1.5; color: #475569;">
+              Hello <strong>${recipientName}</strong>,
+            </p>
+            <p style="font-size: 14px; line-height: 1.5; color: #475569;">
+              ${
+                isApproved
+                  ? `Your event proposal <strong>"${eventTitle}"</strong> has been approved by <strong>${collegeName}</strong> and is officially live on the EVENTHUB discovery network!`
+                  : `Your event proposal <strong>"${eventTitle}"</strong> was reviewed by <strong>${collegeName}</strong> and was rejected with administrative feedback.`
+              }
+            </p>
+            ${
+              !isApproved && rejectionReason
+                ? `
+                <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 12px; padding: 16px; margin: 16px 0;">
+                  <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase;">Reviewer Feedback</p>
+                  <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.4;">${rejectionReason}</p>
+                </div>
+              `
+                : ''
+            }
+            <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
+              View full details and manage this event in your EVENTHUB account.
+            </p>
+          </div>
+        `,
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[EMAIL SERVICE DECISION ERROR]', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export interface SendRegistrationSuccessOptions {
+  recipientEmail: string;
+  studentName: string;
+  eventTitle: string;
+  collegeName: string;
+  registrationId: string;
+  eventDate: string;
+  venue?: string;
+  ticketUrl: string;
+}
+
+export async function sendRegistrationSuccessEmail(options: SendRegistrationSuccessOptions): Promise<{ success: boolean; error?: string }> {
+  const {
+    recipientEmail,
+    studentName,
+    eventTitle,
+    collegeName,
+    registrationId,
+    eventDate,
+    venue,
+    ticketUrl,
+  } = options;
+
+  try {
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return { success: false, error: 'Invalid recipient email.' };
+    }
+
+    console.log(`\n======================================================`);
+    console.log(`[EMAIL SERVICE] REGISTRATION CONFIRMATION`);
+    console.log(`To: ${recipientEmail} (${studentName})`);
+    console.log(`Event: "${eventTitle}" by ${collegeName}`);
+    console.log(`Pass ID: ${registrationId} | Date: ${eventDate}`);
+    console.log(`======================================================\n`);
+
+    if (transporter) {
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: recipientEmail,
+        subject: `[EVENTHUB] Registration Confirmed: "${eventTitle}" (Pass ID: ${registrationId})`,
+        text: `Hello ${studentName},\n\nYour registration for "${eventTitle}" hosted by ${collegeName} is CONFIRMED!\n\nPass ID: ${registrationId}\nDate: ${eventDate}\nVenue: ${venue || 'Online'}\n\nPresent your digital pass QR code at the entrance check-in.\n\nBest regards,\n${collegeName} & EVENTHUB`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 580px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <span style="font-size: 18px; font-weight: 800; color: #2563eb;">EVENTHUB</span>
+            <h2 style="color: #0f172a; margin: 12px 0 6px 0; font-size: 20px;">Registration Confirmed!</h2>
+            <p style="font-size: 14px; color: #475569; margin: 0 0 16px 0;">Hello <strong>${studentName}</strong>, your place is reserved for <strong>${eventTitle}</strong>.</p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b;">Registration Pass ID</p>
+              <p style="margin: 0; font-family: monospace; font-size: 18px; font-weight: 800; color: #1e3a8a;">${registrationId}</p>
+              <p style="margin: 12px 0 0 0; font-size: 13px; color: #334155;"><strong>Date:</strong> ${eventDate} · <strong>Venue:</strong> ${venue || 'Online'}</p>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">Your entry QR code is available directly in your EVENTHUB Student Dashboard under Registered Events.</p>
+          </div>
+        `,
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[EMAIL SERVICE REGISTRATION ERROR]', error.message);
+    return { success: false, error: error.message };
+  }
+}
+

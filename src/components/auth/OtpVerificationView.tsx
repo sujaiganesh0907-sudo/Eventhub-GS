@@ -5,7 +5,7 @@ import { maskEmailAddress } from '../../services/verificationStorage';
 
 interface OtpVerificationViewProps {
   email: string;
-  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION';
+  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'ORGANIZER_REGISTRATION';
   onVerifiedSuccess: () => void;
   onBackToEdit: () => void;
 }

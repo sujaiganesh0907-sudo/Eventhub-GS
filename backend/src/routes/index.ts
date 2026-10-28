@@ -5,6 +5,7 @@ import {
   verifyEmail,
   requestStudentOtp,
   requestCollegeOtp,
+  requestOrganizerOtp,
   verifyOtp,
   resendOtp,
   login,
@@ -187,6 +188,8 @@ const apiRouter = Router();
 // 1. Auth routes
 apiRouter.post('/auth/register/student/request-otp', requestStudentOtp);
 apiRouter.post('/auth/register/college/request-otp', requestCollegeOtp);
+apiRouter.post('/auth/register/organizer/request-otp', requestOrganizerOtp);
+apiRouter.post('/auth/register/organizer', requestOrganizerOtp);
 apiRouter.post('/auth/verify-otp', verifyOtp);
 apiRouter.post('/auth/resend-otp', resendOtp);
 
@@ -230,9 +233,11 @@ apiRouter.put('/events/:id/review', authenticate, requireRole(['College Super Ad
   return approveStudentEvent(req, res);
 });
 
-// Student events queries
+// Student and Organizer events queries
 apiRouter.get('/student/my-events', authenticate, getStudentMyEvents);
 apiRouter.get('/students/my-proposals', authenticate, getStudentMyEvents);
+apiRouter.get('/organizer/events', authenticate, getStudentMyEvents);
+apiRouter.get('/organizers/my-proposals', authenticate, getStudentMyEvents);
 apiRouter.get('/college/events', authenticate, getCollegeEvents);
 apiRouter.get('/college/student-requests', authenticate, getCollegeStudentRequests);
 

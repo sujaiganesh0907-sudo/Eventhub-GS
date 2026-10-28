@@ -2,9 +2,9 @@
 // Complies with EventHub Route & State Persistence Requirements
 
 export interface PendingVerificationState {
-  role: 'student' | 'college';
+  role: 'student' | 'college' | 'organizer';
   email: string;
-  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'registration';
+  purpose: 'STUDENT_REGISTRATION' | 'COLLEGE_REGISTRATION' | 'ORGANIZER_REGISTRATION' | 'registration';
   status: 'pending';
   registrationData?: {
     fullName?: string;
@@ -15,6 +15,9 @@ export interface PendingVerificationState {
     phoneNumber?: string;
     officialDomain?: string;
     location?: string;
+    organizationName?: string;
+    organizationType?: string;
+    website?: string;
   };
   createdAt: number;
 }

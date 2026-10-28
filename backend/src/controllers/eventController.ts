@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { Event, College, StudentProfile, Notification, IEvent, User, EventRegistration, Certificate, CollegeAdminMembership } from '../models/index';
+import { Event, College, StudentProfile, Notification, IEvent, ICollege, User, EventRegistration, Certificate, CollegeAdminMembership, OrganizerProfile } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { updateEventGroupLifecycle } from '../services/eventGroupService';
+import { sendProposalSubmittedEmail, sendProposalDecisionEmail } from '../services/emailService';
 
 function calculateDeadlineStatus(deadlineStr: string): 'Open' | 'Closing Soon' | 'Closed' {
   if (!deadlineStr) return 'Open';
@@ -292,11 +293,27 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
     let isCollegeVerified = false;
     let initialStatus: 'Draft' | 'Pending Approval' | 'Published' = 'Published';
     let targetCollegeId = body.targetCollegeId;
+    let organizerOrgName = '';
 
-    if (user.role === 'Student') {
+    if (user.role === 'Organizer') {
+      const orgProf = await OrganizerProfile.findOne({ userId: user._id });
+      organizerOrgName = orgProf?.organizationName || user.fullName;
+      if (!targetCollegeId) {
+        return res.status(400).json({ success: false, message: 'Target Partner College must be selected for organizer event proposals.' });
+      }
+      const targetCol = await College.findById(targetCollegeId);
+      if (!targetCol) {
+        return res.status(400).json({ success: false, message: 'Selected Target College does not exist.' });
+      }
+      hostCollegeId = targetCol._id;
+      hostCollegeName = targetCol.name;
+      hostCollegeLogo = targetCol.logo;
+      isCollegeVerified = targetCol.verificationStatus === 'Verified';
+      initialStatus = body.saveAsDraft ? 'Draft' : 'Pending Approval';
+    } else if (user.role === 'Student') {
       // Student must specify a Target College
       if (!targetCollegeId) {
-        return res.status(400).json({ success: false, message: 'Target College must be selected for student event proposals.' });
+        return res.status(400).json({ success: false, message: 'Target College must be selected for participant event proposals.' });
       }
       const targetCol = await College.findById(targetCollegeId);
       if (!targetCol) {
@@ -308,14 +325,25 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
       isCollegeVerified = targetCol.verificationStatus === 'Verified';
       initialStatus = body.saveAsDraft ? 'Draft' : 'Pending Approval';
     } else {
-      // College admin
-      if (!req.college) {
+      // College admin / Approver
+      let college: ICollege | null | undefined = req.college;
+      if (!college && user.collegeId) {
+        college = await College.findById(user.collegeId);
+      }
+      if (!college && user.role === 'College Super Admin') {
+        college = await College.findOne({ superAdminId: user._id });
+      }
+      if (!college) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) college = await College.findById(m.collegeId);
+      }
+      if (!college) {
         return res.status(400).json({ success: false, message: 'College association missing' });
       }
-      hostCollegeId = req.college._id;
-      hostCollegeName = req.college.name;
-      hostCollegeLogo = req.college.logo;
-      isCollegeVerified = req.college.verificationStatus === 'Verified';
+      hostCollegeId = college._id;
+      hostCollegeName = college.name;
+      hostCollegeLogo = college.logo;
+      isCollegeVerified = college.verificationStatus === 'Verified';
       initialStatus = body.saveAsDraft ? 'Draft' : 'Published';
     }
 
@@ -410,8 +438,9 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
         : [],
       registrationQuestions: Array.isArray(body.registrationQuestions) ? body.registrationQuestions : [],
       
-      creatorRole: user.role === 'Student' ? 'Student' : 'College',
+      creatorRole: user.role === 'Student' ? 'Student' : (user.role === 'Organizer' ? 'Organizer' : 'College'),
       creatorUserId: user._id,
+      organizerOrganization: organizerOrgName || undefined,
       targetCollegeId,
       status: initialStatus,
       viewsCount: 0,
@@ -419,25 +448,43 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
       certificatesIssuedCount: 0,
     });
 
-    // Notify target college if student submitted proposal
-    if (user.role === 'Student' && initialStatus === 'Pending Approval') {
-      const collegeSuperAdmin = await User.findOne({ collegeId: hostCollegeId, role: 'College Super Admin' });
+    // Notify target college if student or organizer submitted proposal
+    if ((user.role === 'Student' || user.role === 'Organizer') && initialStatus === 'Pending Approval') {
+      const collegeSuperAdmin = await User.findOne({
+        $or: [{ collegeId: hostCollegeId }, { _id: (await College.findById(hostCollegeId))?.superAdminId }],
+        role: 'College Super Admin',
+      });
       if (collegeSuperAdmin) {
         await Notification.create({
           recipientUserId: collegeSuperAdmin._id,
           type: 'EVENT_APPROVAL',
-          title: 'New Student Event Proposal',
-          message: `Student ${user.fullName} submitted a proposal "${event.title}" for your approval.`,
+          title: user.role === 'Organizer' ? 'New Organizer Event Proposal' : 'New Participant Event Proposal',
+          message: `${user.role === 'Organizer' ? `Organizer ${organizerOrgName || user.fullName}` : `Participant ${user.fullName}`} submitted a proposal "${event.title}" for your approval.`,
           link: `/college/events?tab=requests`,
           read: false,
         });
+
+        if (collegeSuperAdmin.email) {
+          await sendProposalSubmittedEmail({
+            approverEmail: collegeSuperAdmin.email,
+            approverName: collegeSuperAdmin.fullName || 'College Administrator',
+            collegeName: hostCollegeName,
+            eventTitle: event.title,
+            organizerName: user.role === 'Organizer' ? (organizerOrgName || user.fullName) : user.fullName,
+            organizerRole: user.role === 'Organizer' ? 'Organizer' : 'Participant',
+            eventDate: event.eventDate,
+            venue: event.eventMode === 'Virtual' ? event.meetingLink : event.venue,
+            category: event.category,
+            proposalId: event._id,
+          });
+        }
       }
     }
 
     return res.status(201).json({
       success: true,
-      message: user.role === 'Student'
-        ? (initialStatus === 'Draft' ? 'Event saved as draft.' : 'Event submitted to college for approval!')
+      message: (user.role === 'Student' || user.role === 'Organizer')
+        ? (initialStatus === 'Draft' ? 'Event saved as draft.' : 'Event proposal submitted to college for approval!')
         : 'Event published successfully!',
       event: enrichEvent(event),
     });
@@ -450,7 +497,23 @@ export async function approveStudentEvent(req: AuthenticatedRequest, res: Respon
   try {
     const { id } = req.params;
     const user = req.user;
-    if (!user || !user.collegeId) {
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    let userCollegeId = user.collegeId;
+    if (!userCollegeId) {
+      if (user.role === 'College Super Admin') {
+        const c = await College.findOne({ superAdminId: user._id });
+        if (c) userCollegeId = c._id;
+      }
+      if (!userCollegeId) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) userCollegeId = m.collegeId;
+      }
+    }
+
+    if (!userCollegeId) {
       return res.status(403).json({ success: false, message: 'Only authorized college admins can approve event requests' });
     }
 
@@ -459,7 +522,7 @@ export async function approveStudentEvent(req: AuthenticatedRequest, res: Respon
       return res.status(404).json({ success: false, message: 'Event proposal not found' });
     }
 
-    if (event.hostCollegeId !== user.collegeId && event.targetCollegeId !== user.collegeId) {
+    if (event.hostCollegeId !== userCollegeId && event.targetCollegeId !== userCollegeId) {
       return res.status(403).json({ success: false, message: 'You are not authorized to approve proposals for this institution' });
     }
 
@@ -469,15 +532,30 @@ export async function approveStudentEvent(req: AuthenticatedRequest, res: Respon
       rejectionReason: undefined,
     });
 
-    // Notify the student creator
+    const hostCol = await College.findById(userCollegeId);
+    const collegeName = hostCol?.name || event.hostCollegeName || 'The College';
+
+    // Notify the creator
     await Notification.create({
       recipientUserId: event.creatorUserId,
       type: 'EVENT_APPROVAL',
       title: 'Event Proposal Approved!',
-      message: `Your event proposal "${event.title}" was approved by ${req.college?.name || 'the college'} and is now live!`,
+      message: `Your event proposal "${event.title}" was approved by ${collegeName} and is now live!`,
       link: `/events/${event._id}`,
       read: false,
     });
+
+    const creatorUser = await User.findById(event.creatorUserId);
+    if (creatorUser?.email) {
+      await sendProposalDecisionEmail({
+        recipientEmail: creatorUser.email,
+        recipientName: creatorUser.fullName || 'Event Creator',
+        eventTitle: event.title,
+        collegeName,
+        status: 'Approved',
+        eventId: event._id,
+      });
+    }
 
     return res.json({ success: true, message: 'Event approved and published!' });
   } catch (error: any) {
@@ -495,7 +573,23 @@ export async function rejectStudentEvent(req: AuthenticatedRequest, res: Respons
       return res.status(400).json({ success: false, message: 'Rejection reason is required.' });
     }
 
-    if (!user || !user.collegeId) {
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    let userCollegeId = user.collegeId;
+    if (!userCollegeId) {
+      if (user.role === 'College Super Admin') {
+        const c = await College.findOne({ superAdminId: user._id });
+        if (c) userCollegeId = c._id;
+      }
+      if (!userCollegeId) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) userCollegeId = m.collegeId;
+      }
+    }
+
+    if (!userCollegeId) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -504,12 +598,19 @@ export async function rejectStudentEvent(req: AuthenticatedRequest, res: Respons
       return res.status(404).json({ success: false, message: 'Event not found' });
     }
 
+    if (event.hostCollegeId !== userCollegeId && event.targetCollegeId !== userCollegeId) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to review proposals for this institution' });
+    }
+
     await Event.findByIdAndUpdate(id, {
       status: 'Rejected',
       rejectionReason: reason.trim(),
     });
 
-    // Notify the student creator
+    const hostCol = await College.findById(userCollegeId);
+    const collegeName = hostCol?.name || event.hostCollegeName || 'The College';
+
+    // Notify the creator
     await Notification.create({
       recipientUserId: event.creatorUserId,
       type: 'EVENT_REJECTION',
@@ -518,6 +619,19 @@ export async function rejectStudentEvent(req: AuthenticatedRequest, res: Respons
       link: `/student/events?tab=pending`,
       read: false,
     });
+
+    const creatorUser = await User.findById(event.creatorUserId);
+    if (creatorUser?.email) {
+      await sendProposalDecisionEmail({
+        recipientEmail: creatorUser.email,
+        recipientName: creatorUser.fullName || 'Event Creator',
+        eventTitle: event.title,
+        collegeName,
+        status: 'Rejected',
+        rejectionReason: reason.trim(),
+        eventId: event._id,
+      });
+    }
 
     return res.json({ success: true, message: 'Event proposal marked as rejected with feedback provided.' });
   } catch (error: any) {
@@ -640,7 +754,7 @@ export async function getCollegeStudentRequests(req: AuthenticatedRequest, res: 
 
     const requests = await Event.find({
       $or: [{ hostCollegeId: targetCollegeId }, { targetCollegeId: targetCollegeId }],
-      creatorRole: 'Student',
+      creatorRole: { $in: ['Student', 'Organizer'] },
     }).sort({ createdAt: -1 }).exec();
 
     return res.json({ success: true, requests: requests.map(enrichEvent) });

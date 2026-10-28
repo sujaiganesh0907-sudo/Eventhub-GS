@@ -79,7 +79,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   onOpenAdminAccess,
   onBack,
 }) => {
-  const { user, studentProfile, updateStudentProfileLocal } = useAuth();
+  const { user, studentProfile, organizerProfile, updateStudentProfileLocal } = useAuth();
 
   const [profile, setProfile] = useState<IStudentProfile | null>(
     !studentId && studentProfile ? studentProfile : null
@@ -294,6 +294,36 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const fetchProfileData = async () => {
     try {
       setLoading(true);
+
+      if (user?.role === 'Organizer' && !studentId) {
+        const eventsRes = await api.get<any>('/organizer/events');
+        const orgEvents = eventsRes.events || [];
+        setOrganizedEvents(orgEvents);
+        setRegistrations([]);
+        setCertificates([]);
+        setEventSectionTab('organized');
+        setActiveSection('events');
+        setProfile({
+          _id: organizerProfile?._id || user?._id || 'org_profile_id',
+          userId: user?._id || 'org_user_id',
+          fullName: user?.fullName || 'Event Organizer',
+          email: user?.email || '',
+          collegeName: organizerProfile?.organizationName || 'Independent Event Organization',
+          department: organizerProfile?.organizationType || 'Community',
+          yearOfStudy: organizerProfile?.location || 'India',
+          bio: organizerProfile?.bio || 'Verified Event Organizer on EVENTHUB',
+          skills: ['Event Production', 'Speaker Management', 'Hackathon Logistics'],
+          achievements: [`${orgEvents.length} Organized Events`, 'Verified Partner'],
+          followersCount: 0,
+          followingCount: 0,
+          connectionsCount: 0,
+          eventsCount: orgEvents.length,
+          organizedCount: orgEvents.length,
+        });
+        setLoading(false);
+        return;
+      }
+
       const targetId = studentId || 'me';
       const isOwnerView = !studentId || (user && (user._id === studentId || studentProfile?._id === studentId));
 

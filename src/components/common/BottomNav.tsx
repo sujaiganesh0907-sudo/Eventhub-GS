@@ -31,7 +31,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'home', label: 'Home', icon: Home },
     { id: 'messages', label: 'Chat', icon: MessageSquare, badge: unreadMessages },
     { id: 'events', label: 'Events', icon: Calendar },
-    { id: isCollege ? 'college-profile' : 'profile', label: isCollege ? 'College ID' : 'Student ID', icon: isCollege ? Building2 : User },
+    { id: isCollege ? 'college-profile' : 'profile', label: isCollege ? 'Approver' : (user?.role === 'Organizer' ? 'Organizer' : 'Participant'), icon: isCollege ? Building2 : User },
     { id: 'notifications', label: 'Alerts', icon: Bell, badge: effectiveUnread },
   ];
 

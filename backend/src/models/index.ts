@@ -5,7 +5,7 @@ export interface IUser {
   id?: string;
   email: string;
   passwordHash: string;
-  role: 'Student' | 'College Super Admin' | 'College Admin';
+  role: 'Student' | 'College Super Admin' | 'College Admin' | 'Organizer';
   fullName: string;
   isEmailVerified: boolean;
   emailVerificationToken?: string;
@@ -15,6 +15,25 @@ export interface IUser {
   status?: 'Active' | 'Suspended' | 'Pending' | string;
   mfaEnabled?: boolean;
   mfaSecret?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IOrganizerProfile {
+  _id: string;
+  id?: string;
+  userId: string;
+  organizationName: string;
+  organizationType: 'Company' | 'Non-Profit' | 'Student Chapter' | 'Independent Team' | 'Community' | string;
+  website?: string;
+  officialEmail: string;
+  phoneNumber: string;
+  location?: string;
+  bio?: string;
+  logo?: string;
+  coverPhoto?: string;
+  verified: boolean;
+  eventsOrganizedCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -285,8 +304,9 @@ export interface IEvent {
   registrationQuestions: IParticipantQuestion[];
   
   // Creation & Approval status
-  creatorRole: 'Student' | 'College';
+  creatorRole: 'Student' | 'College' | 'Organizer';
   creatorUserId: string;
+  organizerOrganization?: string;
   targetCollegeId?: string;
   status: 'Draft' | 'Pending Approval' | 'Published' | 'Rejected' | 'Completed' | 'Cancelled' | 'Changes Requested' | 'Closed' | string;
   rejectionReason?: string;
@@ -599,7 +619,7 @@ export interface IOtpVerification {
 
 export interface IConversationParticipant {
   userId: string;
-  role: 'Student' | 'College Super Admin' | 'College Admin';
+  role: 'Student' | 'College Super Admin' | 'College Admin' | 'Organizer';
   name: string;
   username?: string;
   avatar?: string;
@@ -752,3 +772,4 @@ export const Group = new CollectionModel<IGroup>('groups');
 export const GroupMembership = new CollectionModel<IGroupMembership>('groupMemberships');
 export const GroupJoinRequest = new CollectionModel<IGroupJoinRequest>('groupJoinRequests');
 export const CollegeAdminRequest = new CollectionModel<ICollegeAdminRequest>('collegeAdminRequests');
+export const OrganizerProfile = new CollectionModel<IOrganizerProfile>('organizerProfiles');

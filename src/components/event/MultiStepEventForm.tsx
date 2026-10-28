@@ -7,7 +7,6 @@ import {
   Clock,
   MapPin,
   Users,
-  Award,
   IndianRupee,
   Plus,
   Trash2,
@@ -18,10 +17,16 @@ import {
   QrCode,
   Link as LinkIcon,
   Image as ImageIcon,
-  ListOrdered,
   Eye,
   Lock,
   Sparkles,
+  Building2,
+  Phone,
+  Mail,
+  UserCheck,
+  Check,
+  ArrowRight,
+  Send,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ICollege, IParticipantQuestion } from '../../types';
@@ -40,14 +45,10 @@ interface MultiStepEventFormProps {
 }
 
 const WIZARD_STEPS = [
-  { id: 1, name: 'Basic Info' },
-  { id: 2, name: 'Schedule' },
-  { id: 3, name: 'Location & Mode' },
-  { id: 4, name: 'Registration' },
-  { id: 5, name: 'Rules & Prizes' },
-  { id: 6, name: 'Payment' },
-  { id: 7, name: 'Custom Details' },
-  { id: 8, name: 'Review & Publish' },
+  { id: 1, number: '01', title: 'Basic Details', desc: 'Title, category, host & poster' },
+  { id: 2, number: '02', title: 'Date & Venue', desc: 'Timing, deadline & location' },
+  { id: 3, number: '03', title: 'Registration & Fee', desc: 'Capacity, pricing & questions' },
+  { id: 4, number: '04', title: 'Review & Submit', desc: 'Final check & publication' },
 ];
 
 export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
@@ -59,7 +60,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   isOpen = true,
   isStudentProposal,
 }) => {
-  const { user, studentProfile, college } = useAuth();
+  const { user, studentProfile, college, organizerProfile } = useAuth();
   const { showToast } = useToast();
   const handleClose = onClose || onCancel || (() => {});
 
@@ -70,7 +71,13 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [previewCustomForm, setPreviewCustomForm] = useState(false);
 
-  // Is this an edit of an already published event? (Requirement 11)
+  // Check role: Student/Participant, Organizer, or College Approver
+  const isParticipant = user?.role === 'Student';
+  const isOrganizer = user?.role === 'Organizer';
+  const isApprover = user?.role === 'College Super Admin' || user?.role === 'College Admin';
+  const isProposal = isParticipant || isOrganizer || Boolean(isStudentProposal);
+
+  // Is this an edit of an already published event?
   const isEditingPublished = Boolean(eventToEdit && eventToEdit.status === 'Published');
   const [publishedNewDeadline, setPublishedNewDeadline] = useState(
     eventToEdit?.registrationDeadline || ''
@@ -84,9 +91,9 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     }
   }, [propColleges]);
 
-  // Form State initialized with clean, empty values (NO hardcoded placeholder samples)
+  // Form State initialized with clean, empty defaults
   const [formData, setFormData] = useState({
-    // Step 1: Basic Info
+    // Step 1: Basic Details
     title: '',
     poster: '',
     targetCollegeId: '',
@@ -95,14 +102,12 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     tagline: '',
     description: '',
 
-    // Step 2: Schedule
+    // Step 2: Date & Venue
     eventDate: '',
     startTime: '',
     endTime: '',
     registrationDeadline: '',
     reportingTime: '',
-
-    // Step 3: Location & Mode
     eventMode: 'Offline' as 'Offline' | 'Online' | 'Hybrid',
     venue: '',
     hallRoom: '',
@@ -112,7 +117,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     meetingPlatform: '',
     meetingLink: '',
 
-    // Step 4: Registration & Coordinators
+    // Step 3: Registration, Fee & Questions
     registrationType: 'Individual' as 'Individual' | 'Team',
     minTeamSize: 2,
     maxTeamSize: 4,
@@ -122,38 +127,18 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     eligibleYears: ['All Years'],
     primaryCoordinator: {
       name: user?.fullName || studentProfile?.fullName || '',
-      role: 'Lead Coordinator',
-      phone: studentProfile?.phoneNumber || '',
+      role: isOrganizer ? 'Event Director' : 'Lead Coordinator',
+      phone: studentProfile?.phoneNumber || organizerProfile?.phoneNumber || '',
       email: user?.email || '',
     },
-    secondaryCoordinator: {
-      name: '',
-      role: '',
-      phone: '',
-      email: '',
-    },
-
-    // Step 5: Rules & Prizes
     rulesAndGuidelines: '',
-    prizeAvailable: false,
-    totalPrizePool: 0,
-    firstPrize: '',
-    secondPrize: '',
-    thirdPrize: '',
-    certificateAvailable: true,
-    participationCertificate: true,
-    winnerCertificate: false,
-
-    // Step 6: Payment
     isFree: true,
     registrationFee: 0,
     paymentConfig: {
-      payeeName: college?.name || user?.fullName || '',
+      payeeName: college?.name || organizerProfile?.organizationName || user?.fullName || '',
       upiId: '',
       paymentInstructions: '',
     },
-
-    // Step 7: Consolidated Custom Details (Google Forms style)
     registrationQuestions: [] as IParticipantQuestion[],
   });
 
@@ -195,21 +180,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
           phone: '',
           email: user?.email || '',
         },
-        secondaryCoordinator: eventToEdit.secondaryCoordinator || {
-          name: '',
-          role: '',
-          phone: '',
-          email: '',
-        },
         rulesAndGuidelines: eventToEdit.rulesAndGuidelines || '',
-        prizeAvailable: Boolean(eventToEdit.prizeAvailable),
-        totalPrizePool: eventToEdit.totalPrizePool || 0,
-        firstPrize: eventToEdit.firstPrize || '',
-        secondPrize: eventToEdit.secondPrize || '',
-        thirdPrize: eventToEdit.thirdPrize || '',
-        certificateAvailable: eventToEdit.certificateAvailable ?? true,
-        participationCertificate: eventToEdit.participationCertificate ?? true,
-        winnerCertificate: Boolean(eventToEdit.winnerCertificate),
         isFree: eventToEdit.isFree ?? true,
         registrationFee: eventToEdit.registrationFee || 0,
         paymentConfig: eventToEdit.paymentConfig || {
@@ -261,8 +232,8 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         errors.description = 'Event Description must be maximum 200 characters.';
       }
 
-      if (user?.role === 'Student' && !formData.targetCollegeId) {
-        errors.targetCollegeId = 'Please select a Target College for your proposal.';
+      if (isProposal && !formData.targetCollegeId) {
+        errors.targetCollegeId = 'Please select a Host College for your proposal.';
       }
     } else if (step === 2) {
       if (!formData.eventDate) errors.eventDate = 'Event Date is required.';
@@ -282,10 +253,10 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         const start = new Date(`${formData.eventDate}T${formData.startTime}`).getTime();
         const deadline = new Date(formData.registrationDeadline).getTime();
         if (deadline > start) {
-          errors.registrationDeadline = 'Registration Deadline must be before the event start time.';
+          errors.registrationDeadline = 'Registration Deadline must be before event start time.';
         }
       }
-    } else if (step === 3) {
+
       if (formData.eventMode === 'Offline' || formData.eventMode === 'Hybrid') {
         if (!formData.venue.trim()) {
           errors.venue = 'Venue name is required for offline/hybrid events.';
@@ -298,16 +269,13 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
           errors.meetingLink = 'Enter a valid URL (starting with http:// or https://).';
         }
       }
-      if (formData.googleMapsLink && !/^https?:\/\/.+/i.test(formData.googleMapsLink.trim())) {
-        errors.googleMapsLink = 'Enter a valid URL.';
-      }
-    } else if (step === 4) {
+    } else if (step === 3) {
       if (formData.registrationType === 'Team') {
         if (formData.minTeamSize < 1) errors.minTeamSize = 'Min team size must be at least 1.';
         if (formData.maxTeamSize < formData.minTeamSize) errors.maxTeamSize = 'Max team size cannot be less than min team size.';
       }
       if (!formData.capacity || formData.capacity < 1) {
-        errors.capacity = 'Capacity must be a positive number.';
+        errors.capacity = 'Capacity must be at least 1 participant.';
       }
 
       if (!formData.primaryCoordinator.name.trim()) {
@@ -318,27 +286,24 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         errors.coordPhone = 'Enter a valid 10-digit mobile number.';
       }
       if (!formData.primaryCoordinator.email.trim() || !/\S+@\S+\.\S+/.test(formData.primaryCoordinator.email)) {
-        errors.coordEmail = 'Enter a valid email address.';
+        errors.coordEmail = 'Enter a valid coordinator email address.';
       }
-    } else if (step === 5) {
+
       if (!formData.rulesAndGuidelines.trim()) {
         errors.rulesAndGuidelines = 'Rules and guidelines are required.';
       }
-      if (formData.prizeAvailable && formData.totalPrizePool < 0) {
-        errors.totalPrizePool = 'Prize pool must be 0 or greater.';
-      }
-    } else if (step === 6) {
+
       if (!formData.isFree) {
         if (!formData.registrationFee || formData.registrationFee <= 0) {
           errors.registrationFee = 'Enter a valid event fee in INR (greater than 0).';
         }
         const upi = formData.paymentConfig.upiId.trim();
         if (!upi || !/^[\w.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upi)) {
-          errors.upiId = 'Enter a valid UPI ID (username@provider).';
+          errors.upiId = 'Enter a valid Beneficiary UPI ID (e.g. name@bank).';
         }
       }
-    } else if (step === 7) {
-      // Validate Custom Details questions
+
+      // Validate custom questions
       for (let i = 0; i < formData.registrationQuestions.length; i++) {
         const q = formData.registrationQuestions[i];
         if (!q.label.trim()) {
@@ -347,7 +312,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         if (q.type === 'Select / Multiple Choice' || q.type === 'Dropdown') {
           const validOpts = (q.options || []).filter((o) => o && o.trim());
           if (validOpts.length === 0) {
-            errors[`q_${i}`] = `Question #${i + 1} (Multiple Choice) must have at least one option.`;
+            errors[`q_${i}`] = `Question #${i + 1} requires at least one option.`;
           }
         }
       }
@@ -355,7 +320,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
 
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setError('Please resolve the errors highlighted below.');
+      setError('Please resolve the highlighted fields before proceeding.');
       return false;
     }
     return true;
@@ -363,7 +328,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(WIZARD_STEPS.length, prev + 1));
+      setCurrentStep((prev) => Math.min(4, prev + 1));
     }
   };
 
@@ -410,82 +375,66 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         label: q.label.trim(),
         type: q.type,
         required: Boolean(q.required),
-        helperText: q.helperText ? q.helperText.trim() : undefined,
-        options:
-          q.type === 'Select / Multiple Choice' || q.type === 'Dropdown'
-            ? (q.options || []).map((o) => o.trim()).filter(Boolean)
-            : undefined,
+        helperText: (q.helperText || '').trim(),
+        options: (q.options || []).map((o) => o.trim()).filter(Boolean),
       }));
 
-      const payload: any = {
+      const payload = {
         title: formData.title.trim(),
         poster: formData.poster,
+        targetCollegeId: isProposal ? formData.targetCollegeId : undefined,
         category: formData.category,
         eventType: formData.eventType,
         tagline: formData.tagline.trim(),
         description: formData.description.trim(),
+
         eventDate: formData.eventDate,
         startTime: formData.startTime,
         endTime: formData.endTime,
         registrationDeadline: formData.registrationDeadline,
         reportingTime: formData.reportingTime.trim(),
+
         eventMode: formData.eventMode,
-        venue: formData.eventMode === 'Online' ? undefined : formData.venue.trim(),
-        hallRoom: formData.eventMode === 'Online' ? undefined : formData.hallRoom.trim(),
-        buildingBlock: formData.eventMode === 'Online' ? undefined : formData.buildingBlock.trim(),
-        address: formData.eventMode === 'Online' ? undefined : formData.address.trim(),
-        googleMapsLink: formData.eventMode === 'Online' ? undefined : formData.googleMapsLink.trim(),
-        meetingPlatform: formData.eventMode === 'Offline' ? undefined : formData.meetingPlatform.trim(),
-        meetingLink: formData.eventMode === 'Offline' ? undefined : formData.meetingLink.trim(),
+        venue: formData.venue.trim(),
+        hallRoom: formData.hallRoom.trim(),
+        buildingBlock: formData.buildingBlock.trim(),
+        address: formData.address.trim(),
+        googleMapsLink: formData.googleMapsLink.trim(),
+        meetingPlatform: formData.meetingPlatform.trim(),
+        meetingLink: formData.meetingLink.trim(),
+
         registrationType: formData.registrationType,
-        minTeamSize: formData.registrationType === 'Team' ? formData.minTeamSize : undefined,
-        maxTeamSize: formData.registrationType === 'Team' ? formData.maxTeamSize : undefined,
+        minTeamSize: formData.registrationType === 'Team' ? Number(formData.minTeamSize) : 1,
+        maxTeamSize: formData.registrationType === 'Team' ? Number(formData.maxTeamSize) : 1,
         capacity: Number(formData.capacity),
         educationLevel: formData.educationLevel,
         departments: formData.departments,
         eligibleYears: formData.eligibleYears,
+
+        primaryCoordinator: {
+          name: formData.primaryCoordinator.name.trim(),
+          role: formData.primaryCoordinator.role.trim() || 'Lead Coordinator',
+          phone: formData.primaryCoordinator.phone.replace(/[\s\-()]/g, ''),
+          email: formData.primaryCoordinator.email.trim(),
+        },
+
         rulesAndGuidelines: formData.rulesAndGuidelines.trim(),
-        prizeAvailable: formData.prizeAvailable,
-        totalPrizePool: formData.prizeAvailable ? Number(formData.totalPrizePool) : 0,
-        firstPrize: formData.prizeAvailable ? formData.firstPrize.trim() : '',
-        secondPrize: formData.prizeAvailable ? formData.secondPrize.trim() : '',
-        thirdPrize: formData.prizeAvailable ? formData.thirdPrize.trim() : '',
-        certificateAvailable: formData.certificateAvailable,
-        participationCertificate: formData.certificateAvailable ? formData.participationCertificate : false,
-        winnerCertificate: formData.certificateAvailable ? formData.winnerCertificate : false,
         isFree: formData.isFree,
         registrationFee: formData.isFree ? 0 : Number(formData.registrationFee),
         paymentConfig: formData.isFree
-          ? undefined
+          ? {}
           : {
               payeeName: formData.paymentConfig.payeeName.trim(),
               upiId: formData.paymentConfig.upiId.trim(),
               paymentInstructions: formData.paymentConfig.paymentInstructions.trim(),
             },
-        primaryCoordinator: {
-          name: formData.primaryCoordinator.name.trim(),
-          role: formData.primaryCoordinator.role.trim() || 'Lead Coordinator',
-          phone: formData.primaryCoordinator.phone.trim(),
-          email: formData.primaryCoordinator.email.trim(),
-        },
-        secondaryCoordinator: formData.secondaryCoordinator.name.trim()
-          ? {
-              name: formData.secondaryCoordinator.name.trim(),
-              role: formData.secondaryCoordinator.role.trim() || 'Coordinator',
-              phone: formData.secondaryCoordinator.phone.trim(),
-              email: formData.secondaryCoordinator.email.trim(),
-            }
-          : undefined,
+
         registrationQuestions: sanitizedQuestions,
         saveAsDraft,
       };
 
-      if (user?.role === 'Student') {
-        payload.targetCollegeId = formData.targetCollegeId;
-      }
-
       let res: any;
-      if (eventToEdit && eventToEdit._id) {
+      if (eventToEdit && !isEditingPublished) {
         res = await api.put<any>(`/events/${eventToEdit._id}`, payload);
       } else {
         res = await api.post<any>('/events', payload);
@@ -493,10 +442,8 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
 
       if (res.success) {
         showToast(
-          saveAsDraft
-            ? 'Event saved as draft.'
-            : user?.role === 'Student'
-            ? 'Proposal submitted to college for approval.'
+          isProposal
+            ? (saveAsDraft ? 'Proposal saved as draft.' : 'Proposal submitted to college for approval!')
             : 'Event published successfully!',
           'success'
         );
@@ -525,96 +472,94 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     updateField('registrationQuestions', [...formData.registrationQuestions, newQ]);
   };
 
-  // Generate UPI QR code preview URL
-  const upiString = `upi://pay?pa=${encodeURIComponent(
-    formData.paymentConfig.upiId.trim()
-  )}&pn=${encodeURIComponent(
-    formData.paymentConfig.payeeName || 'EVENTHUB'
-  )}&am=${formData.registrationFee}&cu=INR`;
-  const upiQrPreviewUrl = formData.paymentConfig.upiId.trim()
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiString)}`
-    : '';
+  const targetCollege = colleges.find((c) => c._id === formData.targetCollegeId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={handleClose} />
 
-      {/* Modal Card */}
+      {/* Modal Card - Constrained height, Step-Only rendering to prevent long scrolling */}
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-full max-w-3xl my-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-2xl text-[var(--text-primary)] transition-all max-h-[92vh] flex flex-col"
+        className="relative w-full max-w-3xl my-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-2xl text-[var(--text-primary)] transition-all max-h-[92vh] flex flex-col overflow-hidden"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[var(--border-color)] bg-[var(--surface-subtle)]">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">
-              {isEditingPublished
-                ? 'Update Registration Deadline'
-                : eventToEdit
-                ? 'Edit Event'
-                : user?.role === 'Student'
-                ? 'Submit Student Event Proposal'
-                : 'Create College Event'}
-            </h2>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">
-              {isEditingPublished
-                ? 'Published events are locked to preserve participant integrity. You may update the deadline.'
-                : `Step ${currentStep} of ${WIZARD_STEPS.length}: ${WIZARD_STEPS[currentStep - 1].name}`}
-            </p>
+        {/* Header with Title and Close Button */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-color)] bg-[var(--surface-subtle)]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center font-bold text-sm">
+              {currentStep}
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">
+                {isEditingPublished
+                  ? 'Update Registration Deadline'
+                  : eventToEdit
+                  ? 'Edit Event'
+                  : isOrganizer
+                  ? 'Submit Organizer Event Proposal'
+                  : isParticipant
+                  ? 'Submit Participant Event Proposal'
+                  : 'Create College Event'}
+              </h2>
+              <p className="text-xs text-[var(--text-muted)]">
+                {isEditingPublished
+                  ? 'Published events are locked to preserve integrity. You may update the deadline.'
+                  : `Step ${currentStep} of 4: ${WIZARD_STEPS[currentStep - 1].title}`}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={handleClose}
             className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
-            aria-label="Close"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Step Progress Indicator (Hidden in Deadline-only edit mode) */}
+        {/* 4-Step Progress Bar Indicator (Only for new/draft creation) */}
         {!isEditingPublished && (
-          <div className="px-4 py-2.5 border-b border-[var(--border-color)] bg-[var(--surface)] overflow-x-auto">
-            <div className="flex items-center gap-1.5 min-w-max">
-              {WIZARD_STEPS.map((s) => {
-                const isCurrent = s.id === currentStep;
-                const isDone = s.id < currentStep;
-
+          <div className="px-5 py-3 border-b border-[var(--border-color)] bg-[var(--surface)]">
+            <div className="grid grid-cols-4 gap-2">
+              {WIZARD_STEPS.map((step) => {
+                const isActive = step.id === currentStep;
+                const isCompleted = step.id < currentStep;
                 return (
                   <button
-                    key={s.id}
+                    key={step.id}
                     type="button"
                     onClick={() => {
-                      if (s.id < currentStep) {
-                        setCurrentStep(s.id);
-                      } else if (s.id > currentStep) {
-                        if (validateStep(currentStep)) {
-                          setCurrentStep(s.id);
-                        }
+                      if (step.id < currentStep || validateStep(currentStep)) {
+                        setCurrentStep(step.id);
                       }
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      isCurrent
-                        ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-                        : isDone
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-subtle)]'
+                    className={`text-left p-2 rounded-xl transition-all border cursor-pointer ${
+                      isActive
+                        ? 'border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]/30'
+                        : isCompleted
+                        ? 'border-emerald-500/30 bg-emerald-500/5 hover:bg-[var(--surface-subtle)]'
+                        : 'border-transparent bg-[var(--surface-subtle)]/50 opacity-60'
                     }`}
                   >
-                    <span
-                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        isCurrent
-                          ? 'bg-white/20 text-white'
-                          : isDone
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-[var(--surface-subtle)] text-[var(--text-muted)]'
-                      }`}
-                    >
-                      {isDone ? '✓' : s.id}
-                    </span>
-                    <span className="hidden sm:inline">{s.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${
+                          isActive
+                            ? 'bg-[var(--primary)] text-white'
+                            : isCompleted
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-[var(--border-color)] text-[var(--text-muted)]'
+                        }`}
+                      >
+                        {isCompleted ? <Check className="w-3 h-3 stroke-[3]" /> : step.id}
+                      </span>
+                      <span className={`text-xs font-semibold truncate ${isActive ? 'text-[var(--primary)]' : 'text-[var(--text-primary)]'}`}>
+                        {step.title}
+                      </span>
+                    </div>
                   </button>
                 );
               })}
@@ -622,72 +567,83 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
           </div>
         )}
 
-        {/* Wizard Step Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-          {error && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+        {/* Error Alert Banner */}
+        {error && (
+          <div className="mx-5 mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
-          {/* ================= LOCKED PUBLISHED EVENT DEADLINE EDIT ================= */}
+        {/* Step-Only Scrollable Body (Only the active step renders!) */}
+        <div className="p-5 overflow-y-auto flex-1 space-y-5">
+          {/* PUBLISHED EVENT LOCK MODE */}
           {isEditingPublished ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-200 text-xs space-y-1">
-                <div className="flex items-center gap-2 font-bold">
-                  <Lock className="w-4 h-4" />
-                  <span>Published Event Safeguard Active</span>
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-3">
+                <Lock className="w-5 h-5 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-sm">Published Event Protection</h4>
+                  <p className="mt-1">
+                    To maintain data integrity and avoid disruption for already registered students, event details (name, date, mode, fees) cannot be altered after publication. You can extend the registration deadline below.
+                  </p>
                 </div>
-                <p>
-                  This event is actively published and accepting registrations. Title, venue, schedule, and pricing are locked to protect student registrations. You can extend or shorten the registration deadline.
-                </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Registration Deadline *
+                <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                  Registration Deadline
                 </label>
                 <input
                   type="datetime-local"
                   value={publishedNewDeadline}
                   onChange={(e) => setPublishedNewDeadline(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
                 />
-                <p className="text-[11px] text-[var(--text-muted)] mt-1">
-                  Event Start: {eventToEdit?.eventDate} at {eventToEdit?.startTime}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-2 text-xs">
-                <p className="font-bold text-[var(--text-primary)]">Locked Event Summary:</p>
-                <div className="grid grid-cols-2 gap-2 text-[var(--text-secondary)]">
-                  <div><span className="font-semibold">Title:</span> {eventToEdit?.title}</div>
-                  <div><span className="font-semibold">Mode:</span> {eventToEdit?.eventMode}</div>
-                  <div><span className="font-semibold">Fee:</span> {eventToEdit?.isFree ? 'Free' : `₹${eventToEdit?.registrationFee}`}</div>
-                  <div><span className="font-semibold">Capacity:</span> {eventToEdit?.capacity} seats</div>
-                </div>
               </div>
             </div>
           ) : (
             <>
-              {/* ================= STEP 1: BASIC INFO ================= */}
+              {/* ================= STEP 1: BASIC DETAILS ================= */}
               {currentStep === 1 && (
-                <div className="space-y-4">
-                  {/* Event Name */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-[var(--text-primary)]">
-                        Event Name * (Max 15 characters)
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Host College Picker for Proposals */}
+                  {isProposal && (
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Host / Partner College <span className="text-red-500">*</span>
                       </label>
-                      <span
-                        className={`text-[11px] font-semibold ${
-                          formData.title.length > 15
-                            ? 'text-red-500 font-bold'
-                            : 'text-[var(--text-muted)]'
+                      <select
+                        value={formData.targetCollegeId}
+                        onChange={(e) => updateField('targetCollegeId', e.target.value)}
+                        className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                          fieldErrors.targetCollegeId ? 'border-red-500' : 'border-[var(--border-color)]'
                         }`}
                       >
-                        {formData.title.length} / 15
+                        <option value="">Select target host college for venue & approval</option>
+                        {colleges.map((col) => (
+                          <option key={col._id} value={col._id}>
+                            {col.name} {col.verificationStatus === 'Verified' ? '✓ (Verified)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.targetCollegeId && (
+                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.targetCollegeId}</p>
+                      )}
+                      <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                        This college will receive your event proposal for review and venue authorization.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Title with Max 15 Characters */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-[var(--text-primary)]">
+                        Event Name <span className="text-red-500">*</span>
+                      </label>
+                      <span className={`text-[11px] font-medium ${formData.title.length > 15 ? 'text-red-500' : 'text-[var(--text-muted)]'}`}>
+                        {formData.title.length}/15
                       </span>
                     </div>
                     <input
@@ -695,108 +651,81 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                       maxLength={15}
                       value={formData.title}
                       onChange={(e) => updateField('title', e.target.value)}
-                      placeholder="Enter event name"
-                      className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:outline-hidden transition-all ${
-                        fieldErrors.title
-                          ? 'border-red-500'
-                          : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
+                      placeholder="e.g. HackSprint '26"
+                      className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                        fieldErrors.title ? 'border-red-500' : 'border-[var(--border-color)]'
                       }`}
                     />
-                    {fieldErrors.title && (
-                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.title}</p>
-                    )}
+                    {fieldErrors.title && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.title}</p>}
                   </div>
 
-                  {/* Target College (for Student Proposals) */}
-                  {user?.role === 'Student' && (
-                    <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        Target Institution for Proposal *
-                      </label>
-                      <select
-                        value={formData.targetCollegeId}
-                        onChange={(e) => updateField('targetCollegeId', e.target.value)}
-                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] focus:outline-hidden ${
-                          fieldErrors.targetCollegeId
-                            ? 'border-red-500'
-                            : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
-                        }`}
-                      >
-                        <option value="">Select Target College</option>
-                        {colleges.map((c) => (
-                          <option key={c._id} value={c._id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                      {fieldErrors.targetCollegeId && (
-                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.targetCollegeId}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Category & Type */}
+                  {/* Category and Event Type */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        Category *
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Category <span className="text-red-500">*</span>
                       </label>
                       <select
                         value={formData.category}
                         onChange={(e) => updateField('category', e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
                       >
                         <option value="Technical">Technical</option>
-                        <option value="Hackathon">Hackathon</option>
                         <option value="Cultural">Cultural</option>
                         <option value="Sports">Sports</option>
                         <option value="Workshop">Workshop</option>
-                        <option value="Robotics">Robotics</option>
-                        <option value="Management">Management</option>
+                        <option value="Hackathon">Hackathon</option>
+                        <option value="Seminar">Seminar</option>
+                        <option value="Webinar">Webinar</option>
+                        <option value="Conference">Conference</option>
+                        <option value="Fest">Fest</option>
+                        <option value="Other">Other</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        Tagline (Optional)
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Event Type <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        value={formData.tagline}
-                        onChange={(e) => updateField('tagline', e.target.value)}
-                        placeholder="Enter short event tagline"
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                      />
+                      <select
+                        value={formData.eventType}
+                        onChange={(e) => updateField('eventType', e.target.value)}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                      >
+                        <option value="Symposium">Symposium</option>
+                        <option value="Competition">Competition</option>
+                        <option value="Workshop">Workshop</option>
+                        <option value="Hackathon">Hackathon</option>
+                        <option value="Exhibition">Exhibition</option>
+                        <option value="Cultural Night">Cultural Night</option>
+                        <option value="Guest Lecture">Guest Lecture</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Poster Image File Upload */}
+                  {/* Tagline */}
                   <div>
-                    <FileUpload
-                      label="Event Banner / Poster *"
-                      helperText="Upload event poster image (JPG, PNG, WEBP)"
-                      value={formData.poster}
-                      onChange={(url) => updateField('poster', url)}
+                    <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                      Tagline / Catchphrase (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={60}
+                      value={formData.tagline}
+                      onChange={(e) => updateField('tagline', e.target.value)}
+                      placeholder="e.g. Code, innovate, and disrupt the future."
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
                     />
-                    {fieldErrors.poster && (
-                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.poster}</p>
-                    )}
                   </div>
 
-                  {/* Description */}
+                  {/* Description with Max 200 Characters */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-[var(--text-primary)]">
-                        Description * (Max 200 characters)
+                      <label className="text-xs font-semibold text-[var(--text-primary)]">
+                        Event Description <span className="text-red-500">*</span>
                       </label>
-                      <span
-                        className={`text-[11px] font-semibold ${
-                          formData.description.length > 200
-                            ? 'text-red-500 font-bold'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {formData.description.length} / 200
+                      <span className={`text-[11px] font-medium ${formData.description.length > 200 ? 'text-red-500' : 'text-[var(--text-muted)]'}`}>
+                        {formData.description.length}/200
                       </span>
                     </div>
                     <textarea
@@ -804,114 +733,119 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                       maxLength={200}
                       value={formData.description}
                       onChange={(e) => updateField('description', e.target.value)}
-                      placeholder="Enter a brief, compelling overview of the event"
-                      className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] focus:outline-hidden transition-all ${
-                        fieldErrors.description
-                          ? 'border-red-500'
-                          : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
+                      placeholder="e.g. A premier 24-hour inter-collegiate coding sprint bringing together student developers to solve real-world industry challenges."
+                      className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] resize-none ${
+                        fieldErrors.description ? 'border-red-500' : 'border-[var(--border-color)]'
                       }`}
                     />
                     {fieldErrors.description && (
                       <p className="text-[11px] text-red-500 mt-1">{fieldErrors.description}</p>
                     )}
                   </div>
+
+                  {/* Poster Image */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                      Event Poster Image <span className="text-red-500">*</span>
+                    </label>
+                    <FileUpload
+                      value={formData.poster}
+                      onChange={(url) => updateField('poster', url)}
+                      accept="image/*"
+                    />
+                    {fieldErrors.poster && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.poster}</p>}
+                  </div>
                 </div>
               )}
 
-              {/* ================= STEP 2: SCHEDULE ================= */}
+              {/* ================= STEP 2: DATE & VENUE ================= */}
               {currentStep === 2 && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Date, Start Time & End Time */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        Event Date *
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Event Date <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="date"
                         value={formData.eventDate}
                         onChange={(e) => updateField('eventDate', e.target.value)}
-                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                        className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
                           fieldErrors.eventDate ? 'border-red-500' : 'border-[var(--border-color)]'
                         }`}
                       />
-                      {fieldErrors.eventDate && (
-                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.eventDate}</p>
-                      )}
+                      {fieldErrors.eventDate && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.eventDate}</p>}
                     </div>
+
                     <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        Start Time *
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Start Time <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="time"
                         value={formData.startTime}
                         onChange={(e) => updateField('startTime', e.target.value)}
-                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                        className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
                           fieldErrors.startTime ? 'border-red-500' : 'border-[var(--border-color)]'
                         }`}
                       />
-                      {fieldErrors.startTime && (
-                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.startTime}</p>
-                      )}
+                      {fieldErrors.startTime && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.startTime}</p>}
                     </div>
+
                     <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        End Time *
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        End Time <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="time"
                         value={formData.endTime}
                         onChange={(e) => updateField('endTime', e.target.value)}
-                        className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
+                        className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
                           fieldErrors.endTime ? 'border-red-500' : 'border-[var(--border-color)]'
                         }`}
                       />
-                      {fieldErrors.endTime && (
-                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.endTime}</p>
-                      )}
+                      {fieldErrors.endTime && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.endTime}</p>}
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Registration Deadline *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={formData.registrationDeadline}
-                      onChange={(e) => updateField('registrationDeadline', e.target.value)}
-                      className={`w-full p-2.5 rounded-xl border text-sm text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
-                        fieldErrors.registrationDeadline
-                          ? 'border-red-500'
-                          : 'border-[var(--border-color)]'
-                      }`}
-                    />
-                    {fieldErrors.registrationDeadline && (
-                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.registrationDeadline}</p>
-                    )}
+                  {/* Registration Deadline & Reporting Time */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Registration Deadline <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={formData.registrationDeadline}
+                        onChange={(e) => updateField('registrationDeadline', e.target.value)}
+                        className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                          fieldErrors.registrationDeadline ? 'border-red-500' : 'border-[var(--border-color)]'
+                        }`}
+                      />
+                      {fieldErrors.registrationDeadline && (
+                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.registrationDeadline}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Reporting Time (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.reportingTime}
+                        onChange={(e) => updateField('reportingTime', e.target.value)}
+                        placeholder="e.g. 08:30 AM (Registration Desk)"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                      />
+                    </div>
                   </div>
 
+                  {/* Event Mode */}
                   <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Reporting Time (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.reportingTime}
-                      onChange={(e) => updateField('reportingTime', e.target.value)}
-                      placeholder="Enter reporting instructions or arrival details"
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-sm text-[var(--text-primary)]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ================= STEP 3: LOCATION & MODE ================= */}
-              {currentStep === 3 && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Event Mode *
+                    <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1.5">
+                      Event Mode <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-3 gap-2">
                       {(['Offline', 'Online', 'Hybrid'] as const).map((m) => (
@@ -919,10 +853,10 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                           key={m}
                           type="button"
                           onClick={() => updateField('eventMode', m)}
-                          className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
                             formData.eventMode === m
-                              ? 'bg-[var(--primary-color)] text-[var(--primary-text)] border-[var(--primary-color)] shadow-xs'
-                              : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--surface)]'
+                              ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
+                              : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                           }`}
                         >
                           {m}
@@ -931,186 +865,261 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                     </div>
                   </div>
 
-                  {/* Offline Details */}
-                  {formData.eventMode !== 'Online' && (
-                    <div className="space-y-3 p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
-                      <p className="text-xs font-bold text-[var(--text-primary)]">Campus Venue Details</p>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                          Venue / Hall Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.venue}
-                          onChange={(e) => updateField('venue', e.target.value)}
-                          placeholder="Enter event venue"
-                          className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
-                            fieldErrors.venue ? 'border-red-500' : 'border-[var(--border-color)]'
-                          }`}
-                        />
-                        {fieldErrors.venue && (
-                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.venue}</p>
-                        )}
+                  {/* Venue Details (Offline / Hybrid) */}
+                  {(formData.eventMode === 'Offline' || formData.eventMode === 'Hybrid') && (
+                    <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                        <MapPin className="w-4 h-4 text-[var(--primary)]" />
+                        <span>Physical Campus Venue Details</span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Venue / Auditorium <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.venue}
+                            onChange={(e) => updateField('venue', e.target.value)}
+                            placeholder="e.g. Ramanujan Central Auditorium"
+                            className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                              fieldErrors.venue ? 'border-red-500' : 'border-[var(--border-color)]'
+                            }`}
+                          />
+                          {fieldErrors.venue && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.venue}</p>}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
                             Hall / Room Number
                           </label>
                           <input
                             type="text"
                             value={formData.hallRoom}
                             onChange={(e) => updateField('hallRoom', e.target.value)}
-                            placeholder="Enter room or hall number"
-                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                            Building / Block
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.buildingBlock}
-                            onChange={(e) => updateField('buildingBlock', e.target.value)}
-                            placeholder="Enter building or campus block"
-                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
+                            placeholder="e.g. Seminar Hall B-302"
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                          Google Maps Link (Optional)
+                        <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                          Full Campus Address
                         </label>
                         <input
                           type="text"
-                          value={formData.googleMapsLink}
-                          onChange={(e) => updateField('googleMapsLink', e.target.value)}
-                          placeholder="Enter a valid URL"
-                          className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
-                            fieldErrors.googleMapsLink ? 'border-red-500' : 'border-[var(--border-color)]'
-                          }`}
+                          value={formData.address}
+                          onChange={(e) => updateField('address', e.target.value)}
+                          placeholder="e.g. Apex Tech Campus, 100 Feet Road, Bengaluru, Karnataka 560001"
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
                         />
-                        {fieldErrors.googleMapsLink && (
-                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.googleMapsLink}</p>
-                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* Online Details */}
-                  {formData.eventMode !== 'Offline' && (
-                    <div className="space-y-3 p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
-                      <p className="text-xs font-bold text-[var(--text-primary)]">Virtual Meeting Details</p>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                          Meeting Platform
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.meetingPlatform}
-                          onChange={(e) => updateField('meetingPlatform', e.target.value)}
-                          placeholder="Enter platform name (Google Meet, Zoom, Webex)"
-                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                        />
+                  {/* Online Details (Online / Hybrid) */}
+                  {(formData.eventMode === 'Online' || formData.eventMode === 'Hybrid') && (
+                    <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                        <LinkIcon className="w-4 h-4 text-[var(--primary)]" />
+                        <span>Online Meeting & Platform Details</span>
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                          Meeting Link *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.meetingLink}
-                          onChange={(e) => updateField('meetingLink', e.target.value)}
-                          placeholder="Enter a valid URL"
-                          className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
-                            fieldErrors.meetingLink ? 'border-red-500' : 'border-[var(--border-color)]'
-                          }`}
-                        />
-                        {fieldErrors.meetingLink && (
-                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.meetingLink}</p>
-                        )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Platform
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.meetingPlatform}
+                            onChange={(e) => updateField('meetingPlatform', e.target.value)}
+                            placeholder="e.g. Google Meet / Zoom"
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Meeting Link URL <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="url"
+                            value={formData.meetingLink}
+                            onChange={(e) => updateField('meetingLink', e.target.value)}
+                            placeholder="e.g. https://meet.google.com/abc-defg-hij"
+                            className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                              fieldErrors.meetingLink ? 'border-red-500' : 'border-[var(--border-color)]'
+                            }`}
+                          />
+                          {fieldErrors.meetingLink && (
+                            <p className="text-[11px] text-red-500 mt-1">{fieldErrors.meetingLink}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* ================= STEP 4: REGISTRATION & COORDINATOR ================= */}
-              {currentStep === 4 && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* ================= STEP 3: REGISTRATION, FEE & QUESTIONS ================= */}
+              {currentStep === 3 && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Participation Type & Capacity */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        Registration Type *
+                      <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                        Participation Type
                       </label>
                       <select
                         value={formData.registrationType}
                         onChange={(e) => updateField('registrationType', e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)]"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
                       >
-                        <option value="Individual">Individual Participation</option>
-                        <option value="Team">Team Event</option>
+                        <option value="Individual">Individual Entry</option>
+                        <option value="Team">Team Entry</option>
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                        Total Capacity / Seats *
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={formData.capacity}
-                        onChange={(e) => updateField('capacity', Number(e.target.value))}
-                        className={`w-full p-2.5 rounded-xl border text-xs text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
-                          fieldErrors.capacity ? 'border-red-500' : 'border-[var(--border-color)]'
-                        }`}
-                      />
-                      {fieldErrors.capacity && (
-                        <p className="text-[11px] text-red-500 mt-1">{fieldErrors.capacity}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {formData.registrationType === 'Team' && (
-                    <div className="grid grid-cols-2 gap-3 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                          Min Team Members
+                    {formData.registrationType === 'Team' ? (
+                      <>
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Min Team Size
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={formData.minTeamSize}
+                            onChange={(e) => updateField('minTeamSize', Number(e.target.value))}
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Max Team Size
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={15}
+                            value={formData.maxTeamSize}
+                            onChange={(e) => updateField('maxTeamSize', Number(e.target.value))}
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                          Max Participant Capacity <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
                           min={1}
-                          value={formData.minTeamSize}
-                          onChange={(e) => updateField('minTeamSize', Number(e.target.value))}
-                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                          max={5000}
+                          value={formData.capacity}
+                          onChange={(e) => updateField('capacity', Number(e.target.value))}
+                          placeholder="e.g. 150"
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                          Max Team Members
-                        </label>
-                        <input
-                          type="number"
-                          min={formData.minTeamSize}
-                          value={formData.maxTeamSize}
-                          onChange={(e) => updateField('maxTeamSize', Number(e.target.value))}
-                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                        />
+                    )}
+                  </div>
+
+                  {/* Fee & Payment (INR Formatting) */}
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <IndianRupee className="w-4 h-4 text-[var(--primary)]" />
+                        <span className="text-xs font-bold text-[var(--text-primary)]">Pricing & Registration Fee</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateField('isFree', true)}
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                            formData.isFree
+                              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
+                              : 'border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-muted)]'
+                          }`}
+                        >
+                          Free Event
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateField('isFree', false)}
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                            !formData.isFree
+                              ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] font-bold'
+                              : 'border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-muted)]'
+                          }`}
+                        >
+                          Paid Entry (INR ₹)
+                        </button>
                       </div>
                     </div>
-                  )}
 
-                  {/* Primary Coordinator */}
-                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-2.5">
-                    <p className="text-xs font-bold text-[var(--text-primary)]">
-                      Primary Faculty / Student Coordinator *
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {!formData.isFree && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--border-color)]">
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Entry Fee (in INR ₹) <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-muted)]">₹</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={formData.registrationFee}
+                              onChange={(e) => updateField('registrationFee', Number(e.target.value))}
+                              placeholder="250"
+                              className={`w-full pl-8 pr-3 py-2 text-sm rounded-xl border bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                                fieldErrors.registrationFee ? 'border-red-500' : 'border-[var(--border-color)]'
+                              }`}
+                            />
+                          </div>
+                          {fieldErrors.registrationFee && (
+                            <p className="text-[11px] text-red-500 mt-1">{fieldErrors.registrationFee}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Beneficiary UPI ID <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.paymentConfig.upiId}
+                            onChange={(e) =>
+                              updateField('paymentConfig', { ...formData.paymentConfig, upiId: e.target.value })
+                            }
+                            placeholder="e.g. apexevents@oksbi"
+                            className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                              fieldErrors.upiId ? 'border-red-500' : 'border-[var(--border-color)]'
+                            }`}
+                          />
+                          {fieldErrors.upiId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.upiId}</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Coordinator Details with 10-Digit Phone */}
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                      <UserCheck className="w-4 h-4 text-[var(--primary)]" />
+                      <span>Primary Event Coordinator</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
+                        <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                          Full Name <span className="text-red-500">*</span>
+                        </label>
                         <input
                           type="text"
                           value={formData.primaryCoordinator.name}
@@ -1120,14 +1129,18 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                               name: e.target.value,
                             })
                           }
-                          placeholder="Enter coordinator name"
-                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                          placeholder="e.g. Dr. Rajesh Kumar"
+                          className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                            fieldErrors.coordName ? 'border-red-500' : 'border-[var(--border-color)]'
+                          }`}
                         />
-                        {fieldErrors.coordName && (
-                          <p className="text-[10px] text-red-500 mt-0.5">{fieldErrors.coordName}</p>
-                        )}
+                        {fieldErrors.coordName && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.coordName}</p>}
                       </div>
+
                       <div>
+                        <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                          Mobile (10 Digits) <span className="text-red-500">*</span>
+                        </label>
                         <input
                           type="tel"
                           maxLength={10}
@@ -1135,17 +1148,21 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                           onChange={(e) =>
                             updateField('primaryCoordinator', {
                               ...formData.primaryCoordinator,
-                              phone: e.target.value,
+                              phone: e.target.value.replace(/\D/g, ''),
                             })
                           }
-                          placeholder="Enter 10-digit mobile number"
-                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                          placeholder="e.g. 9876543210"
+                          className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                            fieldErrors.coordPhone ? 'border-red-500' : 'border-[var(--border-color)]'
+                          }`}
                         />
-                        {fieldErrors.coordPhone && (
-                          <p className="text-[10px] text-red-500 mt-0.5">{fieldErrors.coordPhone}</p>
-                        )}
+                        {fieldErrors.coordPhone && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.coordPhone}</p>}
                       </div>
+
                       <div>
+                        <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                          Email Address <span className="text-red-500">*</span>
+                        </label>
                         <input
                           type="email"
                           value={formData.primaryCoordinator.email}
@@ -1155,34 +1172,28 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                               email: e.target.value,
                             })
                           }
-                          placeholder="Enter email address"
-                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
+                          placeholder="e.g. coordinator@apextech.edu"
+                          className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                            fieldErrors.coordEmail ? 'border-red-500' : 'border-[var(--border-color)]'
+                          }`}
                         />
-                        {fieldErrors.coordEmail && (
-                          <p className="text-[10px] text-red-500 mt-0.5">{fieldErrors.coordEmail}</p>
-                        )}
+                        {fieldErrors.coordEmail && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.coordEmail}</p>}
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* ================= STEP 5: RULES & PRIZES ================= */}
-              {currentStep === 5 && (
-                <div className="space-y-4">
+                  {/* Rules and Guidelines */}
                   <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Rules & Guidelines *
+                    <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                      Rules & Participant Guidelines <span className="text-red-500">*</span>
                     </label>
                     <textarea
-                      rows={4}
+                      rows={2}
                       value={formData.rulesAndGuidelines}
                       onChange={(e) => updateField('rulesAndGuidelines', e.target.value)}
-                      placeholder="Specify event format, judging criteria, eligibility rules, and code of conduct"
-                      className={`w-full p-2.5 rounded-xl border text-xs text-[var(--text-primary)] bg-[var(--surface-subtle)] ${
-                        fieldErrors.rulesAndGuidelines
-                          ? 'border-red-500'
-                          : 'border-[var(--border-color)]'
+                      placeholder="e.g. 1. Bring a valid student/institution ID card. 2. Laptops are required for hands-on sessions."
+                      className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] resize-none ${
+                        fieldErrors.rulesAndGuidelines ? 'border-red-500' : 'border-[var(--border-color)]'
                       }`}
                     />
                     {fieldErrors.rulesAndGuidelines && (
@@ -1190,534 +1201,202 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                     )}
                   </div>
 
-                  {/* Prizes */}
-                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
+                  {/* Custom Participant Questions Builder */}
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[var(--text-primary)]">
-                        Prize Pool & Awards
-                      </span>
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
-                        <input
-                          type="checkbox"
-                          checked={formData.prizeAvailable}
-                          onChange={(e) => updateField('prizeAvailable', e.target.checked)}
-                          className="rounded text-[var(--primary-color)]"
-                        />
-                        Prizes Offered
-                      </label>
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                          <FileText className="w-4 h-4 text-[var(--primary)]" />
+                          <span>Custom Registration Questions</span>
+                        </div>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          Add custom form fields for participants to fill during registration.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddQuestion}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--primary)] text-white hover:opacity-95 cursor-pointer shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Question</span>
+                      </button>
                     </div>
 
-                    {formData.prizeAvailable && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                        <div>
-                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                            Total Prize Pool in INR (₹)
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={formData.totalPrizePool}
-                            onChange={(e) => updateField('totalPrizePool', Number(e.target.value))}
-                            placeholder="Enter total prize pool in INR"
-                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
-                            First Prize / Winner Reward
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.firstPrize}
-                            onChange={(e) => updateField('firstPrize', e.target.value)}
-                            placeholder="Enter first prize details"
-                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs"
-                          />
-                        </div>
+                    {formData.registrationQuestions.length === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] italic py-2 text-center bg-[var(--surface)] rounded-lg border border-dashed border-[var(--border-color)]">
+                        No custom questions added. Click "+ Add Question" to solicit T-shirt size, GitHub handle, or team background.
+                      </p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {formData.registrationQuestions.map((q, idx) => (
+                          <div
+                            key={q.id || idx}
+                            className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-bold text-[var(--text-muted)]">Q{idx + 1}</span>
+                              <div className="flex-1">
+                                <input
+                                  type="text"
+                                  value={q.label}
+                                  onChange={(e) => {
+                                    const next = [...formData.registrationQuestions];
+                                    next[idx].label = e.target.value;
+                                    updateField('registrationQuestions', next);
+                                  }}
+                                  placeholder="e.g. GitHub Profile URL or T-Shirt Size"
+                                  className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)]"
+                                />
+                              </div>
+                              <select
+                                value={q.type}
+                                onChange={(e) => {
+                                  const next = [...formData.registrationQuestions];
+                                  next[idx].type = e.target.value as any;
+                                  updateField('registrationQuestions', next);
+                                }}
+                                className="px-2 py-1 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)]"
+                              >
+                                <option value="Short Text">Short Text</option>
+                                <option value="Paragraph">Paragraph</option>
+                                <option value="Select / Multiple Choice">Multiple Choice</option>
+                                <option value="Dropdown">Dropdown</option>
+                                <option value="File Upload">File Upload</option>
+                              </select>
+                              <label className="flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={q.required}
+                                  onChange={(e) => {
+                                    const next = [...formData.registrationQuestions];
+                                    next[idx].required = e.target.checked;
+                                    updateField('registrationQuestions', next);
+                                  }}
+                                  className="rounded text-[var(--primary)] focus:ring-[var(--primary)]"
+                                />
+                                Req
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = formData.registrationQuestions.filter((_, i) => i !== idx);
+                                  updateField('registrationQuestions', next);
+                                }}
+                                className="p-1 text-red-500 hover:bg-red-500/10 rounded-md cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* ================= STEP 6: PAYMENT & INR ================= */}
-              {currentStep === 6 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
+              {/* ================= STEP 4: REVIEW & SUBMIT ================= */}
+              {currentStep === 4 && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Notice Banner */}
+                  <div
+                    className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+                      isProposal
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200'
+                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-[var(--text-primary)]">Event Registration Fee</p>
-                      <p className="text-[11px] text-[var(--text-muted)]">
-                        Select whether this event is free for participants or requires a paid entry fee.
+                      <p className="font-bold">
+                        {isOrganizer
+                          ? `Ready for Proposal Submission to ${targetCollege?.name || 'Host College'}`
+                          : isParticipant
+                          ? `Ready for Proposal Submission to ${targetCollege?.name || 'Host College'}`
+                          : 'Ready for Immediate College Publication'}
                       </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateField('isFree', true)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          formData.isFree
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border-color)]'
-                        }`}
-                      >
-                        Free
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateField('isFree', false)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          !formData.isFree
-                            ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-                            : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border-color)]'
-                        }`}
-                      >
-                        Paid (INR ₹)
-                      </button>
+                      <p className="mt-0.5 opacity-90 text-[11px]">
+                        {isProposal
+                          ? 'This event proposal will be routed directly to the college administration. Both you and the college approver will receive email updates upon review.'
+                          : 'Your event will be published immediately on the public EVENTHUB discovery feed.'}
+                      </p>
                     </div>
                   </div>
 
-                  {!formData.isFree && (
-                    <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-                      <div>
-                        <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                          Registration Fee per Participant in Indian Rupees (₹) *
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-[var(--text-muted)]">
-                            ₹
-                          </span>
-                          <input
-                            type="number"
-                            min={1}
-                            value={formData.registrationFee || ''}
-                            onChange={(e) => updateField('registrationFee', Number(e.target.value))}
-                            placeholder="Enter event fee in INR"
-                            className={`w-full pl-7 pr-3 py-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
-                              fieldErrors.registrationFee ? 'border-red-500' : 'border-[var(--border-color)]'
-                            }`}
-                          />
-                        </div>
-                        {fieldErrors.registrationFee && (
-                          <p className="text-[11px] text-red-500 mt-1">{fieldErrors.registrationFee}</p>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                            Beneficiary / College Payee Name *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.paymentConfig.payeeName}
-                            onChange={(e) =>
-                              updateField('paymentConfig', {
-                                ...formData.paymentConfig,
-                                payeeName: e.target.value,
-                              })
-                            }
-                            placeholder="Enter beneficiary or college name"
-                            className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                            Beneficiary UPI ID *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.paymentConfig.upiId}
-                            onChange={(e) =>
-                              updateField('paymentConfig', {
-                                ...formData.paymentConfig,
-                                upiId: e.target.value,
-                              })
-                            }
-                            placeholder="Enter valid UPI ID (username@provider)"
-                            className={`w-full p-2 rounded-lg border text-xs text-[var(--text-primary)] bg-[var(--surface)] ${
-                              fieldErrors.upiId ? 'border-red-500' : 'border-[var(--border-color)]'
-                            }`}
-                          />
-                          {fieldErrors.upiId && (
-                            <p className="text-[11px] text-red-500 mt-1">{fieldErrors.upiId}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Generated Live UPI QR Code Preview */}
-                      {upiQrPreviewUrl && (
-                        <div className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] flex flex-col sm:flex-row items-center gap-4">
-                          <img
-                            src={upiQrPreviewUrl}
-                            alt="Payment QR"
-                            className="w-28 h-28 rounded-lg border border-[var(--border-color)] bg-white p-1 object-contain"
-                          />
-                          <div className="text-xs space-y-1 text-center sm:text-left">
-                            <p className="font-bold text-[var(--text-primary)] flex items-center gap-1 justify-center sm:justify-start">
-                              <QrCode className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                              Auto-Generated UPI Payment QR Code
-                            </p>
-                            <p className="text-[var(--text-muted)] text-[11px]">
-                              Payee: <span className="font-semibold">{formData.paymentConfig.payeeName}</span>
-                            </p>
-                            <p className="text-[var(--text-muted)] text-[11px]">
-                              UPI ID: <span className="font-mono">{formData.paymentConfig.upiId}</span>
-                            </p>
-                            <p className="text-[var(--text-muted)] text-[11px]">
-                              Amount Due: <span className="font-bold text-[var(--primary-color)]">₹{formData.registrationFee}</span>
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                          Payment Instructions for Registrants
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={formData.paymentConfig.paymentInstructions}
-                          onChange={(e) =>
-                            updateField('paymentConfig', {
-                              ...formData.paymentConfig,
-                              paymentInstructions: e.target.value,
-                            })
-                          }
-                          placeholder="Enter instructions (e.g. pay via GPay, PhonePe, Paytm and enter transaction reference)"
-                          className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ================= STEP 7: CONSOLIDATED CUSTOM DETAILS (Google Forms Style) ================= */}
-              {currentStep === 7 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                        Custom Registration Details & Questions
-                      </h3>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        Default details (Name, Email, Phone, College) are collected automatically. Add custom Google Forms-style questions below.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewCustomForm(!previewCustomForm)}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${
-                          previewCustomForm
-                            ? 'bg-[var(--primary-color)] text-[var(--primary-text)] border-[var(--primary-color)]'
-                            : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] border-[var(--border-color)]'
-                        }`}
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>{previewCustomForm ? 'Edit Questions' : 'Preview Form'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleAddQuestion}
-                        className="px-3 py-1.5 rounded-xl bg-[var(--primary-color)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-[var(--primary-hover)] transition-colors shadow-xs"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Question</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {previewCustomForm ? (
-                    // Live Form Preview Mode
-                    <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-4">
-                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                        Live Registration Form Preview
-                      </p>
-                      {formData.registrationQuestions.length === 0 ? (
-                        <p className="text-xs text-[var(--text-muted)] italic">
-                          No custom questions configured. Only default profile details will be requested.
-                        </p>
-                      ) : (
-                        formData.registrationQuestions.map((q, idx) => (
-                          <div key={q.id} className="p-3 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-[var(--text-primary)]">
-                                {idx + 1}. {q.label || 'Untitled Question'}
-                                {q.required && <span className="text-red-500 ml-1">*</span>}
-                              </span>
-                              <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">
-                                {q.type}
-                              </span>
-                            </div>
-                            {q.type === 'Short Text' && (
-                              <input
-                                type="text"
-                                disabled
-                                placeholder="Short text answer..."
-                                className="w-full p-2 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] opacity-70"
-                              />
-                            )}
-                            {q.type === 'Image Upload' && (
-                              <div className="p-3 border border-dashed border-[var(--border-color)] rounded-lg text-center text-xs text-[var(--text-muted)]">
-                                Image File Upload Input (JPG, PNG, WEBP)
-                              </div>
-                            )}
-                            {q.type === 'Link' && (
-                              <input
-                                type="text"
-                                disabled
-                                placeholder="https://example.com/project"
-                                className="w-full p-2 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] opacity-70"
-                              />
-                            )}
-                            {(q.type === 'Select / Multiple Choice' || q.type === 'Dropdown') && (
-                              <div className="space-y-1 pl-2">
-                                {(q.options || ['Option 1']).map((opt, oIdx) => (
-                                  <label key={oIdx} className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                                    <input type="radio" disabled name={`preview_${q.id}`} />
-                                    <span>{opt || `Option ${oIdx + 1}`}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  ) : (
-                    // Edit Questions List
-                    <div className="space-y-3">
-                      {formData.registrationQuestions.length === 0 ? (
-                        <div className="p-8 text-center border border-dashed border-[var(--border-color)] rounded-xl text-xs text-[var(--text-muted)] space-y-2">
-                          <p>No custom questions added yet.</p>
-                          <button
-                            type="button"
-                            onClick={handleAddQuestion}
-                            className="text-xs font-bold text-[var(--primary-color)] hover:underline cursor-pointer"
-                          >
-                            + Click here to add your first question
-                          </button>
-                        </div>
-                      ) : (
-                        formData.registrationQuestions.map((q, qIdx) => (
-                          <div
-                            key={q.id}
-                            className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3 transition-all"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-[var(--text-secondary)]">
-                                Question #{qIdx + 1}
-                              </span>
-                              <div className="flex items-center gap-3">
-                                {/* Required Toggle */}
-                                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={q.required}
-                                    onChange={(e) => {
-                                      const updated = [...formData.registrationQuestions];
-                                      updated[qIdx].required = e.target.checked;
-                                      updateField('registrationQuestions', updated);
-                                    }}
-                                    className="rounded text-[var(--primary-color)]"
-                                  />
-                                  <span>Required</span>
-                                </label>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updated = formData.registrationQuestions.filter(
-                                      (_, i) => i !== qIdx
-                                    );
-                                    updateField('registrationQuestions', updated);
-                                  }}
-                                  className="text-red-500 hover:text-red-700 p-1 text-xs flex items-center gap-1 cursor-pointer"
-                                  title="Delete question"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                              {/* Question Title */}
-                              <div className="sm:col-span-2">
-                                <input
-                                  type="text"
-                                  value={q.label}
-                                  onChange={(e) => {
-                                    const updated = [...formData.registrationQuestions];
-                                    updated[qIdx].label = e.target.value;
-                                    updateField('registrationQuestions', updated);
-                                  }}
-                                  placeholder="Enter custom question label or title"
-                                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                                />
-                              </div>
-
-                              {/* Question Type */}
-                              <div>
-                                <select
-                                  value={q.type}
-                                  onChange={(e) => {
-                                    const updated = [...formData.registrationQuestions];
-                                    updated[qIdx].type = e.target.value;
-                                    if (
-                                      (e.target.value === 'Select / Multiple Choice' ||
-                                        e.target.value === 'Dropdown') &&
-                                      (!updated[qIdx].options || updated[qIdx].options?.length === 0)
-                                    ) {
-                                      updated[qIdx].options = ['Option 1'];
-                                    }
-                                    updateField('registrationQuestions', updated);
-                                  }}
-                                  className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--text-primary)]"
-                                >
-                                  <option value="Short Text">Short Text</option>
-                                  <option value="Image Upload">Image Upload</option>
-                                  <option value="Link">Link (URL)</option>
-                                  <option value="Select / Multiple Choice">Select / Multiple Choice</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            {fieldErrors[`q_${qIdx}`] && (
-                              <p className="text-[11px] text-red-500 font-semibold">
-                                {fieldErrors[`q_${qIdx}`]}
-                              </p>
-                            )}
-
-                            {/* Multiple Choice Options Builder */}
-                            {(q.type === 'Select / Multiple Choice' || q.type === 'Dropdown') && (
-                              <div className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] space-y-2">
-                                <p className="text-[11px] font-bold text-[var(--text-secondary)]">
-                                  Configured Options
-                                </p>
-                                <div className="space-y-1.5">
-                                  {(q.options || []).map((opt, optIdx) => (
-                                    <div key={optIdx} className="flex items-center gap-2">
-                                      <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                                        {optIdx + 1}.
-                                      </span>
-                                      <input
-                                        type="text"
-                                        value={opt}
-                                        onChange={(e) => {
-                                          const updated = [...formData.registrationQuestions];
-                                          const opts = [...(updated[qIdx].options || [])];
-                                          opts[optIdx] = e.target.value;
-                                          updated[qIdx].options = opts;
-                                          updateField('registrationQuestions', updated);
-                                        }}
-                                        placeholder={`Enter option ${optIdx + 1} text`}
-                                        className="flex-1 p-1.5 rounded-md border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs"
-                                      />
-                                      <button
-                                        type="button"
-                                        disabled={(q.options || []).length <= 1}
-                                        onClick={() => {
-                                          const updated = [...formData.registrationQuestions];
-                                          const opts = (updated[qIdx].options || []).filter(
-                                            (_, i) => i !== optIdx
-                                          );
-                                          updated[qIdx].options = opts;
-                                          updateField('registrationQuestions', updated);
-                                        }}
-                                        className="p-1 text-red-500 hover:text-red-700 disabled:opacity-30 cursor-pointer"
-                                        title="Remove option"
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updated = [...formData.registrationQuestions];
-                                    const opts = [...(updated[qIdx].options || [])];
-                                    opts.push(`Option ${opts.length + 1}`);
-                                    updated[qIdx].options = opts;
-                                    updateField('registrationQuestions', updated);
-                                  }}
-                                  className="mt-1 text-xs font-semibold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Plus className="w-3 h-3" /> Add Option
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ================= STEP 8: REVIEW & PUBLISH ================= */}
-              {currentStep === 8 && (
-                <div className="space-y-4">
+                  {/* Summary Preview Card */}
                   <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] space-y-3">
-                    <div className="flex items-center gap-3">
-                      {formData.poster && (
+                    <div className="flex items-start gap-3">
+                      {formData.poster ? (
                         <img
                           src={formData.poster}
-                          alt="Poster Preview"
-                          className="w-20 h-20 rounded-xl object-cover border border-[var(--border-color)]"
+                          alt={formData.title}
+                          className="w-20 h-20 rounded-xl object-cover shrink-0 border border-[var(--border-color)]"
                         />
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-[var(--surface)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)]">
+                          <ImageIcon className="w-6 h-6" />
+                        </div>
                       )}
-                      <div>
-                        <h3 className="text-base font-extrabold text-[var(--text-primary)]">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[var(--primary)]/10 text-[var(--primary)] uppercase">
+                            {formData.category}
+                          </span>
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-[var(--surface)] text-[var(--text-muted)]">
+                            {formData.eventType}
+                          </span>
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            {formData.isFree ? 'FREE' : `₹${formData.registrationFee}`}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-[var(--text-primary)] mt-1 truncate">
                           {formData.title || 'Untitled Event'}
                         </h3>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {formData.category} · {formData.eventMode} · {formData.registrationType}
-                        </p>
-                        <p className="text-xs font-bold text-[var(--primary-color)] mt-0.5">
-                          {formData.isFree ? 'Free Admission' : `₹${formData.registrationFee} INR`}
-                        </p>
+                        {formData.tagline && (
+                          <p className="text-xs text-[var(--primary)] font-medium truncate">{formData.tagline}</p>
+                        )}
+                        <p className="text-xs text-[var(--text-muted)] line-clamp-2 mt-0.5">{formData.description}</p>
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-[var(--border-color)] grid grid-cols-2 gap-2 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[var(--border-color)] text-xs">
                       <div>
-                        <span className="text-[var(--text-muted)]">Event Date:</span>{' '}
-                        <span className="font-semibold">{formData.eventDate} ({formData.startTime} - {formData.endTime})</span>
+                        <span className="text-[10px] text-[var(--text-muted)] block">Date</span>
+                        <span className="font-semibold">{formData.eventDate || 'Not set'}</span>
                       </div>
                       <div>
-                        <span className="text-[var(--text-muted)]">Deadline:</span>{' '}
-                        <span className="font-semibold">{formData.registrationDeadline}</span>
+                        <span className="text-[10px] text-[var(--text-muted)] block">Timing</span>
+                        <span className="font-semibold">
+                          {formData.startTime} - {formData.endTime}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-[var(--text-muted)]">Venue:</span>{' '}
-                        <span className="font-semibold">{formData.eventMode === 'Online' ? formData.meetingPlatform || 'Online' : formData.venue}</span>
+                        <span className="text-[10px] text-[var(--text-muted)] block">Mode & Venue</span>
+                        <span className="font-semibold truncate block">
+                          {formData.eventMode}: {formData.venue || formData.meetingPlatform || 'Online'}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-[var(--text-muted)]">Capacity:</span>{' '}
-                        <span className="font-semibold">{formData.capacity} Seats</span>
-                      </div>
-                      <div>
-                        <span className="text-[var(--text-muted)]">Coordinator:</span>{' '}
-                        <span className="font-semibold">{formData.primaryCoordinator.name} ({formData.primaryCoordinator.phone})</span>
-                      </div>
-                      <div>
-                        <span className="text-[var(--text-muted)]">Custom Questions:</span>{' '}
-                        <span className="font-semibold">{formData.registrationQuestions.length} Questions</span>
+                        <span className="text-[10px] text-[var(--text-muted)] block">Capacity</span>
+                        <span className="font-semibold">{formData.capacity} Attendees</span>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 text-xs flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>
-                      {user?.role === 'Student'
-                        ? 'Ready to submit! Your proposal will be reviewed by the target college administration.'
-                        : 'All event details verified. Ready to publish immediately to EVENTHUB discovery.'}
-                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[var(--border-color)] text-xs">
+                      <div>
+                        <span className="text-[10px] text-[var(--text-muted)] block">Primary Coordinator</span>
+                        <span className="font-semibold">
+                          {formData.primaryCoordinator.name} ({formData.primaryCoordinator.phone})
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[var(--text-muted)] block">Custom Registration Fields</span>
+                        <span className="font-semibold">
+                          {formData.registrationQuestions.length} custom questions configured
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1725,14 +1404,14 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
           )}
         </div>
 
-        {/* Footer Navigation Controls */}
-        <div className="flex items-center justify-between p-4 border-t border-[var(--border-color)] bg-[var(--surface-subtle)]">
+        {/* Wizard Controls Footer */}
+        <div className="p-4 border-t border-[var(--border-color)] bg-[var(--surface-subtle)] flex items-center justify-between gap-2">
           {isEditingPublished ? (
             <div className="flex items-center justify-end w-full gap-2">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface)] cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -1740,7 +1419,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                 type="button"
                 disabled={submitting}
                 onClick={() => handleSubmit(false)}
-                className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all cursor-pointer shadow-xs"
+                className="px-5 py-2 text-xs font-bold rounded-xl bg-[var(--primary)] text-white hover:opacity-95 transition-opacity disabled:opacity-50 cursor-pointer shadow-xs"
               >
                 {submitting ? 'Updating...' : 'Update Deadline'}
               </button>
@@ -1752,7 +1431,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface)] flex items-center gap-1.5 cursor-pointer transition-colors"
+                    className="flex items-center gap-1 px-3.5 py-2 text-xs font-semibold rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface)] text-[var(--text-primary)] transition-colors cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span>Back</span>
@@ -1765,16 +1444,16 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                   type="button"
                   disabled={submitting}
                   onClick={() => handleSubmit(true)}
-                  className="px-3.5 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xs font-semibold text-[var(--text-secondary)] transition-colors cursor-pointer"
+                  className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
                   Save Draft
                 </button>
 
-                {currentStep < WIZARD_STEPS.length ? (
+                {currentStep < 4 ? (
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="px-5 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl bg-[var(--primary)] text-white hover:opacity-95 transition-opacity cursor-pointer shadow-xs"
                   >
                     <span>Next</span>
                     <ChevronRight className="w-4 h-4" />
@@ -1784,13 +1463,10 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                     type="button"
                     disabled={submitting}
                     onClick={() => handleSubmit(false)}
-                    className="px-6 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all cursor-pointer shadow-md"
+                    className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
                   >
-                    {submitting
-                      ? 'Publishing...'
-                      : user?.role === 'Student'
-                      ? 'Submit Proposal'
-                      : 'Publish Event'}
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{submitting ? 'Submitting...' : isProposal ? 'Submit Proposal' : 'Publish Event'}</span>
                   </button>
                 )}
               </div>
