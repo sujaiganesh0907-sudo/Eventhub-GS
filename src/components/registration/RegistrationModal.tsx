@@ -302,29 +302,31 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 const currentVal = customResponses[q.id];
 
                 return (
-                  <div key={q.id} className="space-y-1">
+                  <div key={q.id} className="space-y-1.5 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)]">
                     <label className="block text-xs font-semibold text-[var(--text-primary)]">
                       {q.label} {q.required && <span className="text-red-500">*</span>}
                     </label>
                     {q.helperText && <p className="text-[11px] text-[var(--text-muted)]">{q.helperText}</p>}
 
                     {/* Short Answer / Text */}
-                    {(q.type === 'Short Answer' || q.type === 'Text') && (
+                    {(q.type === 'Short Text' || q.type === 'Short Answer' || q.type === 'Text') && (
                       <input
                         type="text"
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        placeholder="Enter your answer"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       />
                     )}
 
-                    {/* Long Answer / Textarea */}
-                    {(q.type === 'Long Answer' || q.type === 'Textarea') && (
+                    {/* Long Answer / Paragraph / Textarea */}
+                    {(q.type === 'Paragraph' || q.type === 'Long Answer' || q.type === 'Textarea') && (
                       <textarea
                         rows={3}
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        placeholder="Type detailed response..."
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       />
                     )}
 
@@ -334,7 +336,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         type="number"
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        placeholder="Enter numeric value"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       />
                     )}
 
@@ -344,7 +347,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         type="email"
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        placeholder="you@domain.edu"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       />
                     )}
 
@@ -354,7 +358,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         type="tel"
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        placeholder="10-digit phone"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       />
                     )}
 
@@ -364,7 +369,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         type="date"
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       />
                     )}
 
@@ -375,19 +380,19 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         placeholder="https://..."
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       />
                     )}
 
                     {/* Dropdown */}
-                    {(q.type === 'Dropdown' || q.type === 'Select') && q.options && (
+                    {(q.type === 'Dropdown' || q.type === 'Select') && (
                       <select
                         value={currentVal || ''}
                         onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
                       >
                         <option value="">Select an option</option>
-                        {q.options.map((opt) => (
+                        {(q.options && q.options.length > 0 ? q.options : ['Option 1', 'Option 2']).map((opt) => (
                           <option key={opt} value={opt}>
                             {opt}
                           </option>
@@ -396,14 +401,14 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     )}
 
                     {/* Multiple Choice / Single Choice (Radio) */}
-                    {(q.type === 'Multiple Choice' || q.type === 'MCQ' || q.type === 'Radio') && q.options && (
+                    {(q.type === 'Multiple Choice' || q.type === 'Select / Multiple Choice' || q.type === 'MCQ' || q.type === 'Radio') && (
                       <div className="space-y-1.5 pt-1">
-                        {q.options.map((opt) => (
+                        {(q.options && q.options.length > 0 ? q.options : ['Option 1', 'Option 2']).map((opt) => (
                           <label
                             key={opt}
                             className={`flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition-all ${
                               currentVal === opt
-                                ? 'border-[var(--primary-color)] bg-[var(--primary-light)] font-semibold text-[var(--primary-color)]'
+                                ? 'border-[var(--primary-color)] bg-[var(--primary-light)] font-semibold text-[var(--primary-color)] dark:text-indigo-200'
                                 : 'border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)]'
                             }`}
                           >
@@ -422,9 +427,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     )}
 
                     {/* Checkbox / Multiple Selection */}
-                    {(q.type === 'Checkbox' || q.type === 'Multi-Select') && q.options && (
+                    {(q.type === 'Checkbox' || q.type === 'Multi-Select' || q.type === 'Checkboxes') && (
                       <div className="space-y-1.5 pt-1">
-                        {q.options.map((opt) => {
+                        {(q.options && q.options.length > 0 ? q.options : ['Option 1', 'Option 2']).map((opt) => {
                           const selectedList: string[] = Array.isArray(currentVal) ? currentVal : [];
                           const isChecked = selectedList.includes(opt);
 
@@ -433,7 +438,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                               key={opt}
                               className={`flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition-all ${
                                 isChecked
-                                  ? 'border-[var(--primary-color)] bg-[var(--primary-light)] font-semibold text-[var(--primary-color)]'
+                                  ? 'border-[var(--primary-color)] bg-[var(--primary-light)] font-semibold text-[var(--primary-color)] dark:text-indigo-200'
                                   : 'border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)]'
                               }`}
                             >
@@ -454,6 +459,25 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                           );
                         })}
                       </div>
+                    )}
+
+                    {/* Fallback Text Input if unrecognized type */}
+                    {![
+                      'Short Text', 'Short Answer', 'Text',
+                      'Paragraph', 'Long Answer', 'Textarea',
+                      'Number', 'Email', 'Phone', 'Tel', 'Date', 'Link', 'URL',
+                      'Dropdown', 'Select',
+                      'Multiple Choice', 'Select / Multiple Choice', 'MCQ', 'Radio',
+                      'Checkbox', 'Multi-Select', 'Checkboxes',
+                      'File Upload', 'Image Upload', 'File', 'Image'
+                    ].includes(q.type) && (
+                      <input
+                        type="text"
+                        value={currentVal || ''}
+                        onChange={(e) => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
+                        placeholder="Enter your answer"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary-color)]"
+                      />
                     )}
 
                     {/* File Upload / Image Upload */}

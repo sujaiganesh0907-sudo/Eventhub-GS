@@ -1387,7 +1387,9 @@ export const SettingsPage: React.FC = () => {
                       </div>
 
                       <div
-                        className="h-10 rounded-lg border border-[var(--border-color)] flex items-center justify-center text-[10px] font-semibold text-[var(--text-muted)]"
+                        className={`h-10 rounded-lg border border-[var(--border-color)] flex items-center justify-center text-[11px] font-bold ${
+                          t.id === 'neutral-slate' ? 'text-slate-200' : 'text-slate-800'
+                        }`}
                         style={{ backgroundColor: t.bgPreview }}
                       >
                         Preview Theme

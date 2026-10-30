@@ -29,8 +29,9 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
       registrationType = 'Individual',
       teamName,
       teamMembers,
-      customResponses = {},
     } = req.body;
+
+    const customResponses = req.body.customResponses || req.body.customAnswers || req.body.answers || {};
 
     if (!eventId) {
       return res.status(400).json({ success: false, message: 'Event ID is required.' });
@@ -142,6 +143,8 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
       teamName: registrationType === 'Team' ? teamName : undefined,
       teamMembers: registrationType === 'Team' ? teamMembers : undefined,
       customResponses,
+      customAnswers: customResponses,
+      answers: customResponses,
       isFree,
       amount,
       paymentStatus: isFree ? 'Waived' : 'Pending',

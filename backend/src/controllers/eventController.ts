@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Event, College, StudentProfile, Notification, IEvent, ICollege, User, EventRegistration, Certificate, CollegeAdminMembership, OrganizerProfile } from '../models/index';
+import { Event, College, StudentProfile, Notification, IEvent, ICollege, User, EventRegistration, RegistrationQR, Certificate, CollegeAdminMembership, OrganizerProfile } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { updateEventGroupLifecycle } from '../services/eventGroupService';
 import { sendProposalSubmittedEmail, sendProposalDecisionEmail } from '../services/emailService';
@@ -238,8 +238,9 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
     if (!body.description) {
       return res.status(400).json({ success: false, message: 'Event Description is required.' });
     }
-    if (body.description.length > 200) {
-      return res.status(400).json({ success: false, message: 'Event Description must be maximum 200 characters.' });
+    const wordCount = body.description ? body.description.trim().split(/\s+/).filter(Boolean).length : 0;
+    if (wordCount > 500) {
+      return res.status(400).json({ success: false, message: 'Event Description must be maximum 500 words.' });
     }
 
     if (!body.primaryCoordinator || !body.primaryCoordinator.name || !body.primaryCoordinator.phone || !body.primaryCoordinator.email) {
@@ -969,8 +970,9 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
     }
     if (body.description !== undefined) {
       body.description = body.description.trim();
-      if (body.description && body.description.length > 200) {
-        return res.status(400).json({ success: false, message: 'Event Description must be maximum 200 characters.' });
+      const wordCount = body.description ? body.description.trim().split(/\s+/).filter(Boolean).length : 0;
+      if (wordCount > 500) {
+        return res.status(400).json({ success: false, message: 'Event Description must be maximum 500 words.' });
       }
     }
     if (body.primaryCoordinator?.phone) {
@@ -1091,12 +1093,26 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
 
     const isStudent = user.role === 'Student';
+    const isOrganizer = user.role === 'Organizer';
     const isCollegeStaff = user.role === 'College Super Admin' || user.role === 'College Admin';
-    const isCreator = event.creatorUserId === user._id;
-    const isHostCollege = isCollegeStaff && (event.hostCollegeId === user.collegeId || event.targetCollegeId === user.collegeId);
+    const isCreator = event.creatorUserId === user._id || (event as any).createdBy === user._id;
+
+    let userCollegeId = user.collegeId;
+    if (!userCollegeId && isCollegeStaff) {
+      const c = await College.findOne({ superAdminId: user._id });
+      if (c) userCollegeId = c._id;
+      if (!userCollegeId) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) userCollegeId = m.collegeId;
+      }
+    }
+
+    const isHostCollege = isCollegeStaff && (
+      (userCollegeId && (event.hostCollegeId === userCollegeId || event.targetCollegeId === userCollegeId)) ||
+      user.role === 'College Super Admin'
+    );
 
     // Permission rules:
-    // Student can only delete before college approval (status !== 'Published')
     if (isStudent) {
       if (!isCreator) {
         return res.status(403).json({ success: false, message: 'You can only delete events you created.' });
@@ -1107,8 +1123,12 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
           message: 'Approved events cannot be deleted by students. Contact the host college administrator.',
         });
       }
+    } else if (isOrganizer) {
+      if (!isCreator) {
+        return res.status(403).json({ success: false, message: 'You can only delete events you organized.' });
+      }
     } else if (isCollegeStaff) {
-      if (!isHostCollege) {
+      if (!isHostCollege && !isCreator) {
         return res.status(403).json({ success: false, message: 'You are not authorized to delete events for this institution.' });
       }
     } else {
@@ -1116,9 +1136,15 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
     }
 
     await Event.findByIdAndDelete(id);
+    await EventRegistration.deleteMany({ eventId: id });
+    await RegistrationQR.deleteMany({ eventId: id });
 
     // PART 5C: Mark linked Event Group as Cancelled/Archived
-    await updateEventGroupLifecycle(id, 'Cancelled');
+    try {
+      await updateEventGroupLifecycle(id, 'Cancelled');
+    } catch (groupErr: any) {
+      console.warn('Could not update event group lifecycle on delete:', groupErr?.message || groupErr);
+    }
 
     return res.json({ success: true, message: 'Event deleted successfully.' });
   } catch (error: any) {

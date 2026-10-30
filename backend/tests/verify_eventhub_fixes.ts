@@ -54,9 +54,9 @@ async function run() {
 
   // 3. Test Event Creation with ONLY Required Fields
   console.log('\n--- Step 3: Event Creation (Only Required Fields) ---');
-  const suffix = Math.floor(Math.random() * 100000);
+  const suffix = Math.floor(Math.random() * 1000);
   const requiredOnlyPayload = {
-    title: `Minimal Tech Challenge ${suffix}`,
+    title: `Chal ${suffix}`,
     poster: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200',
     category: 'Technical',
     description: 'This is a clean technical challenge with only required fields entered.',
@@ -69,9 +69,10 @@ async function run() {
     registrationType: 'Individual',
     capacity: 50,
     rulesAndGuidelines: 'Standard collegiate fair rules apply.',
+    isFree: true,
     primaryCoordinator: {
       name: 'John Organizer',
-      phone: '+1 555-0100',
+      phone: '9876543210',
       email: 'john@apex.edu',
     },
   };
@@ -85,6 +86,9 @@ async function run() {
     body: JSON.stringify(requiredOnlyPayload),
   });
   const createReqData: any = await createReqRes.json();
+  if (!createReqData.success) {
+    console.error('createReqRes error:', createReqRes.status, createReqData);
+  }
   assert(createReqData.success === true, 'Created event with only required fields');
   const event1 = createReqData.event;
   assert(Boolean(event1?._id), 'Event 1 has valid ID');
@@ -115,7 +119,7 @@ async function run() {
   // 4. Test Event Creation with SOME Optional Fields
   console.log('\n--- Step 4: Event Creation (With Some Optional Fields) ---');
   const someOptionalPayload = {
-    title: `Robotics Expo ${suffix}`,
+    title: `Robo ${suffix}`,
     poster: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200',
     category: 'Robotics',
     description: 'Robotics exhibition with custom prize pool and Wi-Fi credentials.',
@@ -129,6 +133,8 @@ async function run() {
     reportingTime: '08:30 AM',
     registrationType: 'Individual',
     capacity: 75,
+    isFree: true,
+    saveAsDraft: true,
     rulesAndGuidelines: 'Safety goggles required inside the robotics lab.',
     prizeAvailable: true,
     totalPrizePool: 500,
@@ -138,7 +144,7 @@ async function run() {
     ],
     primaryCoordinator: {
       name: 'Sarah Lead',
-      phone: '+1 555-0200',
+      phone: '9876543210',
       email: 'sarah@apex.edu',
     },
   };
@@ -166,7 +172,7 @@ async function run() {
   // 5. Test Event Editing & Persistence
   console.log('\n--- Step 5: Event Editing & Persistence ---');
   const editPayload = {
-    title: `Robotics Expo ${suffix} — Updated`,
+    title: `Robo ${suffix} v2`,
     tagline: 'Designing tomorrow today — Enhanced Edition',
     rulesAndGuidelines: 'Updated lab rules and safety checklist.',
     prizeAvailable: true,
@@ -184,16 +190,21 @@ async function run() {
     body: JSON.stringify(editPayload),
   });
   const editData: any = await editRes.json();
+  if (!editData.success) {
+    console.error('editRes error:', editRes.status, editData);
+  }
   assert(editData.success === true, 'Event updated successfully');
-  assert(editData.event.title === `Robotics Expo ${suffix} — Updated`, 'Updated title returned in response');
+  assert(editData.event.title === `Robo ${suffix} v2`, 'Updated title returned in response');
   assert(editData.event.secondPrize === '$250 Runner Up', 'Updated secondPrize saved');
   assert(editData.event.totalPrizePool === 750, 'Updated totalPrizePool saved');
   assert(!editData.event.secondaryCoordinator, 'Secondary coordinator remained absent after update');
 
   // Verify DB reflects updated event
-  const getUpdatedRes = await fetch(`${BASE_URL}/events/${event2._id}`);
+  const getUpdatedRes = await fetch(`${BASE_URL}/events/${event2._id}`, {
+    headers: { Authorization: `Bearer ${collegeToken}` },
+  });
   const getUpdatedData: any = await getUpdatedRes.json();
-  assert(getUpdatedData.event.title === `Robotics Expo ${suffix} — Updated`, 'DB persistence verified after refresh');
+  assert(getUpdatedData.event.title === `Robo ${suffix} v2`, 'DB persistence verified after refresh');
   assert(getUpdatedData.event.secondPrize === '$250 Runner Up', 'secondPrize persisted in DB');
 
   // 6. Test Group Creation, Edit, Member Roles, and Permissions
@@ -353,6 +364,24 @@ async function run() {
   });
   const leaveData: any = await leaveRes.json();
   assert(leaveData.success === true, 'Member left group');
+
+  // Clean up test events
+  try {
+    if (event1?._id) {
+      await fetch(`${BASE_URL}/events/${event1._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${collegeToken}` },
+      });
+    }
+    if (event2?._id) {
+      await fetch(`${BASE_URL}/events/${event2._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${collegeToken}` },
+      });
+    }
+  } catch (cleanErr) {
+    // Ignore cleanup error
+  }
 
   console.log('\n====================================================');
   console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PlacementPost, InfrastructurePost, College } from '../models/index';
+import { PlacementPost, InfrastructurePost, College, OrganizerPost, OrganizerProfile, Event } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 // --- PLACEMENT POSTS ---
@@ -226,6 +226,140 @@ export async function updateInfrastructurePost(req: AuthenticatedRequest, res: R
     });
 
     return res.json({ success: true, message: 'Facility post updated successfully', post: updated });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// --- ORGANIZER POSTS (Requirement 4: Organized-event posts, event videos, text updates) ---
+export async function getOrganizerPosts(req: Request, res: Response) {
+  try {
+    const { organizerId, organizerUserId } = req.query;
+    const filter: any = {};
+    if (organizerId) filter.organizerId = organizerId;
+    if (organizerUserId) filter.organizerUserId = organizerUserId;
+
+    const posts = await OrganizerPost.find(filter).sort({ createdAt: -1 }).exec();
+    return res.json({ success: true, total: posts.length, posts });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function createOrganizerPost(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    if (user.role !== 'Organizer') {
+      return res.status(403).json({ success: false, message: 'Only Organizer accounts can publish organizer updates.' });
+    }
+
+    const orgProfile = await OrganizerProfile.findOne({
+      $or: [{ userId: user._id }, { officialEmail: user.email }],
+    });
+
+    const {
+      title,
+      content,
+      description,
+      postType = 'Event Announcement',
+      eventId,
+      eventTitle,
+      mediaUrl,
+      mediaType = 'image',
+    } = req.body;
+
+    const finalDescription = (description || content || '').trim();
+    if (!finalDescription) {
+      return res.status(400).json({ success: false, message: 'Post description or content is required.' });
+    }
+
+    const finalTitle = (title || '').trim() || (finalDescription.length > 50 ? `${finalDescription.slice(0, 47)}...` : finalDescription);
+
+    const allowedTypes = ['Event Announcement', 'Event Video', 'General Update', 'Update'];
+    const sanitizedType = allowedTypes.includes(postType)
+      ? (postType === 'Update' ? 'General Update' : postType)
+      : 'General Update';
+
+    let resolvedEventTitle = eventTitle;
+    if (eventId && !resolvedEventTitle) {
+      const ev = await Event.findById(eventId);
+      if (ev) resolvedEventTitle = ev.title;
+    }
+
+    const post = await OrganizerPost.create({
+      organizerId: orgProfile?._id || user._id,
+      organizerUserId: user._id,
+      organizerName: orgProfile?.organizationName || user.fullName,
+      organizerLogo: orgProfile?.logo || '',
+      title: finalTitle,
+      content: finalDescription,
+      description: finalDescription,
+      postType: sanitizedType as any,
+      eventId: eventId || undefined,
+      eventTitle: resolvedEventTitle || undefined,
+      mediaUrl: mediaUrl || undefined,
+      mediaType: (mediaType === 'video' || sanitizedType === 'Event Video') ? 'video' : 'image',
+      likesCount: 0,
+      likedBy: [],
+      commentsCount: 0,
+    });
+
+    return res.status(201).json({ success: true, message: 'Organizer update published.', post });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteOrganizerPost(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const post = await OrganizerPost.findById(id);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+
+    if (post.organizerUserId !== user._id) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own posts.' });
+    }
+
+    await OrganizerPost.deleteOne({ _id: id });
+    return res.json({ success: true, message: 'Post removed successfully.' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function toggleLikeOrganizerPost(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+
+    const { id } = req.params;
+    const post = await OrganizerPost.findById(id);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+
+    const likedBy = post.likedBy || [];
+    const isLiked = likedBy.includes(user._id);
+
+    const updatedLikedBy = isLiked
+      ? likedBy.filter((uid) => uid !== user._id)
+      : [...likedBy, user._id];
+
+    const updated = await OrganizerPost.findByIdAndUpdate(id, {
+      $set: {
+        likedBy: updatedLikedBy,
+        likesCount: updatedLikedBy.length,
+      },
+    });
+
+    return res.json({
+      success: true,
+      liked: !isLiked,
+      likesCount: updatedLikedBy.length,
+      post: updated,
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }

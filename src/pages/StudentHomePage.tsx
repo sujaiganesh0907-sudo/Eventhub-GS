@@ -17,7 +17,13 @@ import {
   Compass,
   ArrowRight,
   Award,
+  CheckCircle2,
+  FileText,
+  MapPin,
+  MessageSquare,
+  Plus,
 } from 'lucide-react';
+import { CreateOrganizerPostModal } from '../components/profile/CreateOrganizerPostModal';
 
 interface StudentHomePageProps {
   searchQuery: string;
@@ -43,6 +49,13 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
   const [connectedCollegeIds, setConnectedCollegeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategoryChip, setSelectedCategoryChip] = useState('All');
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const [stats, setStats] = useState({
+    upcomingCount: 0,
+    registeredCount: 0,
+    proposalsCount: 0,
+    certificatesCount: 0,
+  });
 
   const fetchEvents = async () => {
     try {
@@ -83,6 +96,28 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
   useEffect(() => {
     fetchEvents();
   }, [searchQuery, filters]);
+
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (user?.role !== 'Student') return;
+      try {
+        const [regRes, propRes, certRes] = await Promise.all([
+          api.get<any>('/registrations/student').catch(() => ({ registrations: [] })),
+          api.get<any>('/student/my-events').catch(() => ({ events: [] })),
+          api.get<any>('/certificates/my-certificates').catch(() => ({ certificates: [] })),
+        ]);
+        setStats((prev) => ({
+          ...prev,
+          registeredCount: Array.isArray(regRes?.registrations) ? regRes.registrations.length : 0,
+          proposalsCount: Array.isArray(propRes?.events) ? propRes.events.length : 0,
+          certificatesCount: Array.isArray(certRes?.certificates) ? certRes.certificates.length : 0,
+        }));
+      } catch {
+        // graceful
+      }
+    };
+    fetchUserStats();
+  }, [user]);
 
   // Client category chip filter
   const displayedEvents = selectedCategoryChip === 'All'
@@ -140,6 +175,250 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
         <CredentialFeedSection />
       ) : (
         <>
+          {/* Participant Dashboard Header & Stats (Reference Collage: Row 1, Image 3) */}
+          {!searchQuery && (
+            <div className="space-y-6">
+              {/* Greeting */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+                    Hello, {user?.fullName || 'Rahul Kumar'}! <span>👋</span>
+                  </h1>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    {user?.role === 'Organizer' ? 'Organize, Announce, Broadcast' : 'Discover, Participate, Grow'}
+                  </p>
+                </div>
+
+                {user?.role === 'Organizer' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatePostModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer self-start sm:self-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Create Post</span>
+                  </button>
+                )}
+              </div>
+
+              {/* 4 Stat Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-semibold text-[var(--text-muted)] block">Upcoming Events</span>
+                    <span className="text-xl sm:text-2xl font-black text-[var(--text-primary)] mt-0.5 block">{stats.upcomingCount || events.length}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-semibold text-[var(--text-muted)] block">Registered Events</span>
+                    <span className="text-xl sm:text-2xl font-black text-[var(--text-primary)] mt-0.5 block">{stats.registeredCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-semibold text-[var(--text-muted)] block">My Proposals</span>
+                    <span className="text-xl sm:text-2xl font-black text-[var(--text-primary)] mt-0.5 block">{stats.proposalsCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-semibold text-[var(--text-muted)] block">Certificates</span>
+                    <span className="text-xl sm:text-2xl font-black text-[var(--text-primary)] mt-0.5 block">{stats.certificatesCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                    <Award className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Hero Featured Event Banner & Upcoming Events Mini List */}
+              {events.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                  {/* Featured Event Banner */}
+                  <div className="lg:col-span-8 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white relative p-6 sm:p-8 flex flex-col justify-between shadow-lg">
+                    {events[0].poster && (
+                      <div className="absolute inset-0 opacity-25 mix-blend-overlay">
+                        <img src={events[0].poster} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="relative z-10 space-y-3">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 inline-block">
+                        Featured Event
+                      </span>
+                      <h2 className="text-xl sm:text-3xl font-black tracking-tight line-clamp-2">
+                        {events[0].title}
+                      </h2>
+                      <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 max-w-xl">
+                        {events[0].tagline || events[0].description}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-1">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <span>{events[0].eventDate}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <span className="truncate">{events[0].venue || events[0].meetingPlatform || 'College Auditorium'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative z-10 pt-5 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => onRegister(events[0])}
+                        className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                      >
+                        Register Now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onViewEvent(events[0])}
+                        className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all backdrop-blur-xs cursor-pointer"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Upcoming Events Mini List */}
+                  <div className="lg:col-span-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-4 shadow-xs flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xs font-bold text-[var(--text-primary)]">Upcoming Events</h3>
+                        <span className="text-[10px] font-semibold text-indigo-600">Quick Register</span>
+                      </div>
+                      <div className="space-y-2.5">
+                        {upcomingEvents.slice(0, 3).map((ev) => (
+                          <div
+                            key={ev._id}
+                            className="p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:border-indigo-300 dark:hover:border-indigo-800 transition-all flex items-center justify-between gap-2.5"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <h4
+                                onClick={() => onViewEvent(ev)}
+                                className="text-xs font-bold text-[var(--text-primary)] truncate hover:text-indigo-600 cursor-pointer"
+                              >
+                                {ev.title}
+                              </h4>
+                              <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                                📅 {ev.eventDate}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onRegister(ev)}
+                              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shrink-0 shadow-2xs active:scale-95 cursor-pointer"
+                            >
+                              Register
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Actions Row */}
+              <div>
+                <h3 className="text-xs font-bold text-[var(--text-primary)] mb-2 uppercase tracking-wider">Quick Actions</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {user?.role === 'Organizer' ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatePostModalOpen(true)}
+                      className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 hover:border-indigo-500 transition-all flex items-center gap-3 cursor-pointer shadow-xs text-left group"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                        <Plus className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 block">+ Create Post</span>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block">Announce or video update</span>
+                      </div>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById('events-discovery-section');
+                        el?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-indigo-500 transition-all flex items-center gap-3 cursor-pointer shadow-xs text-left group"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-[var(--text-primary)] block">Register Event</span>
+                        <span className="text-[10px] text-[var(--text-muted)] block">Explore fests</span>
+                      </div>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('my-proposals')}
+                    className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-amber-500 transition-all flex items-center gap-3 cursor-pointer shadow-xs text-left group"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-[var(--text-primary)] block">Submit Proposal</span>
+                      <span className="text-[10px] text-[var(--text-muted)] block">Pitch event idea</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('messages')}
+                    className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-blue-500 transition-all flex items-center gap-3 cursor-pointer shadow-xs text-left group"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-[var(--text-primary)] block">View Messages</span>
+                      <span className="text-[10px] text-[var(--text-muted)] block">Chat with peers</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('colleges')}
+                    className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-emerald-500 transition-all flex items-center gap-3 cursor-pointer shadow-xs text-left group"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-[var(--text-primary)] block">Browse Colleges</span>
+                      <span className="text-[10px] text-[var(--text-muted)] block">Connect & discover</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Discovery Events Section Anchor */}
+          <div id="events-discovery-section" />
+
           {/* Category Pills Slider */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         {CATEGORIES.map((cat) => {
@@ -365,6 +644,17 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
         </>
       )}
         </>
+      )}
+
+      {/* Create Organizer Post Modal */}
+      {user?.role === 'Organizer' && (
+        <CreateOrganizerPostModal
+          isOpen={isCreatePostModalOpen}
+          onClose={() => setIsCreatePostModalOpen(false)}
+          onPostCreated={() => {
+            onSelectTab('profile');
+          }}
+        />
       )}
     </div>
   );

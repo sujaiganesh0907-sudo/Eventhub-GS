@@ -226,10 +226,11 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
       }
 
       const trimmedDesc = formData.description.trim();
+      const wordCount = trimmedDesc ? trimmedDesc.split(/\s+/).filter(Boolean).length : 0;
       if (!trimmedDesc) {
         errors.description = 'Event Description is required.';
-      } else if (trimmedDesc.length > 200) {
-        errors.description = 'Event Description must be maximum 200 characters.';
+      } else if (wordCount > 500) {
+        errors.description = 'Event Description must be maximum 500 words.';
       }
 
       if (isProposal && !formData.targetCollegeId) {
@@ -309,10 +310,10 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         if (!q.label.trim()) {
           errors[`q_${i}`] = `Question #${i + 1} requires a question title.`;
         }
-        if (q.type === 'Select / Multiple Choice' || q.type === 'Dropdown') {
+        if (q.type === 'Select / Multiple Choice' || q.type === 'Multiple Choice' || q.type === 'Dropdown') {
           const validOpts = (q.options || []).filter((o) => o && o.trim());
-          if (validOpts.length === 0) {
-            errors[`q_${i}`] = `Question #${i + 1} requires at least one option.`;
+          if (validOpts.length < 2) {
+            errors[`q_${i}`] = `Question #${i + 1} requires at least two valid options.`;
           }
         }
       }
@@ -459,15 +460,15 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
     }
   };
 
-  // Helper to add custom question
+  // Helper to add custom question (defaults to Multiple Choice with Option 1 & Option 2)
   const handleAddQuestion = () => {
     const newQ: IParticipantQuestion = {
       id: `q_${Date.now()}`,
       label: '',
-      type: 'Short Text',
+      type: 'Multiple Choice',
       required: false,
       helperText: '',
-      options: ['Option 1'],
+      options: ['Option 1', 'Option 2'],
     };
     updateField('registrationQuestions', [...formData.registrationQuestions, newQ]);
   };
@@ -479,11 +480,11 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={handleClose} />
 
-      {/* Modal Card - Constrained height, Step-Only rendering to prevent long scrolling */}
+      {/* Modal Card - Constrained height, Step-Only rendering with 2-column reference layout */}
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-full max-w-3xl my-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-2xl text-[var(--text-primary)] transition-all max-h-[92vh] flex flex-col overflow-hidden"
+        className="relative w-full max-w-4xl my-auto rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-2xl text-[var(--text-primary)] transition-all max-h-[92vh] flex flex-col overflow-hidden"
       >
         {/* Header with Title and Close Button */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-color)] bg-[var(--surface-subtle)]">
@@ -718,22 +719,27 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                     />
                   </div>
 
-                  {/* Description with Max 200 Characters */}
+                  {/* Description with 500-Word Limit & Live Counter */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-xs font-semibold text-[var(--text-primary)]">
                         Event Description <span className="text-red-500">*</span>
                       </label>
-                      <span className={`text-[11px] font-medium ${formData.description.length > 200 ? 'text-red-500' : 'text-[var(--text-muted)]'}`}>
-                        {formData.description.length}/200
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          (formData.description.trim() ? formData.description.trim().split(/\s+/).filter(Boolean).length : 0) > 500
+                            ? 'text-red-500 font-bold'
+                            : 'text-[var(--text-muted)]'
+                        }`}
+                      >
+                        {formData.description.trim() ? formData.description.trim().split(/\s+/).filter(Boolean).length : 0}/500 words
                       </span>
                     </div>
                     <textarea
                       rows={3}
-                      maxLength={200}
                       value={formData.description}
                       onChange={(e) => updateField('description', e.target.value)}
-                      placeholder="e.g. A premier 24-hour inter-collegiate coding sprint bringing together student developers to solve real-world industry challenges."
+                      placeholder="Describe your event in detail (up to 500 words)..."
                       className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] resize-none ${
                         fieldErrors.description ? 'border-red-500' : 'border-[var(--border-color)]'
                       }`}
@@ -1216,27 +1222,29 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                       <button
                         type="button"
                         onClick={handleAddQuestion}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--primary)] text-white hover:opacity-95 cursor-pointer shadow-xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer shadow-xs active:scale-95"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Add Question</span>
+                        <span>Add Custom Details</span>
                       </button>
                     </div>
 
                     {formData.registrationQuestions.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] italic py-2 text-center bg-[var(--surface)] rounded-lg border border-dashed border-[var(--border-color)]">
-                        No custom questions added. Click "+ Add Question" to solicit T-shirt size, GitHub handle, or team background.
+                      <p className="text-xs text-[var(--text-muted)] italic py-3 text-center bg-[var(--surface)] rounded-xl border border-dashed border-[var(--border-color)]">
+                        No custom questions added. Click "+ Add Custom Details" to solicit T-shirt size, GitHub handle, or team background.
                       </p>
                     ) : (
-                      <div className="space-y-2.5">
+                      <div className="space-y-3">
                         {formData.registrationQuestions.map((q, idx) => (
                           <div
                             key={q.id || idx}
-                            className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] space-y-2"
+                            className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] space-y-3 shadow-xs"
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold text-[var(--text-muted)]">Q{idx + 1}</span>
-                              <div className="flex-1">
+                            <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                              <span className="w-5 h-5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <div className="flex-1 min-w-[200px]">
                                 <input
                                   type="text"
                                   value={q.label}
@@ -1245,26 +1253,37 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                                     next[idx].label = e.target.value;
                                     updateField('registrationQuestions', next);
                                   }}
-                                  placeholder="e.g. GitHub Profile URL or T-Shirt Size"
-                                  className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)]"
+                                  placeholder="Enter question title (e.g. What is your department?)"
+                                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-medium text-[var(--text-primary)]"
                                 />
                               </div>
                               <select
                                 value={q.type}
                                 onChange={(e) => {
                                   const next = [...formData.registrationQuestions];
-                                  next[idx].type = e.target.value as any;
+                                  const newType = e.target.value as any;
+                                  next[idx].type = newType;
+                                  if (
+                                    (newType === 'Multiple Choice' ||
+                                      newType === 'Select / Multiple Choice' ||
+                                      newType === 'Dropdown' ||
+                                      newType === 'Checkbox') &&
+                                    (!next[idx].options || next[idx].options.length < 2)
+                                  ) {
+                                    next[idx].options = ['Option 1', 'Option 2'];
+                                  }
                                   updateField('registrationQuestions', next);
                                 }}
-                                className="px-2 py-1 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)]"
+                                className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] font-medium text-[var(--text-primary)]"
                               >
                                 <option value="Short Text">Short Text</option>
                                 <option value="Paragraph">Paragraph</option>
-                                <option value="Select / Multiple Choice">Multiple Choice</option>
+                                <option value="Multiple Choice">Multiple Choice</option>
                                 <option value="Dropdown">Dropdown</option>
+                                <option value="Checkbox">Checkbox / Multi-Select</option>
                                 <option value="File Upload">File Upload</option>
                               </select>
-                              <label className="flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] cursor-pointer">
+                              <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={q.required}
@@ -1273,9 +1292,9 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                                     next[idx].required = e.target.checked;
                                     updateField('registrationQuestions', next);
                                   }}
-                                  className="rounded text-[var(--primary)] focus:ring-[var(--primary)]"
+                                  className="rounded text-indigo-600 focus:ring-indigo-500"
                                 />
-                                Req
+                                Required
                               </label>
                               <button
                                 type="button"
@@ -1283,11 +1302,73 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                                   const next = formData.registrationQuestions.filter((_, i) => i !== idx);
                                   updateField('registrationQuestions', next);
                                 }}
-                                className="p-1 text-red-500 hover:bg-red-500/10 rounded-md cursor-pointer"
+                                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg cursor-pointer transition-colors"
+                                title="Delete Question"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
+
+                            {/* Multiple Choice / Dropdown / Checkbox Options Builder */}
+                            {(q.type === 'Multiple Choice' ||
+                              q.type === 'Select / Multiple Choice' ||
+                              q.type === 'Dropdown' ||
+                              q.type === 'Checkbox') && (
+                              <div className="pl-6 border-l-2 border-indigo-200 dark:border-indigo-800 space-y-2 pt-1">
+                                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                                  <span>Options (At least 2 required):</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = [...formData.registrationQuestions];
+                                      const curOpts = next[idx].options && next[idx].options.length > 0 ? next[idx].options : ['Option 1', 'Option 2'];
+                                      next[idx].options = [...curOpts, `Option ${curOpts.length + 1}`];
+                                      updateField('registrationQuestions', next);
+                                    }}
+                                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" /> Add Option
+                                  </button>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {(q.options && q.options.length > 0 ? q.options : ['Option 1', 'Option 2']).map((opt, optIdx) => (
+                                    <div key={optIdx} className="flex items-center gap-2">
+                                      <span className="w-4 h-4 rounded-full border border-indigo-300 dark:border-indigo-700 flex items-center justify-center text-[10px] text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                                        {optIdx + 1}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={opt}
+                                        onChange={(e) => {
+                                          const next = [...formData.registrationQuestions];
+                                          const curOpts = [...(next[idx].options && next[idx].options.length > 0 ? next[idx].options : ['Option 1', 'Option 2'])];
+                                          curOpts[optIdx] = e.target.value;
+                                          next[idx].options = curOpts;
+                                          updateField('registrationQuestions', next);
+                                        }}
+                                        placeholder={`Option ${optIdx + 1}`}
+                                        className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-medium text-[var(--text-primary)]"
+                                      />
+                                      {(q.options || []).length > 2 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const next = [...formData.registrationQuestions];
+                                            const curOpts = (next[idx].options || []).filter((_, i) => i !== optIdx);
+                                            next[idx].options = curOpts;
+                                            updateField('registrationQuestions', next);
+                                          }}
+                                          className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md cursor-pointer"
+                                          title="Remove option"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

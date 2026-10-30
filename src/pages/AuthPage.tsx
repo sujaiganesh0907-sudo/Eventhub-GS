@@ -913,7 +913,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     await switchAccount('student');
                     onSuccess();
                   }}
-                  className="px-1.5 py-1.5 text-[10px] font-bold rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary)] transition-all text-center cursor-pointer truncate shadow-2xs"
+                  className="px-1.5 py-1.5 text-[10px] font-bold rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] hover:border-[var(--primary)] transition-all text-center cursor-pointer truncate shadow-2xs"
                 >
                   Participant
                 </button>
@@ -923,7 +923,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     await switchAccount('college-super');
                     onSuccess();
                   }}
-                  className="px-1.5 py-1.5 text-[10px] font-bold rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary)] transition-all text-center cursor-pointer truncate shadow-2xs"
+                  className="px-1.5 py-1.5 text-[10px] font-bold rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] hover:border-[var(--primary)] transition-all text-center cursor-pointer truncate shadow-2xs"
                 >
                   Approver
                 </button>
@@ -933,7 +933,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     await switchAccount('organizer');
                     onSuccess();
                   }}
-                  className="px-1.5 py-1.5 text-[10px] font-bold rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary)] transition-all text-center cursor-pointer truncate shadow-2xs"
+                  className="px-1.5 py-1.5 text-[10px] font-bold rounded-lg border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] hover:border-[var(--primary)] transition-all text-center cursor-pointer truncate shadow-2xs"
                 >
                   Organizer
                 </button>

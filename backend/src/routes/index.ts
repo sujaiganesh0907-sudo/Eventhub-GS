@@ -102,6 +102,7 @@ import {
   getStudentFollowers,
   getStudentFollowing,
   getStudentConnectedColleges,
+  getSameCollegeStudents,
 } from '../controllers/socialController';
 import {
   getPlacementPosts,
@@ -112,6 +113,10 @@ import {
   createInfrastructurePost,
   updateInfrastructurePost,
   deleteInfrastructurePost,
+  getOrganizerPosts,
+  createOrganizerPost,
+  deleteOrganizerPost,
+  toggleLikeOrganizerPost,
 } from '../controllers/postController';
 import {
   getCollegeAdmins,
@@ -293,6 +298,7 @@ apiRouter.delete('/certificates/feed/:id', authenticate, deleteCredentialPost);
 
 // 7. Students profile routes
 apiRouter.get('/students/username/check', optionalAuthenticate, checkUsernameAvailability);
+apiRouter.get('/students/same-college', authenticate, getSameCollegeStudents);
 apiRouter.get('/students/:id/resume', optionalAuthenticate, getStudentResume);
 apiRouter.get('/students/me', authenticate, getStudentProfile);
 apiRouter.get('/students/search', searchStudents);
@@ -322,10 +328,13 @@ apiRouter.get('/colleges/:collegeId/connection', authenticate, checkCollegeConne
 apiRouter.post('/social/college/connection', authenticate, toggleCollegeConnection);
 apiRouter.get('/social/college/:collegeId/connection', authenticate, checkCollegeConnection);
 apiRouter.post('/social/student/follow', authenticate, toggleFollowStudent);
+apiRouter.post('/social/organizer/follow', authenticate, toggleFollowStudent);
 apiRouter.get('/social/student/:targetStudentId/follow-status', authenticate, checkFollowStatus);
+apiRouter.get('/social/organizer/:targetId/follow-status', authenticate, checkFollowStatus);
 apiRouter.get('/social/student/:studentId/followers', getStudentFollowers);
 apiRouter.get('/social/student/:studentId/following', getStudentFollowing);
 apiRouter.get('/social/student/:studentId/connected-colleges', getStudentConnectedColleges);
+apiRouter.get('/students/same-college', authenticate, getSameCollegeStudents);
 
 // 10. Placement & Infrastructure Posts
 apiRouter.get('/placements', getPlacementPosts);
@@ -337,6 +346,12 @@ apiRouter.get('/infrastructure', getInfrastructurePosts);
 apiRouter.post('/infrastructure', authenticate, requireAdminPermission('manageInfrastructure'), createInfrastructurePost);
 apiRouter.put('/infrastructure/:id', authenticate, requireAdminPermission('manageInfrastructure'), updateInfrastructurePost);
 apiRouter.delete('/infrastructure/:id', authenticate, requireAdminPermission('manageInfrastructure'), deleteInfrastructurePost);
+
+// 10B. Organizer Posts (Requirement 4)
+apiRouter.get('/organizer/posts', getOrganizerPosts);
+apiRouter.post('/organizer/posts', authenticate, createOrganizerPost);
+apiRouter.delete('/organizer/posts/:id', authenticate, deleteOrganizerPost);
+apiRouter.post('/organizer/posts/:id/like', authenticate, toggleLikeOrganizerPost);
 
 // 11. Admin Management, Invitations & Activity
 apiRouter.get('/admins', authenticate, getCollegeAdmins);

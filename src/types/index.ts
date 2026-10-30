@@ -32,8 +32,31 @@ export interface IOrganizerProfile {
   coverPhoto?: string;
   verified?: boolean;
   eventsOrganizedCount?: number;
+  followersCount?: number;
+  followingCount?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface IOrganizerPost {
+  _id: string;
+  id?: string;
+  organizerId: string;
+  organizerUserId: string;
+  organizerName: string;
+  organizerLogo?: string;
+  title?: string;
+  content: string;
+  description?: string;
+  postType: 'Event Announcement' | 'Event Video' | 'General Update' | 'Update';
+  eventId?: string;
+  eventTitle?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  likesCount: number;
+  likedBy?: string[];
+  commentsCount: number;
+  createdAt?: string;
 }
 
 export interface IStudentProfile {

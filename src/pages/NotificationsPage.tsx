@@ -509,7 +509,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
                 type="button"
                 disabled={selectedIds.size === 0 || isBatchProcessing}
                 onClick={handleMarkSelectedRead}
-                className="px-3 py-1.5 rounded-xl border border-[var(--primary-color)] bg-[var(--primary-light)] text-xs font-semibold text-[var(--primary-color)] flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl border border-[var(--primary-color)] bg-[var(--primary-light)] text-xs font-semibold text-[var(--primary-color)] dark:text-indigo-200 flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
               >
                 <Check className="w-3.5 h-3.5" /> Mark Read ({selectedIds.size})
               </button>

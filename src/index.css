@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root, .theme-classic-blue, .theme-light {
     --bg: #f8fafc;
@@ -7,34 +9,49 @@
     --surface-subtle: #f1f5f9;
     --surface-hover: #e2e8f0;
     --text-primary: #0f172a;
-    --text-secondary: #475569;
+    --text-secondary: #334155;
     --text-muted: #64748b;
     --border-color: #e2e8f0;
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --primary-light: #dbeafe;
+    --primary: #4f46e5;
+    --primary-color: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-light: #e0e7ff;
     --primary-text: #ffffff;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
   }
 
-  .theme-dark, .theme-neutral-slate {
-    --bg: #0f172a;
-    --surface: #1e293b;
-    --surface-subtle: #334155;
-    --surface-hover: #475569;
+  .dark, .theme-dark, .theme-neutral-slate {
+    --bg: #0b0f19;
+    --surface: #131b2e;
+    --surface-subtle: #1e293b;
+    --surface-hover: #293548;
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --text-muted: #94a3b8;
-    --border-color: #334155;
-    --primary-color: #3b82f6;
-    --primary-hover: #60a5fa;
-    --primary-light: #1e3a8a;
+    --border-color: #1e293b;
+    --primary: #6366f1;
+    --primary-color: #6366f1;
+    --primary-hover: #818cf8;
+    --primary-light: #312e81;
     --primary-text: #ffffff;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
+  }
+
+  input, select, textarea {
+    color: var(--text-primary);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--text-muted);
+  }
+
+  select option {
+    background-color: var(--surface);
+    color: var(--text-primary);
   }
 }
 

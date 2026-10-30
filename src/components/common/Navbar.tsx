@@ -12,8 +12,11 @@ import {
   MessageSquare,
   Loader2,
   ExternalLink,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { api } from '../../services/api';
 import {
@@ -73,6 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isSidebarCollapsed = false,
 }) => {
   const { user, studentProfile, college, isAuthenticated, hasAdminAccess } = useAuth();
+  const { isDark, toggleDarkMode } = useTheme();
   const notif = useNotifications();
   const effectiveUnread = unreadNotificationsCount !== undefined ? unreadNotificationsCount : notif.unreadCount;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -368,8 +372,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Right Section: Profile Avatar & Status / Sign In */}
-        <div className="flex items-center gap-2.5">
+        {/* Right Section: Theme Toggle, Profile Avatar & Status / Sign In */}
+        <div className="flex items-center gap-2">
+          {/* Theme Quick Toggle */}
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] border border-[var(--border-color)] transition-all cursor-pointer flex items-center justify-center shadow-xs"
+            title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          >
+            {isDark ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-600" />
+            )}
+          </button>
+
           {isAuthenticated ? (
             <>
               {/* Profile / Avatar Button */}
@@ -500,6 +519,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center gap-2"
           >
             Settings
+          </button>
+          <button
+            onClick={() => {
+              toggleDarkMode();
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] flex items-center justify-between"
+          >
+            <span className="flex items-center gap-2">
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+              {isDark ? 'Light Mode' : 'Dark Mode'}
+            </span>
+            <span className="text-xs text-[var(--text-muted)] font-bold uppercase">{isDark ? 'Dark' : 'Light'}</span>
           </button>
         </div>
       )}

@@ -34,6 +34,8 @@ export interface IOrganizerProfile {
   coverPhoto?: string;
   verified: boolean;
   eventsOrganizedCount: number;
+  followersCount?: number;
+  followingCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -371,6 +373,8 @@ export interface IEventRegistration {
   teamMembers?: string[];
   
   customResponses: Record<string, any>;
+  customAnswers?: Record<string, any>;
+  answers?: Record<string, any>;
   
   isFree: boolean;
   amount: number;
@@ -562,7 +566,32 @@ export interface IFollow {
   _id: string;
   id?: string;
   followerStudentId: string;
-  followingStudentId: string;
+  followerUserId?: string;
+  followingStudentId?: string;
+  followingOrganizerId?: string;
+  targetType?: 'Student' | 'Organizer';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IOrganizerPost {
+  _id: string;
+  id?: string;
+  organizerId: string;
+  organizerUserId: string;
+  organizerName: string;
+  organizerLogo?: string;
+  title?: string;
+  content: string;
+  description?: string;
+  postType: 'Event Announcement' | 'Event Video' | 'General Update' | 'Update';
+  eventId?: string;
+  eventTitle?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  likesCount: number;
+  likedBy: string[];
+  commentsCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -773,3 +802,4 @@ export const GroupMembership = new CollectionModel<IGroupMembership>('groupMembe
 export const GroupJoinRequest = new CollectionModel<IGroupJoinRequest>('groupJoinRequests');
 export const CollegeAdminRequest = new CollectionModel<ICollegeAdminRequest>('collegeAdminRequests');
 export const OrganizerProfile = new CollectionModel<IOrganizerProfile>('organizerProfiles');
+export const OrganizerPost = new CollectionModel<IOrganizerPost>('organizerPosts');

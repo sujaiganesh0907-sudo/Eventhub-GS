@@ -72,7 +72,7 @@ async function runTests() {
 
   // Test 4: 4-Step Wizard Validation - Description > 200 chars rejected
   console.log('4. Testing Wizard Description Validation (> 200 chars)...');
-  const longDesc = 'A'.repeat(205);
+  const longDesc = new Array(510).fill('event').join(' ');
   const invalidDescRes = await fetch(`${BASE_URL}/events`, {
     method: 'POST',
     headers: {
@@ -102,10 +102,10 @@ async function runTests() {
       },
     }),
   });
-  assert.strictEqual(invalidDescRes.status, 400, 'Description > 200 chars must return 400 Bad Request');
+  assert.strictEqual(invalidDescRes.status, 400, 'Description > 500 words must return 400 Bad Request');
   const invalidDescJson = await invalidDescRes.json();
-  assert.ok(invalidDescJson.message.includes('200'), 'Message should indicate 200 characters limit');
-  console.log('   ✓ Wizard correctly rejected description > 200 chars:', invalidDescJson.message);
+  assert.ok(invalidDescJson.message.includes('500 words'), 'Message should indicate 500 words limit');
+  console.log('   ✓ Wizard correctly rejected description > 500 words:', invalidDescJson.message);
 
   // Test 5: Organizer submits a valid proposal to Target College
   console.log('5. Testing Organizer submitting proposal to Approver college...');
@@ -195,6 +195,18 @@ async function runTests() {
   assert.strictEqual(orgEventsRes.status, 200);
   assert.ok(orgEventsJson.events.some((e: any) => e._id === createdEventId));
   console.log('   ✓ Organizer successfully fetched their organized events.');
+
+  // Clean up created event so test doesn't pollute database
+  try {
+    if (createdEventId) {
+      await fetch(`${BASE_URL}/events/${createdEventId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${appToken}` },
+      });
+    }
+  } catch (cleanErr) {
+    // Ignore cleanup error
+  }
 
   console.log('\n--- ALL 3-ROLE & WIZARD TESTS PASSED SUCCESSFULLY! ---');
 }

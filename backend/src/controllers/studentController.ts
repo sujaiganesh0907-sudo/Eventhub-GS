@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { StudentProfile, User, Connection, Follow, Certificate, EventRegistration, Event } from '../models/index';
+import { StudentProfile, OrganizerProfile, User, Connection, Follow, Certificate, EventRegistration, Event } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export async function getStudentProfile(req: Request, res: Response) {
@@ -26,7 +26,70 @@ export async function getStudentProfile(req: Request, res: Response) {
     }
 
     if (!profile) {
-      return res.status(404).json({ success: false, message: 'Student profile not found.' });
+      // Check if target is an Organizer Profile
+      const orgProfile = id && id !== 'me'
+        ? (await OrganizerProfile.findById(id) || await OrganizerProfile.findOne({ userId: id }))
+        : (authReq.user?.role === 'Organizer' ? await OrganizerProfile.findOne({ userId: authReq.user._id }) : null);
+
+      if (orgProfile) {
+        let isFollowing = false;
+        if (currentUserId && currentUserId !== orgProfile.userId) {
+          const currentStudent = await StudentProfile.findOne({ userId: currentUserId });
+          if (currentStudent) {
+            const orgFollow = await Follow.findOne({
+              followerStudentId: currentStudent._id,
+              followingOrganizerId: orgProfile._id,
+            });
+            isFollowing = !!orgFollow;
+          }
+        }
+
+        const orgEvents = await Event.find({
+          $or: [{ organizerUserId: orgProfile.userId }, { organizerId: orgProfile._id }],
+        }).sort({ createdAt: -1 }).exec();
+
+        return res.json({
+          success: true,
+          isOrganizer: true,
+          profile: {
+            _id: orgProfile._id,
+            userId: orgProfile.userId,
+            fullName: orgProfile.organizationName,
+            avatar: orgProfile.logo,
+            coverPhoto: orgProfile.coverPhoto,
+            collegeName: orgProfile.organizationName,
+            department: orgProfile.organizationType,
+            yearOfStudy: orgProfile.location || 'India',
+            bio: orgProfile.bio || 'Verified Event Organizer on EVENTHUB',
+            skills: ['Event Production', 'Speaker Management', 'Hackathons'],
+            achievements: [`${orgEvents.length} Organized Events`],
+            followersCount: orgProfile.followersCount || 0,
+            followingCount: orgProfile.followingCount || 0,
+            connectionsCount: 0,
+            eventsCount: orgEvents.length,
+            organizedCount: orgEvents.length,
+            isFollowing,
+            role: 'Organizer',
+          },
+          student: {
+            _id: orgProfile._id,
+            userId: orgProfile.userId,
+            fullName: orgProfile.organizationName,
+            avatar: orgProfile.logo,
+            coverPhoto: orgProfile.coverPhoto,
+            collegeName: orgProfile.organizationName,
+            department: orgProfile.organizationType,
+            yearOfStudy: orgProfile.location || 'India',
+            bio: orgProfile.bio || 'Verified Event Organizer on EVENTHUB',
+            followersCount: orgProfile.followersCount || 0,
+            followingCount: orgProfile.followingCount || 0,
+            isFollowing,
+            role: 'Organizer',
+          },
+        });
+      }
+
+      return res.status(404).json({ success: false, message: 'Profile not found.' });
     }
 
     const isOwner = Boolean(currentUserId && (profile.userId === currentUserId || profile._id === currentUserId));

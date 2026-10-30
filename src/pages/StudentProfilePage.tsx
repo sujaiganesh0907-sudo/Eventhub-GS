@@ -30,6 +30,9 @@ import {
   DEFAULT_COLLEGE_LOGO,
   DEFAULT_CERTIFICATE_TEMPLATE,
 } from '../services/imageDefaults';
+import { OrganizerPostsTab } from '../components/profile/OrganizerPostsTab';
+import { CreateOrganizerPostModal } from '../components/profile/CreateOrganizerPostModal';
+import { SameCollegeStudentsSection } from '../components/profile/SameCollegeStudentsSection';
 import {
   Building2,
   Calendar,
@@ -60,6 +63,8 @@ import {
   ChevronRight,
   FileText,
   Trash2,
+  Heart,
+  Sparkles,
 } from 'lucide-react';
 
 interface StudentProfilePageProps {
@@ -85,6 +90,13 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
     !studentId && studentProfile ? studentProfile : null
   );
   const isOwnProfile = Boolean(!studentId || (profile && profile._id === studentProfile?._id) || (user && profile && profile.userId === user._id));
+  const isOrganizer = Boolean(
+    (user?.role === 'Organizer' && !studentId) ||
+    (profile as any)?.role === 'Organizer' ||
+    (profile as any)?.isOrganizer
+  );
+  const [organizerActiveTab, setOrganizerActiveTab] = useState<'posts' | 'organized' | 'followers'>('posts');
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
 
   const [isFollowingTarget, setIsFollowingTarget] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -301,12 +313,10 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         setOrganizedEvents(orgEvents);
         setRegistrations([]);
         setCertificates([]);
-        setEventSectionTab('organized');
-        setActiveSection('events');
         setProfile({
           _id: organizerProfile?._id || user?._id || 'org_profile_id',
           userId: user?._id || 'org_user_id',
-          fullName: user?.fullName || 'Event Organizer',
+          fullName: organizerProfile?.organizationName || user?.fullName || 'Event Organizer',
           email: user?.email || '',
           collegeName: organizerProfile?.organizationName || 'Independent Event Organization',
           department: organizerProfile?.organizationType || 'Community',
@@ -314,12 +324,13 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           bio: organizerProfile?.bio || 'Verified Event Organizer on EVENTHUB',
           skills: ['Event Production', 'Speaker Management', 'Hackathon Logistics'],
           achievements: [`${orgEvents.length} Organized Events`, 'Verified Partner'],
-          followersCount: 0,
-          followingCount: 0,
+          followersCount: organizerProfile?.followersCount || 0,
+          followingCount: organizerProfile?.followingCount || 0,
           connectionsCount: 0,
           eventsCount: orgEvents.length,
           organizedCount: orgEvents.length,
-        });
+          role: 'Organizer',
+        } as any);
         setLoading(false);
         return;
       }
@@ -349,7 +360,16 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         if (!studentId && updateStudentProfileLocal) {
           updateStudentProfileLocal(p);
         }
-        if (!isOwnerView) {
+
+        if (profRes.isOrganizer || p.role === 'Organizer') {
+          // Requirement 4: Organizer profiles show only organized events and posts (no certificates/attendance)
+          setCertificates([]);
+          setRegistrations([]);
+          const orgEvents = (orgRes.events || []).filter(
+            (e: any) => e.organizerId === p._id || e.organizerUserId === p.userId || e.creatorUserId === p.userId || e.createdBy === p.userId
+          );
+          setOrganizedEvents(orgEvents);
+        } else if (!isOwnerView) {
           // For another student, only show their published organized events
           const userEvents = (orgRes.events || []).filter(
             (e: any) => (e.creatorUserId === p.userId || e.createdBy === p.userId) && e.status === 'Published'
@@ -363,7 +383,9 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         }
       }
 
-      if (certRes.success) setCertificates(certRes.certificates || []);
+      if (certRes.success && !profRes?.isOrganizer && profRes?.profile?.role !== 'Organizer') {
+        setCertificates(certRes.certificates || []);
+      }
     } catch (err) {
       console.error('Failed to load student profile data', err);
     } finally {
@@ -375,20 +397,27 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
     fetchProfileData();
   }, [studentId]);
 
-  // Follow/unfollow currently viewed student
+  // Follow/unfollow currently viewed student or organizer
   const handleToggleFollowCurrent = async () => {
     if (!profile) return;
     try {
       setFollowLoading(true);
-      const res = await api.post<any>('/social/student/follow', { targetStudentId: profile._id });
+      const res = await api.post<any>('/social/student/follow', {
+        targetStudentId: profile._id,
+        targetOrganizerId: isOrganizer ? profile._id : undefined,
+        targetId: profile._id,
+      });
       if (res.success) {
         setIsFollowingTarget(res.following);
         setProfile((prev) => {
           if (!prev) return prev;
           const currentFollowers = prev.followersCount || 0;
+          const updatedFollowers = res.followersCount !== undefined
+            ? res.followersCount
+            : (res.following ? currentFollowers + 1 : Math.max(0, currentFollowers - 1));
           return {
             ...prev,
-            followersCount: res.following ? currentFollowers + 1 : Math.max(0, currentFollowers - 1),
+            followersCount: updatedFollowers,
             isFollowing: res.following,
             isPrivateRestricted: prev.profileVisibility === 'Private' && !res.following,
           };
@@ -627,13 +656,19 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                       @{profile.username.replace(/^@/, '')}
                     </span>
                   )}
-                  <span title="Verified Collegiate ID">
-                    <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" />
-                  </span>
+                  {isOrganizer ? (
+                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                      Event Organizer • Organization
+                    </span>
+                  ) : (
+                    <span title="Verified Collegiate ID">
+                      <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" />
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1.5 mt-1">
                   <Building2 className="w-3.5 h-3.5 text-[var(--primary-color)] shrink-0" />
-                  <span className="truncate">{profile?.collegeName || 'Apex Institute of Technology'}</span>
+                  <span className="truncate">{profile?.collegeName || (isOrganizer ? 'Verified Organizer' : 'Apex Institute of Technology')}</span>
                 </p>
               </div>
             </div>
@@ -691,25 +726,36 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
 
               {isOwnProfile && (
                 <>
-                  {/* Admin Access Button (Requirement 2 & 5) */}
-                  <button
-                    type="button"
-                    onClick={handleOpenAdminAccessModal}
-                    className="px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
-                    title="View authorized college administrator workspaces"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-[var(--primary-color)]" /> Admin Access
-                  </button>
+                  {!isOrganizer && (
+                    <button
+                      type="button"
+                      onClick={handleOpenAdminAccessModal}
+                      className="px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-xs font-bold text-[var(--text-primary)] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                      title="View authorized college administrator workspaces"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-[var(--primary-color)]" /> Admin Access
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => {
-                      setEditingCert(null);
-                      setShowAddCertModal(true);
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Plus className="w-4 h-4" /> Add Certificate
-                  </button>
+                  {isOrganizer ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatePostModalOpen(true)}
+                      className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Plus className="w-4 h-4" /> + Create Post
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditingCert(null);
+                        setShowAddCertModal(true);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Plus className="w-4 h-4" /> Add Certificate
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -777,25 +823,46 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             </button>
           </div>
 
-          {/* SECTION 3: Academic Metadata Row (Department | Year of Study | Verified Awards | Attended Events) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 border-y border-[var(--border-color)] text-xs">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Department</span>
-              <span className="font-bold text-[var(--text-primary)]">{profile?.department || 'Computer Science'}</span>
+          {/* SECTION 3: Metadata Row */}
+          {isOrganizer ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 border-y border-[var(--border-color)] text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Organization Type</span>
+                <span className="font-bold text-[var(--text-primary)]">{profile?.department || 'Organization'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Location</span>
+                <span className="font-bold text-[var(--text-primary)]">{profile?.yearOfStudy || 'India'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Organized Events</span>
+                <span className="font-bold text-indigo-600">{organizedEvents.length} Events</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Followers</span>
+                <span className="font-bold text-emerald-600">{profile?.followersCount || 0} Followers</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Year of Study</span>
-              <span className="font-bold text-[var(--text-primary)]">{profile?.yearOfStudy || '3rd Year'}</span>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 border-y border-[var(--border-color)] text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Department</span>
+                <span className="font-bold text-[var(--text-primary)]">{profile?.department || 'Computer Science'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Year of Study</span>
+                <span className="font-bold text-[var(--text-primary)]">{profile?.yearOfStudy || '3rd Year'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Verified Awards</span>
+                <span className="font-bold text-amber-600">{certificates.length} Credentials</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Attended Events</span>
+                <span className="font-bold text-emerald-600">{isOwnProfile ? attendedEvents.length : (profile?.attendedEventsCount ?? 0)} Events</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Verified Awards</span>
-              <span className="font-bold text-amber-600">{certificates.length} Credentials</span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Attended Events</span>
-              <span className="font-bold text-emerald-600">{isOwnProfile ? attendedEvents.length : (profile?.attendedEventsCount ?? 0)} Events</span>
-            </div>
-          </div>
+          )}
 
           {/* Bio */}
           {profile?.bio && (
@@ -886,35 +953,162 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         </div>
       </div>
 
-      {/* SECTION 4: Navigation Tabs for Profile Body (Verified Awards & Credentials / Events Portfolio) */}
-      <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
-        <button
-          onClick={() => setActiveSection('credentials')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-            activeSection === 'credentials'
-              ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-              : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
-          }`}
-        >
-          <Award className="w-4 h-4" />
-          Verified Awards & Credentials ({certificates.length})
-        </button>
+      {/* SECTION 4: Navigation Tabs for Profile Body */}
+      {isOrganizer ? (
+        <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
+          <button
+            onClick={() => setOrganizerActiveTab('posts')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              organizerActiveTab === 'posts'
+                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            Posts
+          </button>
 
-        <button
-          onClick={() => setActiveSection('events')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-            activeSection === 'events'
-              ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-              : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
-          }`}
-        >
-          <Calendar className="w-4 h-4" />
-          Events Portfolio ({totalEventsCount})
-        </button>
-      </div>
+          <button
+            onClick={() => setOrganizerActiveTab('organized')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              organizerActiveTab === 'organized'
+                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Organized Events ({organizedEvents.length})
+          </button>
 
-      {/* TAB CONTENT A: VERIFIED CREDENTIALS & AWARDS PORTFOLIO */}
-      {activeSection === 'credentials' && (
+          <button
+            onClick={() => {
+              setOrganizerActiveTab('followers');
+              openSocialModal('followers');
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              organizerActiveTab === 'followers'
+                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Followers ({profile?.followersCount || 0})
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
+          <button
+            onClick={() => setActiveSection('credentials')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSection === 'credentials'
+                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            Verified Awards & Credentials ({certificates.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSection('events')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSection === 'events'
+                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Events Portfolio ({totalEventsCount})
+          </button>
+        </div>
+      )}
+
+      {/* ORGANIZER TAB CONTENTS (Posts Only Organized Events / Videos / Updates) */}
+      {isOrganizer ? (
+        <div className="space-y-6">
+          {organizerActiveTab === 'posts' && (
+            <OrganizerPostsTab
+              organizerId={profile?._id || ''}
+              organizerUserId={profile?.userId || ''}
+              organizerName={profile?.fullName || 'Event Organizer'}
+              organizerLogo={profile?.profilePhoto || (profile as any)?.avatar || (profile as any)?.logo}
+              isOwnOrganizer={Boolean(isOwnProfile || user?.role === 'Organizer')}
+              events={organizedEvents}
+              onViewEvent={onViewEvent}
+            />
+          )}
+
+          {organizerActiveTab === 'organized' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  Events Organized by {profile?.fullName} ({organizedEvents.length})
+                </h3>
+              </div>
+              {organizedEvents.length === 0 ? (
+                <div className="p-10 text-center border border-[var(--border-color)] rounded-2xl bg-[var(--surface)]">
+                  <Calendar className="w-8 h-8 mx-auto text-[var(--text-muted)] mb-2" />
+                  <p className="text-xs text-[var(--text-muted)]">No published organized events yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {organizedEvents.map((ev) => (
+                    <OrganizedEventCard
+                      key={ev._id}
+                      event={ev}
+                      isStudent={false}
+                      onViewEvent={(event) => {
+                        if (onViewEvent) onViewEvent(event);
+                      }}
+                      onViewInsights={() => setSelectedEventForInsights(ev)}
+                      onEditEvent={() => {
+                        setEditingEventProposal(ev);
+                        setIsEditingProposalOpen(true);
+                      }}
+                      onOpenCheckInDesk={() => setSelectedEventForAttendance(ev)}
+                      onManageAttendance={() => setSelectedEventForAttendance(ev)}
+                      onManageCertificates={() => setSelectedEventForCertificates(ev)}
+                      onViewRegistrations={() => setSelectedEventForRegistrations(ev)}
+                      onShareEvent={() => setSelectedEventForShare(ev)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {organizerActiveTab === 'followers' && (
+            <div className="p-8 text-center border border-[var(--border-color)] rounded-2xl bg-[var(--surface)] space-y-3">
+              <Users className="w-8 h-8 mx-auto text-indigo-600" />
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Community Followers</h3>
+              <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+                {profile?.followersCount || 0} participants and peers are following {profile?.fullName} for event announcements and updates.
+              </p>
+              <button
+                type="button"
+                onClick={() => openSocialModal('followers')}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors cursor-pointer shadow-xs active:scale-95"
+              >
+                View Full Followers List
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Same College Students Section */}
+          <SameCollegeStudentsSection
+            collegeName={profile?.collegeName}
+            onSelectStudent={(id) => {
+              if (studentId !== id) {
+                window.location.hash = `#/profile/${id}`;
+                window.location.reload();
+              }
+            }}
+          />
+
+          {/* TAB CONTENT A: VERIFIED CREDENTIALS & AWARDS PORTFOLIO */}
+          {activeSection === 'credentials' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1211,6 +1405,8 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             </div>
           )}
         </div>
+      )}
+      </>
       )}
 
       {/* MODAL 1: Connected Colleges */}
@@ -1897,6 +2093,17 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             </div>
           </div>
         </Modal>
+      )}
+      {/* Create Organizer Post Modal */}
+      {isOrganizer && isOwnProfile && (
+        <CreateOrganizerPostModal
+          isOpen={isCreatePostModalOpen}
+          onClose={() => setIsCreatePostModalOpen(false)}
+          onPostCreated={(newPost) => {
+            setOrganizerActiveTab('posts');
+          }}
+          organizerEvents={organizedEvents}
+        />
       )}
     </div>
   );
