@@ -81,6 +81,20 @@ export const TicketModal: React.FC<TicketModalProps> = ({
     }
   };
 
+  const handleSkipGroup = async () => {
+    try {
+      await api.post('/notifications', {
+        type: 'GROUP_INVITE_REMINDER',
+        title: 'Event Discussion Group Available',
+        message: `You registered for ${event?.title || registration.eventTitle}. You can join the official discussion group anytime from your Messages tab.`,
+        link: eventGroup?._id ? `/messages?group=${eventGroup._id}` : '/messages',
+      });
+    } catch {
+      // safe fallback
+    }
+    setEventGroup(null);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -222,19 +236,28 @@ export const TicketModal: React.FC<TicketModalProps> = ({
                       <span>Open Event Group</span>
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      disabled={joiningGroup}
-                      onClick={handleJoinOrOpenGroup}
-                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all disabled:opacity-50"
-                    >
-                      {joiningGroup ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <MessageSquare className="w-3.5 h-3.5" />
-                      )}
-                      <span>Join Event Group</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleSkipGroup}
+                        className="px-2.5 py-1.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] text-xs font-semibold cursor-pointer transition-colors"
+                      >
+                        Skip
+                      </button>
+                      <button
+                        type="button"
+                        disabled={joiningGroup}
+                        onClick={handleJoinOrOpenGroup}
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all disabled:opacity-50"
+                      >
+                        {joiningGroup ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        )}
+                        <span>Join Event Group</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

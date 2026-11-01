@@ -3,12 +3,20 @@ import fs from 'fs';
 const BASE_URL = 'http://localhost:3000/api';
 
 async function login(email: string, password = 'Password123!') {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
+  let res = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  const data = await res.json();
+  let data = await res.json();
+  if (!res.ok && password === 'Password123!') {
+    res = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: 'Admin@123' }),
+    });
+    data = await res.json();
+  }
   const token = data.tokens?.accessToken || data.token;
   if (!res.ok || !token) {
     throw new Error(`Login failed for ${email}: ${JSON.stringify(data)}`);

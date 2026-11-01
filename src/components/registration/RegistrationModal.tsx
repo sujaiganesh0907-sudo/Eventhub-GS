@@ -184,26 +184,26 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
                     <span className="text-[var(--text-muted)] block text-[10px] mb-1 font-semibold">Full Name</span>
-                    <div className="p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-medium text-[var(--text-primary)]">
-                      {studentName || 'Student'}
+                    <div className="p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-medium text-[var(--text-primary)] truncate" title={studentName}>
+                      {studentName || 'Enter Name'}
                     </div>
                   </div>
                   <div>
                     <span className="text-[var(--text-muted)] block text-[10px] mb-1 font-semibold">Email Address</span>
-                    <div className="p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-medium text-[var(--text-primary)]">
-                      {studentEmail || 'student@domain.edu'}
+                    <div className="p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-medium text-[var(--text-primary)] truncate overflow-hidden max-w-full" title={studentEmail}>
+                      {studentEmail || 'Enter Email Address'}
                     </div>
                   </div>
                   <div>
                     <label className="text-[var(--text-muted)] block text-[10px] mb-1 font-semibold">
-                      10-Digit Mobile Number *
+                      Mobile Number *
                     </label>
                     <input
                       type="tel"
                       maxLength={10}
                       value={phone}
                       onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Enter 10-digit mobile number"
+                      placeholder="Enter Mobile Number"
                       className="w-full p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] font-mono text-xs text-[var(--text-primary)]"
                     />
                   </div>
@@ -215,7 +215,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                       type="text"
                       value={collegeName}
                       onChange={(e) => setCollegeName(e.target.value)}
-                      placeholder="Enter institution / college name"
+                      placeholder="Enter College Name"
                       className="w-full p-2 rounded-lg bg-[var(--surface)] border border-[var(--border-color)] text-xs text-[var(--text-primary)]"
                     />
                   </div>

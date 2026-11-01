@@ -140,6 +140,16 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
       paymentInstructions: '',
     },
     registrationQuestions: [] as IParticipantQuestion[],
+    chiefGuest: {
+      hasChiefGuest: false,
+      isExternal: false,
+      organizerId: '',
+      organizerName: '',
+      externalName: '',
+      externalDesignation: '',
+      externalOrganization: '',
+    },
+    createEventGroup: true,
   });
 
   // Sync eventToEdit when provided
@@ -191,6 +201,17 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         registrationQuestions: Array.isArray(eventToEdit.registrationQuestions)
           ? eventToEdit.registrationQuestions
           : [],
+        chiefGuest: eventToEdit.chiefGuest || {
+          hasChiefGuest: false,
+          isExternal: false,
+          organizerId: '',
+          organizerName: '',
+          invitationStatus: 'None',
+          externalName: '',
+          externalDesignation: '',
+          externalOrganization: '',
+        },
+        createEventGroup: Boolean(eventToEdit.hasGroup ?? true),
       });
     }
   }, [eventToEdit, college, user]);
@@ -231,6 +252,27 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
         errors.description = 'Event Description is required.';
       } else if (wordCount > 500) {
         errors.description = 'Event Description must be maximum 500 words.';
+      }
+
+      const trimmedTagline = formData.tagline.trim();
+      if (!trimmedTagline) {
+        errors.tagline = 'Event Tagline is required (10–80 characters).';
+      } else if (trimmedTagline.length < 10) {
+        errors.tagline = 'Event Tagline must be at least 10 characters.';
+      } else if (trimmedTagline.length > 80) {
+        errors.tagline = 'Event Tagline cannot exceed 80 characters.';
+      }
+
+      if (formData.chiefGuest.hasChiefGuest) {
+        if (!formData.chiefGuest.isExternal) {
+          if (!formData.chiefGuest.organizerId.trim()) {
+            errors.chiefGuest = 'Please provide the EVENTHUB Organizer ID.';
+          }
+        } else {
+          if (!formData.chiefGuest.externalName.trim()) {
+            errors.chiefGuest = 'Chief Guest name is required.';
+          }
+        }
       }
 
       if (isProposal && !formData.targetCollegeId) {
@@ -431,6 +473,8 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
             },
 
         registrationQuestions: sanitizedQuestions,
+        chiefGuest: formData.chiefGuest.hasChiefGuest ? formData.chiefGuest : undefined,
+        createEventGroup: formData.createEventGroup,
         saveAsDraft,
       };
 
@@ -704,19 +748,194 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                     </div>
                   </div>
 
-                  {/* Tagline */}
+                  {/* Mandatory Event Tagline (10–80 chars) */}
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
-                      Tagline / Catchphrase (Optional)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-[var(--text-primary)]">
+                        Event Tagline <span className="text-red-500">*</span>
+                      </label>
+                      <span className={`text-[11px] font-medium ${formData.tagline.length > 80 || (formData.tagline.length > 0 && formData.tagline.length < 10) ? 'text-amber-500 font-bold' : 'text-[var(--text-muted)]'}`}>
+                        {formData.tagline.length}/80
+                      </span>
+                    </div>
                     <input
                       type="text"
-                      maxLength={60}
+                      maxLength={80}
                       value={formData.tagline}
                       onChange={(e) => updateField('tagline', e.target.value)}
-                      placeholder="e.g. Code, innovate, and disrupt the future."
-                      className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                      placeholder="e.g. Innovate, Collaborate, and Elevate the Future"
+                      className={`w-full px-3 py-2 text-sm rounded-xl border bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] ${
+                        fieldErrors.tagline ? 'border-red-500' : 'border-[var(--border-color)]'
+                      }`}
                     />
+                    {fieldErrors.tagline && (
+                      <p className="text-[11px] text-red-500 mt-1">{fieldErrors.tagline}</p>
+                    )}
+                  </div>
+
+                  {/* Optional Chief Guest (Part 4) */}
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-[var(--text-primary)] block">
+                          Chief Guest (Optional)
+                        </span>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          Nominate an existing EVENTHUB organizer or invite an external dignitary.
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.chiefGuest.hasChiefGuest}
+                          onChange={(e) =>
+                            updateField('chiefGuest', {
+                              ...formData.chiefGuest,
+                              hasChiefGuest: e.target.checked,
+                            })
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--primary-color)]" />
+                      </label>
+                    </div>
+
+                    {formData.chiefGuest.hasChiefGuest && (
+                      <div className="space-y-3 pt-2 border-t border-[var(--border-color)]">
+                        {/* Option Selection: Existing Organizer vs External */}
+                        <div className="flex items-center gap-4 text-xs font-semibold">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-[var(--text-primary)]">
+                            <input
+                              type="radio"
+                              name="chiefGuestType"
+                              checked={!formData.chiefGuest.isExternal}
+                              onChange={() =>
+                                updateField('chiefGuest', {
+                                  ...formData.chiefGuest,
+                                  isExternal: false,
+                                })
+                              }
+                              className="text-indigo-600"
+                            />
+                            <span>Option A: Existing EVENTHUB Organizer</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer text-[var(--text-primary)]">
+                            <input
+                              type="radio"
+                              name="chiefGuestType"
+                              checked={formData.chiefGuest.isExternal}
+                              onChange={() =>
+                                updateField('chiefGuest', {
+                                  ...formData.chiefGuest,
+                                  isExternal: true,
+                                })
+                              }
+                              className="text-indigo-600"
+                            />
+                            <span>Option B: Not in EVENTHUB</span>
+                          </label>
+                        </div>
+
+                        {!formData.chiefGuest.isExternal ? (
+                          <div className="space-y-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                                Organizer ID or Email <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={formData.chiefGuest.organizerId}
+                                onChange={(e) =>
+                                  updateField('chiefGuest', {
+                                    ...formData.chiefGuest,
+                                    organizerId: e.target.value,
+                                  })
+                                }
+                                placeholder="Enter EVENTHUB Organizer ID (e.g. EH-ORG-XXXXXX or email)"
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-mono text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                                Organizer Name / Designation (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={formData.chiefGuest.organizerName}
+                                onChange={(e) =>
+                                  updateField('chiefGuest', {
+                                    ...formData.chiefGuest,
+                                    organizerName: e.target.value,
+                                  })
+                                }
+                                placeholder="e.g. Dr. K. Ramanathan, Innovation Director"
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 text-xs"
+                              />
+                            </div>
+                            <p className="text-[11px] text-[var(--text-muted)] italic">
+                              Note: The organizer will receive an in-app nomination invite. Pending status prevents premature publishing until accepted.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                                Guest Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={formData.chiefGuest.externalName}
+                                onChange={(e) =>
+                                  updateField('chiefGuest', {
+                                    ...formData.chiefGuest,
+                                    externalName: e.target.value,
+                                  })
+                                }
+                                placeholder="e.g. Sundar Pichai"
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                                Designation
+                              </label>
+                              <input
+                                type="text"
+                                value={formData.chiefGuest.externalDesignation}
+                                onChange={(e) =>
+                                  updateField('chiefGuest', {
+                                    ...formData.chiefGuest,
+                                    externalDesignation: e.target.value,
+                                  })
+                                }
+                                placeholder="e.g. CEO"
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                                Organization
+                              </label>
+                              <input
+                                type="text"
+                                value={formData.chiefGuest.externalOrganization}
+                                onChange={(e) =>
+                                  updateField('chiefGuest', {
+                                    ...formData.chiefGuest,
+                                    externalOrganization: e.target.value,
+                                  })
+                                }
+                                placeholder="e.g. Alphabet Inc."
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {fieldErrors.chiefGuest && (
+                          <p className="text-[11px] text-red-500">{fieldErrors.chiefGuest}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Description with 500-Word Limit & Live Counter */}
@@ -1207,16 +1426,37 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                     )}
                   </div>
 
-                  {/* Custom Participant Questions Builder */}
+                  {/* Optional Event Group Creation (Part 5) */}
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold text-[var(--text-primary)] block">
+                        Create Official Event Discussion Group
+                      </span>
+                      <p className="text-[11px] text-[var(--text-muted)]">
+                        Automatically provisions an event group where registered participants can join, chat, and coordinate.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.createEventGroup}
+                        onChange={(e) => updateField('createEventGroup', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--primary-color)]" />
+                    </label>
+                  </div>
+
+                  {/* Custom Participant Questions Builder (Part 13: 4 exact types) */}
                   <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
                           <FileText className="w-4 h-4 text-[var(--primary)]" />
-                          <span>Custom Registration Questions</span>
+                          <span>Custom Registration Details</span>
                         </div>
                         <p className="text-[11px] text-[var(--text-muted)]">
-                          Add custom form fields for participants to fill during registration.
+                          Solict tailored details (Short Text, Long Text, Link, Multiple Choice).
                         </p>
                       </div>
                       <button
@@ -1225,13 +1465,13 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer shadow-xs active:scale-95"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Add Custom Details</span>
+                        <span>Add Field</span>
                       </button>
                     </div>
 
                     {formData.registrationQuestions.length === 0 ? (
                       <p className="text-xs text-[var(--text-muted)] italic py-3 text-center bg-[var(--surface)] rounded-xl border border-dashed border-[var(--border-color)]">
-                        No custom questions added. Click "+ Add Custom Details" to solicit T-shirt size, GitHub handle, or team background.
+                        No custom fields added. Click "+ Add Field" to request T-shirt size, portfolio link, or department.
                       </p>
                     ) : (
                       <div className="space-y-3">
@@ -1253,7 +1493,7 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                                     next[idx].label = e.target.value;
                                     updateField('registrationQuestions', next);
                                   }}
-                                  placeholder="Enter question title (e.g. What is your department?)"
+                                  placeholder="Enter field label (e.g. GitHub Profile URL or T-Shirt Size)"
                                   className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-medium text-[var(--text-primary)]"
                                 />
                               </div>
@@ -1263,25 +1503,17 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                                   const next = [...formData.registrationQuestions];
                                   const newType = e.target.value as any;
                                   next[idx].type = newType;
-                                  if (
-                                    (newType === 'Multiple Choice' ||
-                                      newType === 'Select / Multiple Choice' ||
-                                      newType === 'Dropdown' ||
-                                      newType === 'Checkbox') &&
-                                    (!next[idx].options || next[idx].options.length < 2)
-                                  ) {
+                                  if (newType === 'Multiple Choice' && (!next[idx].options || next[idx].options.length < 2)) {
                                     next[idx].options = ['Option 1', 'Option 2'];
                                   }
                                   updateField('registrationQuestions', next);
                                 }}
                                 className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface-subtle)] font-medium text-[var(--text-primary)]"
                               >
-                                <option value="Short Text">Short Text</option>
-                                <option value="Paragraph">Paragraph</option>
+                                <option value="Short Text">Short Text (max 20)</option>
+                                <option value="Long Text">Long Text (max 50)</option>
+                                <option value="Link">Link</option>
                                 <option value="Multiple Choice">Multiple Choice</option>
-                                <option value="Dropdown">Dropdown</option>
-                                <option value="Checkbox">Checkbox / Multi-Select</option>
-                                <option value="File Upload">File Upload</option>
                               </select>
                               <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] cursor-pointer">
                                 <input

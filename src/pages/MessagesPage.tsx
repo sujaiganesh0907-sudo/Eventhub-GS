@@ -1076,7 +1076,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           }}
                           className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
                         >
-                          <Info className="w-4 h-4 text-[var(--primary-color)]" />
+                          <Info className="w-4 h-4 text-[var(--text-secondary)]" />
                           <span>Group Info</span>
                         </button>
 
@@ -1089,7 +1089,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           }}
                           className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
                         >
-                          <Settings className="w-4 h-4 text-[var(--text-muted)]" />
+                          <Settings className="w-4 h-4 text-[var(--text-secondary)]" />
                           <span>Chat Settings</span>
                         </button>
 
@@ -1106,7 +1106,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                               }}
                               className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
                             >
-                              <Users className="w-4 h-4 text-blue-500" />
+                              <Users className="w-4 h-4 text-[var(--text-secondary)]" />
                               <span>Manage Members</span>
                             </button>
 
@@ -1118,7 +1118,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                               }}
                               className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
                             >
-                              <Edit3 className="w-4 h-4 text-amber-500" />
+                              <Edit3 className="w-4 h-4 text-[var(--text-secondary)]" />
                               <span>Edit Group</span>
                             </button>
 
@@ -1130,7 +1130,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                               }}
                               className="w-full px-3.5 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
                             >
-                              <Shield className="w-4 h-4 text-emerald-500" />
+                              <Shield className="w-4 h-4 text-[var(--text-secondary)]" />
                               <span>Group Permissions</span>
                             </button>
                           </>
@@ -1147,7 +1147,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           }}
                           className="w-full px-3.5 py-2 text-left hover:bg-amber-500/10 text-amber-600 flex items-center gap-2.5 cursor-pointer font-medium"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 text-amber-600" />
                           <span>Clear Chat</span>
                         </button>
 
@@ -1164,7 +1164,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           }}
                           className="w-full px-3.5 py-2 text-left hover:bg-red-500/10 text-red-600 flex items-center gap-2.5 cursor-pointer font-medium"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut className="w-4 h-4 text-red-600" />
                           <span>Leave Group</span>
                         </button>
                       </div>

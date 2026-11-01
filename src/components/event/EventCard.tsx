@@ -12,6 +12,7 @@ import {
   Share2,
   Eye,
 } from 'lucide-react';
+import { formatPrice } from '../../utils/currency';
 import { IEvent } from '../../types';
 import { Modal } from '../common/Modal';
 import { ActionMenu } from '../common/ActionMenu';
@@ -102,7 +103,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                     : 'bg-indigo-600/90 text-white'
                 }`}
               >
-                {event.isFree ? 'FREE' : `₹${event.registrationFee}`}
+                {formatPrice(event.registrationFee, event.isFree)}
               </span>
             </div>
           </div>
@@ -136,17 +137,18 @@ export const EventCard: React.FC<EventCardProps> = ({
                 {event.title}
               </h3>
 
+              {/* Tagline: Mandatory max 2 lines immediately below Event Name */}
+              {event.tagline && (
+                <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 font-medium">
+                  {event.tagline}
+                </p>
+              )}
+
               {/* Category, Type */}
-              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1.5">
                 <span>{event.category}</span>
                 <span aria-hidden="true">·</span>
                 <span>{event.eventType}</span>
-                {event.tagline && (
-                  <>
-                    <span aria-hidden="true">·</span>
-                    <span className="truncate max-w-32">{event.tagline}</span>
-                  </>
-                )}
               </div>
 
               {/* Date & Time */}

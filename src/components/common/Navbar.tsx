@@ -196,19 +196,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-30 w-full border-b border-[var(--border-color)] bg-[var(--surface)]/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5">
       <div className="flex items-center justify-between gap-4 max-w-[1440px] w-full mx-auto">
-        {/* Brand / Logo + Sidebar Toggle */}
+        {/* Brand / Logo (extra hamburger button removed as requested) */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
-          {isAuthenticated && (
-            <button
-              type="button"
-              onClick={onToggleSidebar}
-              className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] border border-transparent hover:border-[var(--border-color)] transition-all cursor-pointer"
-              title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
           <div
             onClick={() => {
               if (onBrandClick) onBrandClick();
@@ -225,9 +214,83 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Global Search Bar (Students, Colleges, Events) — ONLY when authenticated and NOT on Auth/Landing */}
-        {isAuthenticated && !hideSearch && (
-          <div className="relative flex items-center gap-2 grow max-w-xl mx-auto" ref={searchContainerRef}>
+        {/* Right Section: Theme Toggle, Profile Avatar & Status / Sign In */}
+        <div className="flex items-center gap-2">
+          {/* Theme Quick Toggle */}
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] border border-[var(--border-color)] transition-all cursor-pointer flex items-center justify-center shadow-xs"
+            title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          >
+            {isDark ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-600" />
+            )}
+          </button>
+
+          {isAuthenticated ? (
+            <>
+              {/* Profile / Avatar Button */}
+              <button
+                onClick={() => {
+                  if (onProfileClick) onProfileClick();
+                  else if (onSelectTab) onSelectTab(isCollege ? 'college-profile' : 'profile');
+                }}
+                className="flex items-center gap-2 p-1 rounded-xl hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer"
+              >
+                <div className="relative">
+                  <img
+                    src={avatarUrl}
+                    alt="User Avatar"
+                    className="w-8 h-8 rounded-lg object-cover border border-[var(--border-color)]"
+                  />
+                  {isCollege && college?.verificationStatus === 'Verified' && (
+                    <span className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-blue-600 text-white">
+                      <ShieldCheck className="w-2.5 h-2.5" />
+                    </span>
+                  )}
+                </div>
+                <span className="hidden lg:inline text-xs font-semibold text-[var(--text-primary)] max-w-28 truncate">
+                  {isStudent ? studentProfile?.fullName || user?.fullName : college?.name || user?.fullName}
+                </span>
+              </button>
+
+              {/* Admin Profile shortcut for users with active admin memberships */}
+              {hasAdminAccess && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectTab) onSelectTab('admin-profile');
+                  }}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all border border-emerald-500/20 cursor-pointer shadow-xs active:scale-95"
+                  title="Open Admin Profile & Manage Colleges"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="hidden md:inline">Admin Profile</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              onClick={() => {
+                if (onProfileClick) onProfileClick();
+                else if (onSelectTab) onSelectTab('auth');
+              }}
+              className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              Sign In
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Header Search Bar moved below main header across dashboards */}
+      {isAuthenticated && !hideSearch && (
+        <div className="pt-2.5 max-w-2xl mx-auto w-full">
+          <div className="relative flex items-center gap-2 w-full" ref={searchContainerRef}>
             <div className="relative w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none" />
               <input
@@ -340,9 +403,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <img
-                                  src={ev.poster}
+                                  src={ev.poster || DEFAULT_EVENT_POSTER}
                                   alt={ev.title}
                                   className="w-10 h-7 rounded-lg object-cover border border-[var(--border-color)] shrink-0"
+                                  onError={(e) => {
+                                    (e.target as any).src = DEFAULT_EVENT_POSTER;
+                                  }}
                                 />
                                 <div className="min-w-0">
                                   <span className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-color)] truncate block">
@@ -358,7 +424,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                                   ev.isFree ? 'bg-emerald-500/10 text-emerald-600' : 'bg-indigo-500/10 text-indigo-600'
                                 }`}
                               >
-                                {ev.isFree ? 'Free' : `$${ev.registrationFee}`}
+                                {ev.isFree ? 'FREE' : `₹${ev.registrationFee}`}
                               </span>
                             </div>
                           ))}
@@ -370,80 +436,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
           </div>
-        )}
-
-        {/* Right Section: Theme Toggle, Profile Avatar & Status / Sign In */}
-        <div className="flex items-center gap-2">
-          {/* Theme Quick Toggle */}
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] border border-[var(--border-color)] transition-all cursor-pointer flex items-center justify-center shadow-xs"
-            title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            aria-label={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          >
-            {isDark ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-indigo-600" />
-            )}
-          </button>
-
-          {isAuthenticated ? (
-            <>
-              {/* Profile / Avatar Button */}
-              <button
-                onClick={() => {
-                  if (onProfileClick) onProfileClick();
-                  else if (onSelectTab) onSelectTab(isCollege ? 'college-profile' : 'profile');
-                }}
-                className="flex items-center gap-2 p-1 rounded-xl hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer"
-              >
-                <div className="relative">
-                  <img
-                    src={avatarUrl}
-                    alt="User Avatar"
-                    className="w-8 h-8 rounded-lg object-cover border border-[var(--border-color)]"
-                  />
-                  {isCollege && college?.verificationStatus === 'Verified' && (
-                    <span className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-blue-600 text-white">
-                      <ShieldCheck className="w-2.5 h-2.5" />
-                    </span>
-                  )}
-                </div>
-                <span className="hidden lg:inline text-xs font-semibold text-[var(--text-primary)] max-w-28 truncate">
-                  {isStudent ? studentProfile?.fullName || user?.fullName : college?.name || user?.fullName}
-                </span>
-              </button>
-
-              {/* Admin Profile shortcut for users with active admin memberships */}
-              {hasAdminAccess && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onSelectTab) onSelectTab('admin-profile');
-                  }}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all border border-emerald-500/20 cursor-pointer shadow-xs active:scale-95"
-                  title="Open Admin Profile & Manage Colleges"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="hidden md:inline">Admin Profile</span>
-                </button>
-              )}
-            </>
-          ) : (
-            <button
-              onClick={() => {
-                if (onProfileClick) onProfileClick();
-                else if (onSelectTab) onSelectTab('auth');
-              }}
-              className="px-4 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs cursor-pointer"
-            >
-              Sign In
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Mobile Drawer Menu (Authenticated only) */}
       {isAuthenticated && mobileMenuOpen && (

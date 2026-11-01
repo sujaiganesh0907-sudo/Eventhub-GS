@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Event, College, StudentProfile, Notification, IEvent, ICollege, User, EventRegistration, RegistrationQR, Certificate, CollegeAdminMembership, OrganizerProfile, Attendance, Reminder } from '../models/index';
+import { Event, College, StudentProfile, Notification, IEvent, ICollege, User, EventRegistration, RegistrationQR, Certificate, CollegeAdminMembership, OrganizerProfile, Attendance, Reminder, Group, GroupMembership } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { updateEventGroupLifecycle } from '../services/eventGroupService';
 import { sendProposalSubmittedEmail, sendProposalDecisionEmail, sendEventUpdateEmail } from '../services/emailService';
@@ -234,6 +234,17 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ success: false, message: 'Event Name must be maximum 15 characters.' });
     }
 
+    body.tagline = (body.tagline || '').trim();
+    if (!body.tagline) {
+      return res.status(400).json({ success: false, message: 'Event Tagline is required (10–80 characters).' });
+    }
+    if (body.tagline.length < 10) {
+      return res.status(400).json({ success: false, message: 'Event Tagline must be at least 10 characters.' });
+    }
+    if (body.tagline.length > 80) {
+      return res.status(400).json({ success: false, message: 'Event Tagline cannot exceed 80 characters.' });
+    }
+
     body.description = (body.description || '').trim();
     if (!body.description) {
       return res.status(400).json({ success: false, message: 'Event Description is required.' });
@@ -439,6 +450,18 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
         : [],
       registrationQuestions: Array.isArray(body.registrationQuestions) ? body.registrationQuestions : [],
       
+      chiefGuest: body.chiefGuest && body.chiefGuest.hasChiefGuest ? {
+        hasChiefGuest: true,
+        isExternal: Boolean(body.chiefGuest.isExternal),
+        organizerId: body.chiefGuest.organizerId || '',
+        organizerName: body.chiefGuest.organizerName || '',
+        invitationStatus: body.chiefGuest.isExternal ? 'None' : 'Pending',
+        externalName: body.chiefGuest.externalName || '',
+        externalDesignation: body.chiefGuest.externalDesignation || '',
+        externalOrganization: body.chiefGuest.externalOrganization || '',
+      } : undefined,
+      hasGroup: false,
+
       creatorRole: user.role === 'Student' ? 'Student' : (user.role === 'Organizer' ? 'Organizer' : 'College'),
       creatorUserId: user._id,
       organizerOrganization: organizerOrgName || undefined,
@@ -448,6 +471,63 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
       attendanceCount: 0,
       certificatesIssuedCount: 0,
     });
+
+    // Part 5: Optional Event Group Creation
+    if (body.createEventGroup) {
+      try {
+        const newGroup = await Group.create({
+          name: `${event.title} - Official Group`,
+          description: `Official participant group for ${event.title}`,
+          type: 'Event',
+          eventId: event._id,
+          ownerId: user._id,
+          membersCount: 1,
+          visibility: 'Event Participants Only',
+          chatPermissions: 'Everyone',
+          editPermissions: 'Admins Only',
+        });
+        await GroupMembership.create({
+          groupId: newGroup._id,
+          userId: user._id,
+          role: 'Owner',
+          status: 'Active',
+          joinedAt: new Date().toISOString(),
+        });
+        await Event.findByIdAndUpdate(event._id, {
+          hasGroup: true,
+          groupId: newGroup._id,
+        });
+        (event as any).hasGroup = true;
+        (event as any).groupId = newGroup._id;
+      } catch (grpErr) {
+        console.error('Failed to auto-create event group', grpErr);
+      }
+    }
+
+    // Part 4: Chief Guest invitation notification if internal EVENTHUB organizer
+    if (body.chiefGuest && body.chiefGuest.hasChiefGuest && !body.chiefGuest.isExternal && body.chiefGuest.organizerId) {
+      try {
+        const orgUser = await User.findOne({
+          $or: [
+            { _id: body.chiefGuest.organizerId },
+            { participantId: body.chiefGuest.organizerId },
+            { email: body.chiefGuest.organizerId },
+          ],
+        });
+        if (orgUser) {
+          await Notification.create({
+            recipientUserId: orgUser._id,
+            type: 'CHIEF_GUEST_INVITE',
+            title: `Chief Guest Invitation: ${event.title}`,
+            message: `You have been nominated as Chief Guest for "${event.title}" hosted by ${hostCollegeName}.`,
+            link: `/events/${event._id}`,
+            isRead: false,
+          });
+        }
+      } catch (cgErr) {
+        console.error('Failed to dispatch chief guest invite notification', cgErr);
+      }
+    }
 
     // Notify all authorized approvers for the target college if student or organizer submitted proposal
     if ((user.role === 'Student' || user.role === 'Organizer') && initialStatus === 'Pending Approval') {
@@ -564,6 +644,14 @@ export async function approveStudentEvent(req: AuthenticatedRequest, res: Respon
 
     if (event.hostCollegeId !== userCollegeId && event.targetCollegeId !== userCollegeId) {
       return res.status(403).json({ success: false, message: 'You are not authorized to approve proposals for this institution' });
+    }
+
+    // Part 4: Pending Chief Guest invitation blocks publishing
+    if (event.chiefGuest?.hasChiefGuest && !event.chiefGuest.isExternal && event.chiefGuest.invitationStatus === 'Pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot publish event while Chief Guest invitation is pending acceptance. The nominated Chief Guest must accept the invitation first.',
+      });
     }
 
     await Event.findByIdAndUpdate(id, {
@@ -685,7 +773,8 @@ export async function getStudentMyEvents(req: AuthenticatedRequest, res: Respons
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     const events = await Event.find({ creatorUserId: user._id }).sort({ createdAt: -1 }).exec();
-    return res.json({ success: true, events: events.map(enrichEvent) });
+    const enriched = events.map(enrichEvent);
+    return res.json({ success: true, events: enriched, proposals: enriched });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }

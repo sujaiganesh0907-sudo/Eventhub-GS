@@ -65,6 +65,9 @@ import {
   Trash2,
   Heart,
   Sparkles,
+  MoreVertical,
+  Download,
+  Bell,
 } from 'lucide-react';
 
 interface StudentProfilePageProps {
@@ -75,6 +78,32 @@ interface StudentProfilePageProps {
   onOpenAdminAccess?: (collegeId?: string) => void;
   onBack?: () => void;
 }
+
+const renderBioWithLinks = (bioText: string) => {
+  if (!bioText) return null;
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+  const parts = bioText.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      const href = part.startsWith('http') ? part : `https://${part}`;
+      return (
+        <a
+          key={index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-[var(--primary-color)] hover:underline inline-flex items-center gap-0.5 font-medium break-all"
+        >
+          {part}
+          <ExternalLink className="w-3 h-3 inline-block shrink-0 ml-0.5" />
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
 
 export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   onViewEvent,
@@ -123,6 +152,13 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const [selectedReg, setSelectedReg] = useState<IEventRegistration | null>(null);
   const [certToReshare, setCertToReshare] = useState<ICertificate | null>(null);
   const [certIdToVerify, setCertIdToVerify] = useState<string | null>(null);
+
+  // Registered event card 3-dot menu and reminder modal state (Part 14)
+  const [activeCardMenuId, setActiveCardMenuId] = useState<string | null>(null);
+  const [reminderModalReg, setReminderModalReg] = useState<IEventRegistration | null>(null);
+  const [reminderType, setReminderType] = useState<'1_day_before' | '3_hours_before' | '1_hour_before' | '30_mins_before'>('1_day_before');
+  const [savingReminder, setSavingReminder] = useState(false);
+  const [reminderSuccess, setReminderSuccess] = useState<string | null>(null);
 
   // Social Connections & Follow Modals
   const [socialModalType, setSocialModalType] = useState<'connections' | 'following' | 'followers' | null>(null);
@@ -619,6 +655,71 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
     }
   };
 
+  const handleDownloadTicket = (reg: IEventRegistration) => {
+    if (reg.qrCodeUrl) {
+      const link = document.createElement('a');
+      link.href = reg.qrCodeUrl;
+      link.download = `ticket-${reg.registrationId || 'event'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      setSelectedReg(reg);
+    }
+  };
+
+  const handleViewEventDetails = async (reg: IEventRegistration) => {
+    if (onViewEvent && reg.eventId) {
+      try {
+        const res = await api.get<any>(`/events/${reg.eventId}`);
+        if (res.success && res.event) {
+          onViewEvent(res.event);
+          return;
+        }
+      } catch {
+        // fallback
+      }
+    }
+    if (reg.eventId) {
+      window.location.href = `/events/${reg.eventId}`;
+    }
+  };
+
+  const handleShareRegisteredEvent = (reg: IEventRegistration) => {
+    const shareUrl = `${window.location.origin}/events/${reg.eventId}`;
+    if (navigator.share) {
+      navigator.share({
+        title: reg.eventTitle || 'Campus Event',
+        text: `Join me at ${reg.eventTitle || 'Campus Event'} on EVENTHUB!`,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Event link copied to clipboard!');
+    }
+  };
+
+  const handleSaveReminder = async () => {
+    if (!reminderModalReg) return;
+    try {
+      setSavingReminder(true);
+      await api.post('/reminders', {
+        eventId: reminderModalReg.eventId,
+        registrationId: reminderModalReg.registrationId,
+        reminderType,
+      });
+      setReminderSuccess('Reminder scheduled successfully! You will receive email and in-app alerts.');
+      setTimeout(() => {
+        setReminderSuccess(null);
+        setReminderModalReg(null);
+      }, 1600);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to schedule reminder');
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
   if (loading && !profile) {
     return (
       <div className="py-20 flex flex-col items-center justify-center space-y-3">
@@ -905,11 +1006,11 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             </div>
           )}
 
-          {/* Bio */}
+          {/* Bio (Part 12) */}
           {profile?.bio && (
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] pt-4 leading-relaxed">
-              {profile.bio}
-            </p>
+            <div className="text-xs sm:text-sm text-[var(--text-secondary)] pt-4 leading-relaxed whitespace-pre-line">
+              {renderBioWithLinks(profile.bio)}
+            </div>
           )}
 
           {/* Skills tags */}
@@ -1334,7 +1435,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   {registrations.map((reg) => (
                     <div
                       key={reg._id}
-                      className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3 flex flex-col justify-between"
+                      className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3 flex flex-col justify-between relative group hover:border-[var(--primary-color)]/40 transition-colors"
                     >
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -1360,14 +1461,111 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                       </div>
 
                       {isOwnProfile && (
-                        <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)]">
+                        <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)] relative">
                           <button
                             type="button"
                             onClick={() => setSelectedReg(reg)}
-                            className="grow px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-xs active:scale-95"
+                            className="grow px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-xs active:scale-95"
                           >
                             <Ticket className="w-3.5 h-3.5" /> View Ticket
                           </button>
+
+                          {/* 3-Dot Options Button with 5 Actions (Part 14) */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveCardMenuId(activeCardMenuId === reg._id ? null : reg._id);
+                              }}
+                              className="p-1.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+                              title="More Options"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {activeCardMenuId === reg._id && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveCardMenuId(null);
+                                  }}
+                                />
+                                <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-[var(--surface)] border border-[var(--border-color)] rounded-xl shadow-xl py-1.5 z-40 text-xs animate-in fade-in slide-in-from-bottom-1 divide-y divide-[var(--border-color)]">
+                                  <div className="py-0.5">
+                                    {/* Action 1: View Ticket */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveCardMenuId(null);
+                                        setSelectedReg(reg);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                                    >
+                                      <Ticket className="w-4 h-4 text-[var(--text-secondary)]" />
+                                      <span>View Ticket</span>
+                                    </button>
+
+                                    {/* Action 2: Download Ticket */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveCardMenuId(null);
+                                        handleDownloadTicket(reg);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                                    >
+                                      <Download className="w-4 h-4 text-[var(--text-secondary)]" />
+                                      <span>Download Ticket</span>
+                                    </button>
+                                  </div>
+
+                                  <div className="py-0.5">
+                                    {/* Action 3: View Event */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveCardMenuId(null);
+                                        handleViewEventDetails(reg);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                                    >
+                                      <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
+                                      <span>View Event</span>
+                                    </button>
+
+                                    {/* Action 4: Share Event */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveCardMenuId(null);
+                                        handleShareRegisteredEvent(reg);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                                    >
+                                      <Share2 className="w-4 h-4 text-[var(--text-secondary)]" />
+                                      <span>Share Event</span>
+                                    </button>
+
+                                    {/* Action 5: Add Reminder */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveCardMenuId(null);
+                                        setReminderModalReg(reg);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                                    >
+                                      <Bell className="w-4 h-4 text-[var(--text-secondary)]" />
+                                      <span>Add Reminder</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -2158,6 +2356,86 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           </div>
         </Modal>
       )}
+
+      {/* Event Reminder Modal (Part 14) */}
+      {reminderModalReg && (
+        <Modal
+          isOpen={!!reminderModalReg}
+          onClose={() => {
+            setReminderModalReg(null);
+            setReminderSuccess(null);
+          }}
+          title="Schedule Event Reminder"
+          subtitle={reminderModalReg.eventTitle || 'Campus Event'}
+          maxWidth="sm"
+        >
+          <div className="space-y-4 py-2">
+            {reminderSuccess ? (
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{reminderSuccess}</span>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  Choose when you want to receive automated email and notification alerts for this registered event:
+                </p>
+                <div className="space-y-2">
+                  {[
+                    { id: '1_day_before', label: '1 Day Before Event' },
+                    { id: '3_hours_before', label: '3 Hours Before Event' },
+                    { id: '1_hour_before', label: '1 Hour Before Event' },
+                    { id: '30_mins_before', label: '30 Minutes Before Event' },
+                  ].map((option) => (
+                    <label
+                      key={option.id}
+                      onClick={() => setReminderType(option.id as any)}
+                      className={`flex items-center justify-between p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                        reminderType === option.id
+                          ? 'border-[var(--primary-color)] bg-[var(--primary-color)]/5 text-[var(--primary-color)]'
+                          : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-primary)] hover:border-[var(--border-color)]'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      <input
+                        type="radio"
+                        name="reminderTypeOption"
+                        checked={reminderType === option.id}
+                        onChange={() => setReminderType(option.id as any)}
+                        className="accent-[var(--primary-color)] cursor-pointer"
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-color)]">
+                  <button
+                    type="button"
+                    onClick={() => setReminderModalReg(null)}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingReminder}
+                    onClick={handleSaveReminder}
+                    className="px-4 py-1.5 rounded-xl text-xs font-bold bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  >
+                    {savingReminder ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Bell className="w-3.5 h-3.5" />
+                    )}
+                    <span>Set Reminder</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+
       {/* Create Organizer Post Modal */}
       {isOrganizer && isOwnProfile && (
         <CreateOrganizerPostModal

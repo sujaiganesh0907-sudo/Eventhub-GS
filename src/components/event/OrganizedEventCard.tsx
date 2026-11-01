@@ -17,6 +17,7 @@ import {
   Award,
   Send,
 } from 'lucide-react';
+import { formatPrice } from '../../utils/currency';
 import { IEvent } from '../../types';
 import { ActionMenu, ActionMenuItem } from '../common/ActionMenu';
 import { DEFAULT_EVENT_POSTER } from '../../services/imageDefaults';
@@ -271,20 +272,27 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
                 event.isFree ? 'bg-emerald-600/90 text-white' : 'bg-indigo-600/90 text-white'
               }`}
             >
-              {event.isFree ? 'Free' : `$${event.registrationFee}`}
+              {formatPrice(event.registrationFee, event.isFree)}
             </span>
           </div>
         </div>
 
         {/* Content Body */}
-        <div className="p-4 space-y-2.5">
+        <div className="p-4 space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <h3
-              onClick={() => onViewEvent(event)}
-              className="text-sm sm:text-base font-bold text-[var(--text-primary)] hover:text-[var(--primary-color)] transition-colors cursor-pointer line-clamp-1 flex-1"
-            >
-              {event.title}
-            </h3>
+            <div className="flex-1 min-w-0">
+              <h3
+                onClick={() => onViewEvent(event)}
+                className="text-sm sm:text-base font-bold text-[var(--text-primary)] hover:text-[var(--primary-color)] transition-colors cursor-pointer line-clamp-1"
+              >
+                {event.title}
+              </h3>
+              {event.tagline && (
+                <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-0.5 font-medium">
+                  {event.tagline}
+                </p>
+              )}
+            </div>
 
             {/* Clean Professional 3-Dot Action Menu (Requirement 1) */}
             <ActionMenu

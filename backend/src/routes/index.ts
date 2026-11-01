@@ -225,6 +225,9 @@ apiRouter.get('/public/stats', getPublicStats);
 
 // 2. Events routes
 apiRouter.get('/events', getEvents);
+apiRouter.get('/events/my-proposals', authenticate, getStudentMyEvents);
+apiRouter.get('/events/my-events', authenticate, getStudentMyEvents);
+apiRouter.get('/events/my', authenticate, getStudentMyEvents);
 apiRouter.get('/events/:id', optionalAuthenticate, getEventById);
 apiRouter.post('/events', authenticate, createEvent);
 apiRouter.put('/events/:id', authenticate, updateEvent);
@@ -273,6 +276,7 @@ apiRouter.get('/attendance/event/:eventId/export', authenticate, downloadAttenda
 apiRouter.post('/certificates/issue', authenticate, issueCertificate);
 apiRouter.post('/certificates/student', authenticate, addStudentCertificate);
 apiRouter.get('/certificates/my-certificates', authenticate, getMyCertificates);
+apiRouter.get('/certificates/my', authenticate, getMyCertificates);
 apiRouter.get('/certificates/student/:studentId', getStudentCertificates);
 apiRouter.patch('/certificates/:id', authenticate, updateCertificate);
 apiRouter.post('/certificates/:id/retry-email', authenticate, retryCertificateEmail);

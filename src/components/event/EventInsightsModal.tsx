@@ -6,7 +6,7 @@ import {
   Eye,
   Users,
   CheckCircle2,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   BarChart3,
   Loader2,
@@ -144,13 +144,13 @@ export const EventInsightsModal: React.FC<EventInsightsModalProps> = ({
 
               <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]">
                 <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] flex items-center gap-1">
-                  <DollarSign className="w-3.5 h-3.5" /> Total Revenue
+                  <IndianRupee className="w-3.5 h-3.5" /> Total Revenue
                 </span>
                 <span className="text-xl font-black text-[var(--primary-color)] mt-1 block">
-                  ${insights.revenue ?? 0}
+                  ₹{insights.revenue ?? 0}
                 </span>
                 <span className="text-[10px] text-[var(--text-muted)] font-medium">
-                  {event.isFree ? 'Free Event' : `Fee: $${event.registrationFee}`}
+                  {event.isFree ? 'Free Event' : `Fee: ₹${event.registrationFee}`}
                 </span>
               </div>
             </div>

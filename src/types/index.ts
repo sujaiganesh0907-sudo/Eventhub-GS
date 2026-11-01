@@ -320,6 +320,18 @@ export interface IEvent {
       status?: 'Draft' | 'Active' | 'Archived';
     }>;
   };
+  chiefGuest?: {
+    hasChiefGuest: boolean;
+    isExternal: boolean;
+    organizerId?: string;
+    organizerName?: string;
+    invitationStatus?: 'Pending' | 'Accepted' | 'Rejected' | 'None';
+    externalName?: string;
+    externalDesignation?: string;
+    externalOrganization?: string;
+  };
+  hasGroup?: boolean;
+  groupId?: string;
   createdAt: string;
 }
 

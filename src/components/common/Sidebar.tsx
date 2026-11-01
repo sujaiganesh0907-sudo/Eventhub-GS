@@ -106,8 +106,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
         >
           {!collapsed && (
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-              Navigation
+            <span className="text-[11px] font-bold tracking-normal text-[var(--text-muted)]">
+              Welcome Back!
             </span>
           )}
           {onToggleCollapse && (

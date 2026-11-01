@@ -305,7 +305,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                           <span>{ev.eventDate}</span>
                           <span>·</span>
                           <span className={`font-bold ${ev.isFree ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                            {ev.isFree ? 'Free' : `$${ev.registrationFee}`}
+                            {ev.isFree ? 'FREE' : `₹${ev.registrationFee}`}
                           </span>
                         </p>
                       </div>

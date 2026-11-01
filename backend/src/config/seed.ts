@@ -10,7 +10,8 @@ import {
   Certificate,
   Connection,
   Follow,
-  Notification
+  Notification,
+  EventRegistration,
 } from '../models/index';
 import { syncPersistDBNow, dbState } from './db';
 
@@ -201,6 +202,137 @@ async function ensureUsernamesAndCollections() {
       status: 'Active',
       addedBy: 'System',
     });
+  }
+
+  // Ensure default collegiate events and Suresh registration exist if empty
+  const eventCount = await Event.countDocuments();
+  if (eventCount === 0) {
+    const ev1 = await Event.create({
+      _id: 'ev_hackapex_2026',
+      title: 'HackApex 2026: 36-Hour National Collegiate Hackathon',
+      tagline: 'Build next-generation distributed systems, AI tools, and campus apps in 36 hours.',
+      description: 'Join over 500 builders, designers, and systems engineers from across the nation in the annual HackApex hackathon. 36 hours of non-stop hacking, developer workshops, and direct mentorship.',
+      category: 'Hackathon',
+      eventType: 'Hackathon',
+      eventMode: 'Offline',
+      eventDate: '2026-11-20',
+      startTime: '09:00',
+      endTime: '21:00',
+      registrationDeadline: '2026-11-18T23:59:00.000Z',
+      reportingTime: '08:30 AM',
+      venue: 'Apex Central Innovation Labs & Auditorium',
+      hallRoom: 'Main Arena',
+      buildingBlock: 'Block A, 3rd Floor',
+      targetCollegeId: 'col_apex_tech_01',
+      hostCollegeId: 'col_apex_tech_01',
+      creatorRole: 'College',
+      creatorUserId: 'usr_col_apex_admin',
+      primaryCoordinator: {
+        name: 'Dr. Arthur Vance',
+        role: 'Faculty Lead',
+        phone: '+1 (555) 234-5678',
+        email: 'admin@apextech.edu',
+      },
+      capacity: 500,
+      registeredCount: 42,
+      isFree: false,
+      registrationFee: 250,
+      status: 'Published',
+      hasGroup: true,
+      poster: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1000&auto=format&fit=crop&q=80',
+    });
+
+    const ev2 = await Event.create({
+      _id: 'ev_robovanguard_2026',
+      title: 'RoboVanguard: Autonomous Robotics League 2026',
+      tagline: 'Compete with high-speed line followers, maze solvers, and battle bots on live tracks.',
+      description: 'State-wide autonomous robotics challenge testing computer vision, hardware reliability, and fast path algorithms across 3 competitive obstacle tracks.',
+      category: 'Robotics',
+      eventType: 'Competition',
+      eventMode: 'Offline',
+      eventDate: '2026-11-28',
+      startTime: '10:00',
+      endTime: '18:00',
+      registrationDeadline: '2026-11-26T23:59:00.000Z',
+      reportingTime: '09:30 AM',
+      venue: 'Robotics Arena Block C',
+      targetCollegeId: 'col_apex_tech_01',
+      hostCollegeId: 'col_apex_tech_01',
+      creatorRole: 'College',
+      creatorUserId: 'usr_col_apex_admin',
+      primaryCoordinator: {
+        name: 'Marcus Sterling',
+        role: 'Lab Coordinator',
+        phone: '+1 (555) 234-5678',
+        email: 'events@apextech.edu',
+      },
+      capacity: 200,
+      registeredCount: 18,
+      isFree: false,
+      registrationFee: 500,
+      status: 'Published',
+      hasGroup: true,
+      poster: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=1000&auto=format&fit=crop&q=80',
+    });
+
+    const ev3 = await Event.create({
+      _id: 'ev_designmaster_2026',
+      title: 'UI/UX Design Masterclass & Design Sprint 2026',
+      tagline: 'Learn zero-pill design, typography scale, and micro-interactions from industry pros.',
+      description: 'An interactive hands-on workshop guiding product designers through modern web design standards, high-contrast accessible palettes, and design systems.',
+      category: 'Design',
+      eventType: 'Workshop',
+      eventMode: 'Online',
+      eventDate: '2026-12-05',
+      startTime: '14:00',
+      endTime: '17:00',
+      registrationDeadline: '2026-12-03T23:59:00.000Z',
+      reportingTime: '01:45 PM',
+      venue: 'Virtual Live Stream Room',
+      targetCollegeId: 'col_horizon_univ_02',
+      hostCollegeId: 'col_horizon_univ_02',
+      creatorRole: 'Organizer',
+      creatorUserId: 'usr_organizer_apex',
+      primaryCoordinator: {
+        name: 'Design Guild Lead',
+        role: 'Creative Director',
+        phone: '+1 (555) 876-5432',
+        email: 'contact@nexuseng.edu',
+      },
+      capacity: 350,
+      registeredCount: 89,
+      isFree: true,
+      registrationFee: 0,
+      status: 'Published',
+      hasGroup: false,
+      poster: 'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=1000&auto=format&fit=crop&q=80',
+    });
+
+    const sureshProf = await StudentProfile.findOne({ email: 'sureshmanikkavasagam123@gmail.com' });
+    if (sureshUser && sureshProf) {
+      await EventRegistration.create({
+        _id: 'reg_suresh_hackapex_01',
+        registrationId: 'EH-2026-HA001',
+        eventId: ev1._id,
+        studentId: sureshProf._id,
+        studentUserId: sureshUser._id,
+        collegeId: 'col_apex_tech_01',
+        studentName: sureshProf.fullName,
+        studentEmail: sureshProf.email,
+        studentPhone: sureshProf.phoneNumber,
+        studentCollege: sureshProf.collegeName,
+        studentDepartment: sureshProf.department,
+        studentYear: sureshProf.yearOfStudy,
+        status: 'Confirmed',
+        paymentStatus: 'Completed',
+        registrationType: 'Individual',
+        isFree: false,
+        amount: 250,
+        customResponses: {},
+        qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=EH-2026-HA001',
+        attended: false,
+      });
+    }
   }
 
   syncPersistDBNow();
