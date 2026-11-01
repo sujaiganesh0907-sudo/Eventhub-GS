@@ -128,6 +128,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
   const [socialModalType, setSocialModalType] = useState<'connections' | 'following' | 'followers' | null>(null);
   const [connectedColleges, setConnectedColleges] = useState<ICollege[]>([]);
   const [followingStudents, setFollowingStudents] = useState<IStudentProfile[]>([]);
+  const [followingOrganizers, setFollowingOrganizers] = useState<any[]>([]);
   const [followerStudents, setFollowerStudents] = useState<IStudentProfile[]>([]);
   const [socialLoading, setSocialLoading] = useState(false);
 
@@ -464,7 +465,10 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         if (res.success) setConnectedColleges(res.colleges || []);
       } else if (type === 'following') {
         const res = await api.get<any>(`/social/student/${profile._id}/following`);
-        if (res.success) setFollowingStudents(res.following || []);
+        if (res.success) {
+          setFollowingStudents(res.following || []);
+          setFollowingOrganizers(res.followingOrganizers || []);
+        }
       } else if (type === 'followers') {
         const res = await api.get<any>(`/social/student/${profile._id}/followers`);
         if (res.success) setFollowerStudents(res.followers || []);
@@ -494,11 +498,41 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         // Re-load list if currently in following modal
         if (socialModalType === 'following' && profile) {
           const updatedRes = await api.get<any>(`/social/student/${profile._id}/following`);
-          if (updatedRes.success) setFollowingStudents(updatedRes.following || []);
+          if (updatedRes.success) {
+            setFollowingStudents(updatedRes.following || []);
+            setFollowingOrganizers(updatedRes.followingOrganizers || []);
+          }
         }
       }
     } catch (err: any) {
       alert(err.message || 'Failed to update follow status');
+    }
+  };
+
+  // Follow / Unfollow organizer toggle
+  const handleToggleFollowOrganizer = async (targetOrganizerId: string) => {
+    try {
+      const res = await api.post<any>('/social/organizer/follow', { targetOrganizerId });
+      if (res.success) {
+        setProfile((prev) => {
+          if (!prev) return prev;
+          const currentCount = prev.followingCount || 0;
+          return {
+            ...prev,
+            followingCount: res.following ? currentCount + 1 : Math.max(0, currentCount - 1),
+          };
+        });
+
+        if (socialModalType === 'following' && profile) {
+          const updatedRes = await api.get<any>(`/social/student/${profile._id}/following`);
+          if (updatedRes.success) {
+            setFollowingStudents(updatedRes.following || []);
+            setFollowingOrganizers(updatedRes.followingOrganizers || []);
+          }
+        }
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update organizer follow status');
     }
   };
 
@@ -666,10 +700,17 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1.5 mt-1">
-                  <Building2 className="w-3.5 h-3.5 text-[var(--primary-color)] shrink-0" />
-                  <span className="truncate">{profile?.collegeName || (isOrganizer ? 'Verified Organizer' : 'Apex Institute of Technology')}</span>
-                </p>
+                <div className="flex items-center gap-2 flex-wrap mt-1">
+                  <p className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[var(--primary-color)] shrink-0" />
+                    <span className="truncate">{profile?.collegeName || (isOrganizer ? 'Verified Organizer' : 'Apex Institute of Technology')}</span>
+                  </p>
+                  {!isOrganizer && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-[var(--border-color)]">
+                      Participant ID: EH-STU-{(profile?._id || user?._id || '1001').slice(-6).toUpperCase()}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -743,7 +784,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                       onClick={() => setIsCreatePostModalOpen(true)}
                       className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                     >
-                      <Plus className="w-4 h-4" /> + Create Post
+                      <Plus className="w-4 h-4" /> Create Post
                     </button>
                   ) : (
                     <button
@@ -839,8 +880,8 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                 <span className="font-bold text-indigo-600">{organizedEvents.length} Events</span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Followers</span>
-                <span className="font-bold text-emerald-600">{profile?.followersCount || 0} Followers</span>
+                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Verification</span>
+                <span className="font-bold text-emerald-600">Verified Organization</span>
               </div>
             </div>
           ) : (
@@ -1447,57 +1488,110 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
         </Modal>
       )}
 
-      {/* MODAL 2: Following Students */}
+      {/* MODAL 2: Following Students & Organizers */}
       {socialModalType === 'following' && (
         <Modal
           isOpen={true}
           onClose={() => setSocialModalType(null)}
           title="Following"
-          subtitle="Fellow students you follow across campuses"
+          subtitle="Fellow students and event organizers you follow across campuses"
           maxWidth="lg"
         >
-          <div className="space-y-3 py-2">
+          <div className="space-y-4 py-2">
             {socialLoading ? (
               <div className="py-12 flex justify-center">
                 <Loader2 className="w-6 h-6 animate-spin text-[var(--primary-color)]" />
               </div>
-            ) : followingStudents.length === 0 ? (
+            ) : followingStudents.length === 0 && followingOrganizers.length === 0 ? (
               <div className="py-10 text-center space-y-2 text-[var(--text-muted)]">
                 <Users className="w-8 h-8 mx-auto" />
-                <p className="text-xs font-semibold">Not following any students yet.</p>
+                <p className="text-xs font-semibold">Not following any students or organizers yet.</p>
               </div>
             ) : (
-              <div className="divide-y divide-[var(--border-color)]">
-                {followingStudents.map((stud) => (
-                  <div key={stud._id} className="py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={stud.profilePhoto || DEFAULT_STUDENT_AVATAR}
-                        alt={stud.fullName}
-                        className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
-                        onError={(e) => {
-                          (e.target as any).src = DEFAULT_STUDENT_AVATAR;
-                        }}
-                      />
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-[var(--text-primary)] truncate">
-                          {stud.fullName}
-                        </h4>
-                        <p className="text-[11px] text-[var(--text-muted)] truncate">
-                          {stud.collegeName} · {stud.department}
-                        </p>
-                      </div>
-                    </div>
+              <div className="space-y-4">
+                {/* Organizers Section */}
+                {followingOrganizers.length > 0 && (
+                  <div>
+                    <h5 className="text-[11px] uppercase tracking-wider font-bold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Followed Organizers ({followingOrganizers.length})</span>
+                    </h5>
+                    <div className="divide-y divide-[var(--border-color)] border border-[var(--border-color)] rounded-xl bg-[var(--surface-subtle)] px-3">
+                      {followingOrganizers.map((org) => (
+                        <div key={org._id} className="py-3 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={org.logo || DEFAULT_STUDENT_AVATAR}
+                              alt={org.organizationName}
+                              className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                              onError={(e) => {
+                                (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-[var(--text-primary)] truncate">
+                                {org.organizationName}
+                              </h4>
+                              <p className="text-[11px] text-[var(--text-muted)] truncate">
+                                {org.organizationType || 'Event Organizer'} · {org.location || 'Campus'}
+                              </p>
+                            </div>
+                          </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFollow(stud._id)}
-                      className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-red-500/10 hover:text-red-600 text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
-                    >
-                      <UserCheck className="w-3.5 h-3.5 text-emerald-500" /> Following
-                    </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFollowOrganizer(org._id)}
+                            className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-red-500/10 hover:text-red-600 text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+                          >
+                            <UserCheck className="w-3.5 h-3.5 text-emerald-500" /> Following
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {/* Students Section */}
+                {followingStudents.length > 0 && (
+                  <div>
+                    <h5 className="text-[11px] uppercase tracking-wider font-bold text-[var(--text-muted)] mb-2 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Fellow Students ({followingStudents.length})</span>
+                    </h5>
+                    <div className="divide-y divide-[var(--border-color)] border border-[var(--border-color)] rounded-xl bg-[var(--surface-subtle)] px-3">
+                      {followingStudents.map((stud) => (
+                        <div key={stud._id} className="py-3 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={stud.profilePhoto || DEFAULT_STUDENT_AVATAR}
+                              alt={stud.fullName}
+                              className="w-10 h-10 rounded-xl object-cover border border-[var(--border-color)] shrink-0"
+                              onError={(e) => {
+                                (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-[var(--text-primary)] truncate">
+                                {stud.fullName}
+                              </h4>
+                              <p className="text-[11px] text-[var(--text-muted)] truncate">
+                                {stud.collegeName} · {stud.department}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFollow(stud._id)}
+                            className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] hover:bg-red-500/10 hover:text-red-600 text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+                          >
+                            <UserCheck className="w-3.5 h-3.5 text-emerald-500" /> Following
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

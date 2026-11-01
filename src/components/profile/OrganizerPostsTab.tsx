@@ -175,22 +175,12 @@ export const OrganizerPostsTab: React.FC<OrganizerPostsTabProps> = ({
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
-      {/* Header with Title and Create Post Button */}
+      {/* Header with Title */}
       <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
         <div>
           <h3 className="text-sm font-bold text-[var(--text-primary)]">Organizer Posts & Announcements</h3>
           <p className="text-xs text-[var(--text-muted)]">Official event broadcasts, teasers, and updates</p>
         </div>
-        {isOwnOrganizer && (
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Create Post</span>
-          </button>
-        )}
       </div>
 
       {/* Organizer Post Quick Composer Card */}
@@ -391,7 +381,7 @@ export const OrganizerPostsTab: React.FC<OrganizerPostsTabProps> = ({
                 {/* Media Attachment */}
                 {post.mediaUrl && (
                   <div className="rounded-xl overflow-hidden border border-[var(--border-color)] bg-slate-900">
-                    {post.postType === 'Event Video' || post.mediaType === 'video' ? (
+                    {post.postType === 'Event Video' || post.postType === 'Video Post' || post.mediaType === 'video' ? (
                       <video
                         src={post.mediaUrl}
                         controls

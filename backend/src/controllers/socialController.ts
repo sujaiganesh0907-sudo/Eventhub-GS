@@ -287,3 +287,62 @@ export async function getSameCollegeStudents(req: AuthenticatedRequest, res: Res
     return res.status(500).json({ success: false, message: error.message });
   }
 }
+
+/**
+ * List & search event organizers with real followersCount & isFollowing status
+ * GET /api/organizers?search=...
+ */
+export async function getOrganizers(req: Request, res: Response) {
+  try {
+    const { search, limit = 50 } = req.query;
+    const authReq = req as AuthenticatedRequest;
+    const currentUserId = authReq.user?._id;
+
+    let organizers = await OrganizerProfile.find().sort({ followersCount: -1 }).limit(Number(limit)).exec();
+
+    if (search) {
+      const s = String(search).toLowerCase();
+      organizers = organizers.filter(
+        (o) =>
+          (o.organizationName && o.organizationName.toLowerCase().includes(s)) ||
+          (o.location && o.location.toLowerCase().includes(s)) ||
+          (o.officialEmail && o.officialEmail.toLowerCase().includes(s)) ||
+          (o.bio && o.bio.toLowerCase().includes(s)) ||
+          (o.organizationType && o.organizationType.toLowerCase().includes(s))
+      );
+    }
+
+    let followingOrgIds = new Set<string>();
+    if (currentUserId) {
+      const currentStudent = await StudentProfile.findOne({ userId: currentUserId });
+      const myFollowerId = currentStudent ? currentStudent._id : currentUserId;
+      const myFollows = await Follow.find({
+        followerStudentId: myFollowerId,
+        targetType: 'Organizer',
+      }).exec();
+      for (const f of myFollows) {
+        if (f.followingOrganizerId) followingOrgIds.add(f.followingOrganizerId);
+      }
+    }
+
+    const enriched = await Promise.all(
+      organizers.map(async (o) => {
+        const count = await Follow.countDocuments({ followingOrganizerId: o._id });
+        return {
+          ...o,
+          followersCount: count,
+          isFollowing: followingOrgIds.has(o._id),
+        };
+      })
+    );
+
+    return res.json({
+      success: true,
+      total: enriched.length,
+      organizers: enriched,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+

@@ -196,7 +196,7 @@ export const StudentHomePage: React.FC<StudentHomePageProps> = ({
                     className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer self-start sm:self-auto"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>+ Create Post</span>
+                    <span>Create Post</span>
                   </button>
                 )}
               </div>

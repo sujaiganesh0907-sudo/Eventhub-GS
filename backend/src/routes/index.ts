@@ -103,6 +103,7 @@ import {
   getStudentFollowing,
   getStudentConnectedColleges,
   getSameCollegeStudents,
+  getOrganizers,
 } from '../controllers/socialController';
 import {
   getPlacementPosts,
@@ -337,6 +338,7 @@ apiRouter.get('/social/student/:studentId/followers', getStudentFollowers);
 apiRouter.get('/social/student/:studentId/following', getStudentFollowing);
 apiRouter.get('/social/student/:studentId/connected-colleges', getStudentConnectedColleges);
 apiRouter.get('/students/same-college', authenticate, getSameCollegeStudents);
+apiRouter.get('/organizers', optionalAuthenticate, getOrganizers);
 
 // 10. Placement & Infrastructure Posts
 apiRouter.get('/placements', getPlacementPosts);

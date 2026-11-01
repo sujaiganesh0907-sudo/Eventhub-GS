@@ -276,7 +276,15 @@ export async function createOrganizerPost(req: AuthenticatedRequest, res: Respon
 
     const finalTitle = (title || '').trim() || (finalDescription.length > 50 ? `${finalDescription.slice(0, 47)}...` : finalDescription);
 
-    const allowedTypes = ['Event Announcement', 'Event Video', 'General Update', 'Update'];
+    const allowedTypes = [
+      'Event Announcement',
+      'Event Video',
+      'General Update',
+      'Update',
+      'Photo / Poster Post',
+      'Video Post',
+      'Text / Announcement Post',
+    ];
     const sanitizedType = allowedTypes.includes(postType)
       ? (postType === 'Update' ? 'General Update' : postType)
       : 'General Update';
@@ -286,6 +294,8 @@ export async function createOrganizerPost(req: AuthenticatedRequest, res: Respon
       const ev = await Event.findById(eventId);
       if (ev) resolvedEventTitle = ev.title;
     }
+
+    const isVideo = mediaType === 'video' || sanitizedType === 'Event Video' || sanitizedType === 'Video Post';
 
     const post = await OrganizerPost.create({
       organizerId: orgProfile?._id || user._id,
@@ -299,7 +309,7 @@ export async function createOrganizerPost(req: AuthenticatedRequest, res: Respon
       eventId: eventId || undefined,
       eventTitle: resolvedEventTitle || undefined,
       mediaUrl: mediaUrl || undefined,
-      mediaType: (mediaType === 'video' || sanitizedType === 'Event Video') ? 'video' : 'image',
+      mediaType: isVideo ? 'video' : 'image',
       tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       comments: [],
       likesCount: 0,

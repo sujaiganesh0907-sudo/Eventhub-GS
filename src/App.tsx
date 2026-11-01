@@ -595,9 +595,15 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {/* PARTNER COLLEGES TAB */}
+          {/* PARTNER COLLEGES & ORGANIZERS TAB */}
           {isAuthenticated && activeTab === 'colleges' && (
-            <CollegesListPage onSelectCollege={handleViewCollege} />
+            <CollegesListPage
+              onSelectCollege={handleViewCollege}
+              onSelectOrganizer={(orgId) => {
+                setSelectedStudentId(orgId);
+                navigateToTab('profile');
+              }}
+            />
           )}
 
           {/* STUDENT PROFILE (Self or Viewed Student) */}

@@ -584,7 +584,7 @@ export interface IOrganizerPost {
   title?: string;
   content: string;
   description?: string;
-  postType: 'Event Announcement' | 'Event Video' | 'General Update' | 'Update';
+  postType: 'Event Announcement' | 'Event Video' | 'General Update' | 'Update' | 'Photo / Poster Post' | 'Video Post' | 'Text / Announcement Post' | string;
   eventId?: string;
   eventTitle?: string;
   mediaUrl?: string;
