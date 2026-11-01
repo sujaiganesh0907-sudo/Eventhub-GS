@@ -761,9 +761,22 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                                             icon: Trash2,
                                             danger: true,
                                             onClick: async () => {
-                                              if (confirm(`Are you sure you want to delete "${ev.title}"?`)) {
-                                                await api.delete(`/events/${ev._id}`);
-                                                fetchData();
+                                              const hasRegistrations = (ev.registeredCount || 0) > 0;
+                                              if ((ev.status === 'Published' || hasRegistrations) && !ev.attendanceFinalized) {
+                                                alert('Event cannot be deleted until attendance has been fully completed and finalized at the Check-In Desk.');
+                                                return;
+                                              }
+                                              if (confirm(`Are you sure you want to delete "${ev.title}"? This will safely remove registrations, attendance, certificates, and event groups.`)) {
+                                                try {
+                                                  const res = await api.delete<any>(`/events/${ev._id}`);
+                                                  if (res && res.success === false) {
+                                                    alert(res.message || 'Failed to delete event');
+                                                  } else {
+                                                    fetchData();
+                                                  }
+                                                } catch (err: any) {
+                                                  alert(err?.response?.data?.message || err.message || 'Failed to delete event');
+                                                }
                                               }
                                             },
                                           },

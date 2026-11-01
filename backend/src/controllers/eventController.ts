@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { Event, College, StudentProfile, Notification, IEvent, ICollege, User, EventRegistration, RegistrationQR, Certificate, CollegeAdminMembership, OrganizerProfile } from '../models/index';
+import { Event, College, StudentProfile, Notification, IEvent, ICollege, User, EventRegistration, RegistrationQR, Certificate, CollegeAdminMembership, OrganizerProfile, Attendance, Reminder } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { updateEventGroupLifecycle } from '../services/eventGroupService';
-import { sendProposalSubmittedEmail, sendProposalDecisionEmail } from '../services/emailService';
+import { sendProposalSubmittedEmail, sendProposalDecisionEmail, sendEventUpdateEmail } from '../services/emailService';
 
 function calculateDeadlineStatus(deadlineStr: string): 'Open' | 'Closing Soon' | 'Closed' {
   if (!deadlineStr) return 'Open';
@@ -449,26 +449,63 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
       certificatesIssuedCount: 0,
     });
 
-    // Notify target college if student or organizer submitted proposal
+    // Notify all authorized approvers for the target college if student or organizer submitted proposal
     if ((user.role === 'Student' || user.role === 'Organizer') && initialStatus === 'Pending Approval') {
-      const collegeSuperAdmin = await User.findOne({
-        $or: [{ collegeId: hostCollegeId }, { _id: (await College.findById(hostCollegeId))?.superAdminId }],
-        role: 'College Super Admin',
-      });
-      if (collegeSuperAdmin) {
-        await Notification.create({
-          recipientUserId: collegeSuperAdmin._id,
-          type: 'EVENT_APPROVAL',
-          title: user.role === 'Organizer' ? 'New Organizer Event Proposal' : 'New Participant Event Proposal',
-          message: `${user.role === 'Organizer' ? `Organizer ${organizerOrgName || user.fullName}` : `Participant ${user.fullName}`} submitted a proposal "${event.title}" for your approval.`,
-          link: `/college/events?tab=requests`,
-          read: false,
-        });
+      const targetCol = await College.findById(hostCollegeId);
+      
+      // Collect all active college approvers (Super Admin and College Admins)
+      const approverMap = new Map<string, { id: string; email: string; name: string }>();
 
-        if (collegeSuperAdmin.email) {
+      // 1. Direct super admin from college record
+      if (targetCol?.superAdminId) {
+        const saUser = await User.findById(targetCol.superAdminId);
+        if (saUser && saUser.email) {
+          approverMap.set(String(saUser._id), { id: saUser._id, email: saUser.email, name: saUser.fullName || 'College Super Admin' });
+        }
+      }
+
+      // 2. Users with collegeId matching hostCollegeId
+      const collegeUsers = await User.find({
+        collegeId: hostCollegeId,
+        role: { $in: ['College Super Admin', 'College Admin'] },
+      }).exec();
+
+      for (const u of collegeUsers) {
+        if (u.email) {
+          approverMap.set(String(u._id), { id: u._id, email: u.email, name: u.fullName || 'College Admin' });
+        }
+      }
+
+      // 3. Active members in CollegeAdminMembership
+      const memberships = await CollegeAdminMembership.find({
+        collegeId: hostCollegeId,
+        status: 'Active',
+      }).exec();
+
+      for (const m of memberships) {
+        const u = await User.findById(m.userId);
+        if (u && u.email) {
+          approverMap.set(String(u._id), { id: u._id, email: u.email, name: u.fullName || m.name || 'College Admin' });
+        } else if (m.email) {
+          approverMap.set(String(m.userId || m._id), { id: m.userId || m._id, email: m.email, name: m.name || 'College Admin' });
+        }
+      }
+
+      // Send in-app notification and email to all identified approvers
+      for (const approver of approverMap.values()) {
+        try {
+          await Notification.create({
+            recipientUserId: approver.id,
+            type: 'EVENT_APPROVAL',
+            title: user.role === 'Organizer' ? 'New Organizer Event Proposal' : 'New Participant Event Proposal',
+            message: `${user.role === 'Organizer' ? `Organizer ${organizerOrgName || user.fullName}` : `Participant ${user.fullName}`} submitted a proposal "${event.title}" for your approval.`,
+            link: `/college/events?tab=requests`,
+            read: false,
+          });
+
           await sendProposalSubmittedEmail({
-            approverEmail: collegeSuperAdmin.email,
-            approverName: collegeSuperAdmin.fullName || 'College Administrator',
+            approverEmail: approver.email,
+            approverName: approver.name,
             collegeName: hostCollegeName,
             eventTitle: event.title,
             organizerName: user.role === 'Organizer' ? (organizerOrgName || user.fullName) : user.fullName,
@@ -478,6 +515,8 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
             category: event.category,
             proposalId: event._id,
           });
+        } catch (approverErr: any) {
+          console.warn(`[EVENT PROPOSAL] Failed to alert approver ${approver.email}:`, approverErr.message);
         }
       }
     }
@@ -1073,6 +1112,48 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
       await updateEventGroupLifecycle(id, nextStatus);
     }
 
+    // Notify registered attendees if event was cancelled or schedule/venue updated
+    const isCancelledNow = nextStatus === 'Cancelled' && event.status !== 'Cancelled';
+    const isDateOrTimeChanged = (body.eventDate && body.eventDate !== event.eventDate) || (body.startTime && body.startTime !== event.startTime);
+    const isVenueChanged = body.venue && body.venue !== event.venue;
+
+    if (isCancelledNow || isDateOrTimeChanged || isVenueChanged) {
+      const registrations = await EventRegistration.find({
+        eventId: id,
+        status: 'Confirmed',
+      }).exec();
+
+      for (const reg of registrations) {
+        try {
+          const updateMsg = isCancelledNow
+            ? `Notice: "${event.title}" has been cancelled by the host institution.`
+            : `Schedule / venue update for "${event.title}": Date: ${body.eventDate || event.eventDate}, Time: ${body.startTime || event.startTime}, Venue: ${body.venue || event.venue || 'Campus'}`;
+
+          await Notification.create({
+            recipientUserId: reg.studentUserId,
+            type: 'EVENT_UPDATE',
+            title: isCancelledNow ? 'Event Cancelled' : 'Event Schedule Updated',
+            message: updateMsg,
+            link: `/events/${id}`,
+            read: false,
+          });
+
+          if (reg.studentEmail) {
+            await sendEventUpdateEmail({
+              recipientEmail: reg.studentEmail,
+              studentName: reg.studentName || 'Student',
+              eventTitle: event.title,
+              updateMessage: updateMsg,
+              eventDate: body.eventDate || event.eventDate,
+              venue: body.venue || event.venue,
+            });
+          }
+        } catch (updateNotifyErr: any) {
+          console.warn(`[EVENT UPDATE] Failed to alert attendee ${reg.studentEmail}:`, updateNotifyErr.message);
+        }
+      }
+    }
+
     return res.json({
       success: true,
       message: 'Event updated successfully.',
@@ -1135,9 +1216,22 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
+    // Approver & Organizer requirement: Allow event deletion ONLY after attendance is fully completed
+    const hasRegistrationsOrPublished = event.status === 'Published' || ((event.registeredCount || 0) > 0);
+    if (hasRegistrationsOrPublished && !event.attendanceFinalized) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event cannot be deleted until attendance has been fully completed and finalized at the Check-In Desk.',
+      });
+    }
+
     await Event.findByIdAndDelete(id);
     await EventRegistration.deleteMany({ eventId: id });
     await RegistrationQR.deleteMany({ eventId: id });
+    await Attendance.deleteMany({ eventId: id });
+    await Certificate.deleteMany({ eventId: id });
+    await Reminder.deleteMany({ eventId: id });
+    await Notification.deleteMany({ link: `/events/${id}` });
 
     // PART 5C: Mark linked Event Group as Cancelled/Archived
     try {

@@ -10,6 +10,7 @@ import {
 import { AuthenticatedRequest } from '../middleware/auth';
 import { generateTicketQR } from '../services/qrService';
 import { addStudentToEventGroup } from '../services/eventGroupService';
+import { sendRegistrationSuccessEmail } from '../services/emailService';
 
 export async function createPaymentOrder(req: AuthenticatedRequest, res: Response) {
   try {
@@ -123,6 +124,24 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response) {
       link: `/student/ticket/${registration.registrationId}`,
       read: false,
     });
+
+    // Send confirmation email
+    try {
+      if (registration.studentEmail) {
+        await sendRegistrationSuccessEmail({
+          recipientEmail: registration.studentEmail,
+          studentName: registration.studentName || 'Student',
+          eventTitle: event.title,
+          collegeName: event.hostCollegeName || 'EventHub College',
+          registrationId: registration.registrationId,
+          eventDate: event.eventDate,
+          venue: event.venue || event.meetingPlatform || 'Campus',
+          ticketUrl: `/student/ticket/${registration.registrationId}`,
+        });
+      }
+    } catch (emailErr: any) {
+      console.warn('[PAYMENT] Could not send confirmation email:', emailErr.message);
+    }
 
     return res.json({
       success: true,

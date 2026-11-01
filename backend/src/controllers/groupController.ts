@@ -1016,8 +1016,24 @@ export async function deleteGroup(req: AuthenticatedRequest, res: Response) {
     const group = await Group.findById(id);
     if (!group) return res.status(404).json({ success: false, message: 'Group not found.' });
 
-    if (group.ownerId !== user._id) {
-      return res.status(403).json({ success: false, message: 'Only the Group Owner can delete this group.' });
+    const isOwner = group.ownerId === user._id;
+    let isCollegeAuthorized = false;
+    if (user.role === 'College Super Admin' || user.role === 'College Admin') {
+      const collegeIdToMatch = group.collegeId || group.hostCollegeId;
+      if (collegeIdToMatch && (user.collegeId === collegeIdToMatch || user.role === 'College Super Admin')) {
+        isCollegeAuthorized = true;
+      }
+    }
+    let isEventCreator = false;
+    if (group.eventId) {
+      const ev = await Event.findById(group.eventId);
+      if (ev && (ev.creatorUserId === user._id || (ev as any).createdBy === user._id)) {
+        isEventCreator = true;
+      }
+    }
+
+    if (!isOwner && !isCollegeAuthorized && !isEventCreator) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to delete this group.' });
     }
 
     await Group.findByIdAndDelete(id);
@@ -1031,6 +1047,9 @@ export async function deleteGroup(req: AuthenticatedRequest, res: Response) {
     for (const r of requests) {
       await GroupJoinRequest.findByIdAndDelete(r._id);
     }
+
+    // Safe cleanup of group messages
+    await Message.deleteMany({ groupId: id });
 
     return res.json({ success: true, message: 'Group deleted successfully.' });
   } catch (error: any) {
@@ -1159,7 +1178,7 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
     if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     const { id } = req.params;
-    const { text = '', attachmentUrl, attachmentType, isAnnouncement, sharedEventId } = req.body;
+    const { text = '', attachmentUrl, attachmentType, isAnnouncement, sharedEventId, poll } = req.body;
 
     const group = await Group.findById(id);
     if (!group) return res.status(404).json({ success: false, message: 'Group not found.' });
@@ -1232,17 +1251,36 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
       });
     }
 
-    // Reject empty message (allow if attachment or sharedEventId is present)
-    if (!text.trim() && !attachmentUrl && !sharedEventId) {
+    let pollData = undefined;
+    if (poll && poll.question && Array.isArray(poll.options)) {
+      pollData = {
+        id: 'poll_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        question: poll.question.trim(),
+        options: poll.options
+          .map((opt: any, index: number) => ({
+            id: typeof opt === 'string' ? `opt_${index}_${Date.now()}` : (opt.id || `opt_${index}`),
+            text: typeof opt === 'string' ? opt.trim() : (opt.text || '').trim(),
+            votes: [],
+          }))
+          .filter((o: any) => o.text.length > 0),
+        allowMultiple: Boolean(poll.allowMultiple),
+        totalVotes: 0,
+        closed: false,
+      };
+    }
+
+    // Reject empty message (allow if attachment, sharedEventId, or poll is present)
+    if (!text.trim() && !attachmentUrl && !sharedEventId && !pollData) {
       return res.status(400).json({
         success: false,
-        message: 'Message content, attachment, or shared event is required.',
+        message: 'Message content, poll, attachment, or shared event is required.',
       });
     }
 
     const profile = await StudentProfile.findOne({ userId: user._id });
     const senderName = profile?.fullName || user.fullName;
     const senderAvatar = profile?.profilePhoto || undefined;
+    const messageText = text.trim() || (pollData ? `📊 Poll: ${pollData.question}` : '');
 
     const message = await Message.create({
       conversationId: `group_${id}`,
@@ -1251,12 +1289,14 @@ export async function sendGroupMessage(req: AuthenticatedRequest, res: Response)
       senderName,
       senderRole: membership.role,
       senderAvatar,
-      text: text.trim(),
+      text: messageText,
       attachmentUrl: attachmentUrl || undefined,
       attachmentType: attachmentType || (attachmentUrl ? 'image' : undefined),
       sharedEventId: sharedEventId || undefined,
       isAnnouncement: Boolean(isAnnouncement),
       isPinned: false,
+      poll: pollData,
+      isPoll: Boolean(pollData),
       readBy: [user._id],
       deletedFor: [],
       deletedForUserIds: [],

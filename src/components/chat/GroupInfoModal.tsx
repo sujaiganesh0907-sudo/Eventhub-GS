@@ -47,6 +47,7 @@ interface GroupInfoModalProps {
   onOpenChatSettings?: () => void;
   onOpenEditGroup?: () => void;
   onLeaveGroup?: () => void;
+  onDeleteGroup?: () => void;
   onClearChat?: () => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -63,6 +64,7 @@ export const GroupInfoModal: React.FC<GroupInfoModalProps> = ({
   onOpenChatSettings,
   onOpenEditGroup,
   onLeaveGroup,
+  onDeleteGroup,
   onClearChat,
   showToast,
 }) => {
@@ -286,6 +288,32 @@ export const GroupInfoModal: React.FC<GroupInfoModalProps> = ({
                 className="px-3 py-1.5 rounded-xl border border-red-500/20 text-red-600 hover:bg-red-500/10 text-xs font-semibold cursor-pointer transition-all"
               >
                 Clear Chat
+              </button>
+            )}
+
+            {!isOwner && onLeaveGroup && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onLeaveGroup();
+                }}
+                className="px-3 py-1.5 rounded-xl border border-red-500/20 text-red-600 hover:bg-red-500/10 text-xs font-semibold cursor-pointer transition-all flex items-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Leave Group
+              </button>
+            )}
+
+            {isOwner && onDeleteGroup && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDeleteGroup();
+                }}
+                className="px-3 py-1.5 rounded-xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-600 text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete Group
               </button>
             )}
           </div>

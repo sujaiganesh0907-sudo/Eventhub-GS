@@ -51,6 +51,35 @@ export const OrganizerPostsTab: React.FC<OrganizerPostsTabProps> = ({
   const [selectedEventId, setSelectedEventId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [submittingCommentPostId, setSubmittingCommentPostId] = useState<string | null>(null);
+
+  const handleAddComment = async (postId: string) => {
+    const text = commentInputs[postId]?.trim();
+    if (!text) return;
+    try {
+      setSubmittingCommentPostId(postId);
+      const res = await api.post<any>(`/organizer/posts/${postId}/comment`, { text });
+      if (res.success && res.comment) {
+        setPosts((prev) =>
+          prev.map((p) => {
+            if (p._id !== postId) return p;
+            return {
+              ...p,
+              commentsCount: (p.commentsCount || 0) + 1,
+              comments: [...(p.comments || []), res.comment],
+            };
+          })
+        );
+        setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
+      }
+    } catch (err: any) {
+      console.error('Failed to post comment', err);
+    } finally {
+      setSubmittingCommentPostId(null);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -403,6 +432,21 @@ export const OrganizerPostsTab: React.FC<OrganizerPostsTabProps> = ({
                   </div>
                 )}
 
+                {/* Tags */}
+                {post.tags && post.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {post.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                      >
+                        <Tag className="w-2.5 h-2.5" />
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {/* Action Buttons: Like, Comment, Share */}
                 <div className="flex items-center gap-4 pt-2 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)]">
                   <button
@@ -416,10 +460,18 @@ export const OrganizerPostsTab: React.FC<OrganizerPostsTabProps> = ({
                     <span>{post.likesCount || 0}</span>
                   </button>
 
-                  <div className="flex items-center gap-1.5 font-semibold">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenCommentsPostId(openCommentsPostId === post._id ? null : post._id)
+                    }
+                    className={`flex items-center gap-1.5 font-semibold transition-colors cursor-pointer ${
+                      openCommentsPostId === post._id ? 'text-indigo-600 dark:text-indigo-400' : 'hover:text-indigo-600'
+                    }`}
+                  >
                     <MessageSquare className="w-4 h-4" />
                     <span>{post.commentsCount || 0}</span>
-                  </div>
+                  </button>
 
                   <button
                     type="button"
@@ -441,6 +493,96 @@ export const OrganizerPostsTab: React.FC<OrganizerPostsTabProps> = ({
                     <span>Share</span>
                   </button>
                 </div>
+
+                {/* Comments Section */}
+                {openCommentsPostId === post._id && (
+                  <div className="pt-3 border-t border-[var(--border-color)] space-y-3 animate-in fade-in duration-200">
+                    <h5 className="text-xs font-bold text-[var(--text-primary)]">
+                      Comments ({post.comments?.length || post.commentsCount || 0})
+                    </h5>
+
+                    {/* Existing Comments */}
+                    {post.comments && post.comments.length > 0 ? (
+                      <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                        {post.comments.map((c) => (
+                          <div
+                            key={c.id}
+                            className="p-2.5 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] space-y-1 text-xs"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={c.userAvatar || DEFAULT_STUDENT_AVATAR}
+                                  alt={c.userName}
+                                  className="w-5 h-5 rounded-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as any).src = DEFAULT_STUDENT_AVATAR;
+                                  }}
+                                />
+                                <span className="font-bold text-[var(--text-primary)]">
+                                  {c.userName}
+                                </span>
+                                {c.userRole && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded-xs bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border-color)]">
+                                    {c.userRole}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-[var(--text-muted)]">
+                                {new Date(c.createdAt).toLocaleDateString([], {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-[var(--text-secondary)] pl-7 text-xs leading-relaxed">
+                              {c.text}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-[var(--text-muted)] italic">
+                        No comments yet. Start the conversation!
+                      </p>
+                    )}
+
+                    {/* Comment Input */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="text"
+                        value={commentInputs[post._id] || ''}
+                        onChange={(e) =>
+                          setCommentInputs((prev) => ({ ...prev, [post._id]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddComment(post._id);
+                          }
+                        }}
+                        placeholder="Write a comment..."
+                        className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] focus:bg-[var(--surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden focus:border-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        disabled={
+                          !commentInputs[post._id]?.trim() ||
+                          submittingCommentPostId === post._id
+                        }
+                        onClick={() => handleAddComment(post._id)}
+                        className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                        title="Send Comment"
+                      >
+                        {submittingCommentPostId === post._id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

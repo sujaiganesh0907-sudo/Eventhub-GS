@@ -117,6 +117,7 @@ import {
   createOrganizerPost,
   deleteOrganizerPost,
   toggleLikeOrganizerPost,
+  addCommentToOrganizerPost,
 } from '../controllers/postController';
 import {
   getCollegeAdmins,
@@ -162,6 +163,7 @@ import {
   deleteConversation,
   toggleMuteConversation,
   getUnreadMessagesCount,
+  votePoll,
 } from '../controllers/messageController';
 import {
   createGroup,
@@ -352,6 +354,7 @@ apiRouter.get('/organizer/posts', getOrganizerPosts);
 apiRouter.post('/organizer/posts', authenticate, createOrganizerPost);
 apiRouter.delete('/organizer/posts/:id', authenticate, deleteOrganizerPost);
 apiRouter.post('/organizer/posts/:id/like', authenticate, toggleLikeOrganizerPost);
+apiRouter.post('/organizer/posts/:id/comment', authenticate, addCommentToOrganizerPost);
 
 // 11. Admin Management, Invitations & Activity
 apiRouter.get('/admins', authenticate, getCollegeAdmins);
@@ -398,6 +401,7 @@ apiRouter.post('/messages/conversations/:id', authenticate, sendMessage);
 apiRouter.delete('/messages/:id', authenticate, deleteMessage);
 apiRouter.post('/messages/:id/delete-for-me', authenticate, deleteMessageForMe);
 apiRouter.post('/messages/:id/delete-for-everyone', authenticate, deleteMessageForEveryone);
+apiRouter.post('/messages/:id/poll/vote', authenticate, votePoll);
 apiRouter.delete('/messages/conversations/:id', authenticate, deleteConversation);
 apiRouter.post('/messages/conversations/:id/mute', authenticate, toggleMuteConversation);
 

@@ -10,7 +10,7 @@ import {
   OtpVerification,
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { sendOtpEmail } from '../services/emailService';
+import { sendOtpEmail, sendAdminInvitationEmail } from '../services/emailService';
 
 function generate6DigitOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -293,6 +293,21 @@ export async function inviteCollegeAdmin(req: AuthenticatedRequest, res: Respons
       },
       read: false,
     });
+
+    // Send email invitation
+    try {
+      if (targetUser.email) {
+        await sendAdminInvitationEmail({
+          recipientEmail: targetUser.email,
+          recipientName: targetUser.fullName || 'Admin Invitee',
+          collegeName: college.name,
+          invitedByName: user.fullName || 'College Super Admin',
+          permissions,
+        });
+      }
+    } catch (inviteErr: any) {
+      console.warn('[ADMIN] Could not dispatch admin invitation email:', inviteErr.message);
+    }
 
     // Log super admin action
     await logAdminActivityHelper({

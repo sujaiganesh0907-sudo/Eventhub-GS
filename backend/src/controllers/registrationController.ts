@@ -16,6 +16,7 @@ import {
   addStudentToEventGroup,
   removeStudentFromEventGroup,
 } from '../services/eventGroupService';
+import { sendRegistrationSuccessEmail } from '../services/emailService';
 
 export async function registerForEvent(req: AuthenticatedRequest, res: Response) {
   try {
@@ -186,6 +187,22 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
           link: `/college/events?eventId=${event._id}&tab=registrations`,
           read: false,
         });
+      }
+
+      // Send confirmation email to student
+      try {
+        await sendRegistrationSuccessEmail({
+          recipientEmail: studentEmail,
+          studentName,
+          eventTitle: event.title,
+          collegeName: event.hostCollegeName || 'EventHub College',
+          registrationId,
+          eventDate: event.eventDate,
+          venue: event.venue || event.meetingPlatform || 'Campus',
+          ticketUrl: `/student/ticket/${registrationId}`,
+        });
+      } catch (emailErr: any) {
+        console.warn('[REGISTRATION] Could not send confirmation email:', emailErr.message);
       }
 
       return res.status(201).json({

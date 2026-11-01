@@ -890,66 +890,68 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
             </div>
           )}
 
-          {/* SECTION: COMPACT RESUME (Requirements 9, 10, 11, 12, 13) */}
-          <div className="pt-3 mt-1 border-t border-[var(--border-color)]">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] flex items-center gap-1.5 shrink-0">
-                  <FileText className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                  Resume
-                </span>
-                {profile?.resumeFileUrl && (
-                  <span
-                    className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[150px] sm:max-w-xs"
-                    title={profile.resumeOriginalName || 'Resume Document'}
-                  >
-                    {profile.resumeOriginalName || 'Resume Document'}
+          {/* SECTION: COMPACT RESUME (Participant only, hidden for Organizer) */}
+          {!isOrganizer && (
+            <div className="pt-3 mt-1 border-t border-[var(--border-color)]">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] flex items-center gap-1.5 shrink-0">
+                    <FileText className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                    Resume
                   </span>
-                )}
-                {profile?.resumeFileUrl && (
-                  <span className="px-1.5 py-0.5 rounded-md bg-[var(--primary-color)]/10 text-[var(--primary-color)] font-bold text-[10px] uppercase shrink-0">
-                    {profile.resumeFileType || 'PDF'}
-                  </span>
-                )}
-              </div>
-
-              {profile?.resumeFileUrl ? (
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowResumeModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>View Resume</span>
-                  </button>
-
-                  {isOwnProfile && (
-                    <button
-                      type="button"
-                      onClick={() => setShowDeleteResumeConfirm(true)}
-                      className="px-3 py-1.5 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                      title="Delete Resume"
+                  {profile?.resumeFileUrl && (
+                    <span
+                      className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[150px] sm:max-w-xs"
+                      title={profile.resumeOriginalName || 'Resume Document'}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete Resume</span>
-                    </button>
+                      {profile.resumeOriginalName || 'Resume Document'}
+                    </span>
+                  )}
+                  {profile?.resumeFileUrl && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-[var(--primary-color)]/10 text-[var(--primary-color)] font-bold text-[10px] uppercase shrink-0">
+                      {profile.resumeFileType || 'PDF'}
+                    </span>
                   )}
                 </div>
-              ) : isOwnProfile ? (
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(true)}
-                  className="px-3 py-1.5 rounded-xl border border-dashed border-[var(--primary-color)]/50 hover:border-[var(--primary-color)] text-[var(--primary-color)] hover:bg-[var(--primary-color)]/5 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Resume</span>
-                </button>
-              ) : (
-                <span className="text-xs text-[var(--text-muted)] italic">No resume uploaded</span>
-              )}
+
+                {profile?.resumeFileUrl ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowResumeModal(true)}
+                      className="px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Resume</span>
+                    </button>
+
+                    {isOwnProfile && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteResumeConfirm(true)}
+                        className="px-3 py-1.5 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                        title="Delete Resume"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Resume</span>
+                      </button>
+                    )}
+                  </div>
+                ) : isOwnProfile ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(true)}
+                    className="px-3 py-1.5 rounded-xl border border-dashed border-[var(--primary-color)]/50 hover:border-[var(--primary-color)] text-[var(--primary-color)] hover:bg-[var(--primary-color)]/5 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Resume</span>
+                  </button>
+                ) : (
+                  <span className="text-xs text-[var(--text-muted)] italic">No resume uploaded</span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -978,21 +980,6 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
           >
             <Calendar className="w-4 h-4" />
             Organized Events ({organizedEvents.length})
-          </button>
-
-          <button
-            onClick={() => {
-              setOrganizerActiveTab('followers');
-              openSocialModal('followers');
-            }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              organizerActiveTab === 'followers'
-                ? 'bg-[var(--primary-color)] text-[var(--primary-text)] shadow-xs'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Followers ({profile?.followersCount || 0})
           </button>
         </div>
       ) : (
@@ -1074,23 +1061,6 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   ))}
                 </div>
               )}
-            </div>
-          )}
-
-          {organizerActiveTab === 'followers' && (
-            <div className="p-8 text-center border border-[var(--border-color)] rounded-2xl bg-[var(--surface)] space-y-3">
-              <Users className="w-8 h-8 mx-auto text-indigo-600" />
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Community Followers</h3>
-              <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
-                {profile?.followersCount || 0} participants and peers are following {profile?.fullName} for event announcements and updates.
-              </p>
-              <button
-                type="button"
-                onClick={() => openSocialModal('followers')}
-                className="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors cursor-pointer shadow-xs active:scale-95"
-              >
-                View Full Followers List
-              </button>
             </div>
           )}
         </div>

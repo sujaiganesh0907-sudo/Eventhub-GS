@@ -1,6 +1,7 @@
 import { Response } from 'express';
-import { Reminder, Event, Notification, StudentProfile, EventRegistration } from '../models/index';
+import { Reminder, Event, Notification, StudentProfile, EventRegistration, User } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { sendReminderEmail } from '../services/emailService';
 
 export async function createReminder(req: AuthenticatedRequest, res: Response) {
   try {
@@ -206,6 +207,25 @@ export async function processDueReminders() {
               isDueAlert: true,
             },
           });
+
+          // Dispatch email notification
+          try {
+            const studentUser = await User.findById(rem.studentUserId);
+            const studentProf = await StudentProfile.findOne({ userId: rem.studentUserId });
+            const targetEmail = studentProf?.email || studentUser?.email;
+            if (targetEmail) {
+              await sendReminderEmail({
+                recipientEmail: targetEmail,
+                studentName: studentProf?.fullName || studentUser?.fullName || 'Student',
+                eventTitle: event.title,
+                eventDate: event.eventDate,
+                startTime: event.startTime,
+                venue: event.venue || event.meetingPlatform || 'Campus',
+              });
+            }
+          } catch (remMailErr: any) {
+            console.warn('[REMINDER SERVICE] Could not dispatch reminder email:', remMailErr.message);
+          }
         }
 
         await Reminder.findByIdAndUpdate(rem._id, {

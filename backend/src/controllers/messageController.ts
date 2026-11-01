@@ -12,6 +12,7 @@ import {
   Notification,
   CollegeAdminMembership,
   GroupMembership,
+  Group,
   IConversationParticipant,
   OrganizerProfile,
 } from '../models/index';
@@ -645,10 +646,29 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
       sharedEventId,
       sharedStudentId,
       sharedCollegeId,
+      poll,
     } = req.body;
 
-    if (!text.trim() && !attachmentUrl && !sharedEventId && !sharedStudentId && !sharedCollegeId) {
-      return res.status(400).json({ success: false, message: 'Message content or attachment is required.' });
+    let pollData = undefined;
+    if (poll && poll.question && Array.isArray(poll.options)) {
+      pollData = {
+        id: 'poll_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        question: poll.question.trim(),
+        options: poll.options
+          .map((opt: any, index: number) => ({
+            id: typeof opt === 'string' ? `opt_${index}_${Date.now()}` : (opt.id || `opt_${index}`),
+            text: typeof opt === 'string' ? opt.trim() : (opt.text || '').trim(),
+            votes: [],
+          }))
+          .filter((o: any) => o.text.length > 0),
+        allowMultiple: Boolean(poll.allowMultiple),
+        totalVotes: 0,
+        closed: false,
+      };
+    }
+
+    if (!text.trim() && !attachmentUrl && !sharedEventId && !sharedStudentId && !sharedCollegeId && !pollData) {
+      return res.status(400).json({ success: false, message: 'Message content, poll, or attachment is required.' });
     }
 
     const conv = await Conversation.findById(id);
@@ -697,6 +717,8 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
     const senderAvatar = senderDetails?.avatar || undefined;
     const isSendingAsCollege = Boolean(senderDetails?.collegeId);
 
+    const messageText = text.trim() || (pollData ? `📊 Poll: ${pollData.question}` : '');
+
     // Save message with all required fields
     const message = await Message.create({
       conversationId: id,
@@ -706,12 +728,14 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
       senderAvatar,
       collegeId: senderDetails?.collegeId || undefined,
       sentByAdminId: isSendingAsCollege ? user._id : undefined,
-      text: text.trim(),
+      text: messageText,
       attachmentUrl: attachmentUrl || undefined,
       attachmentType: attachmentType || (attachmentUrl ? 'image' : undefined),
       sharedEventId: sharedEventId || undefined,
       sharedStudentId: sharedStudentId || undefined,
       sharedCollegeId: sharedCollegeId || undefined,
+      poll: pollData,
+      isPoll: Boolean(pollData),
       readBy: [user._id],
       deletedFor: [],
       deletedForUserIds: [],
@@ -719,12 +743,13 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
     });
 
     // Update conversation lastMessage & unhide for all
-    let previewText = text.trim();
+    let previewText = messageText;
     if (!previewText) {
       if (sharedEventId) previewText = 'Shared an event';
       else if (sharedStudentId) previewText = 'Shared a student profile';
       else if (sharedCollegeId) previewText = 'Shared a college profile';
       else if (attachmentUrl) previewText = 'Sent an attachment';
+      else if (pollData) previewText = `📊 Poll: ${pollData.question}`;
     }
 
     await Conversation.findByIdAndUpdate(id, {
@@ -814,11 +839,29 @@ export async function deleteMessage(req: AuthenticatedRequest, res: Response) {
     const isForEveryone = forEveryone === 'true' || (forEveryone as any) === true;
 
     if (isForEveryone) {
-      // REQUIREMENT 14 & 15: Only original sender may delete for everyone
-      if (message.senderId !== user._id) {
+      let canDeleteEveryone = message.senderId === user._id;
+      if (!canDeleteEveryone && message.groupId) {
+        const group = await Group.findById(message.groupId);
+        if (group) {
+          if (group.ownerId === user._id) {
+            canDeleteEveryone = true;
+          } else {
+            const mem = await GroupMembership.findOne({ groupId: message.groupId, userId: user._id, status: 'Active' });
+            if (mem && (mem.role === 'Owner' || mem.role === 'Admin')) {
+              canDeleteEveryone = true;
+            } else if (group.collegeId) {
+              canDeleteEveryone = await checkManageMessagesPermission(user, group.collegeId);
+            }
+          }
+        }
+      } else if (!canDeleteEveryone && conv && conv.collegeId) {
+        canDeleteEveryone = await checkManageMessagesPermission(user, conv.collegeId);
+      }
+
+      if (!canDeleteEveryone) {
         return res.status(403).json({
           success: false,
-          message: 'You can only delete your own messages for everyone.',
+          message: 'You can only delete your own messages for everyone, or messages in channels you moderate.',
         });
       }
 
@@ -995,5 +1038,92 @@ export async function getUnreadMessagesCount(req: AuthenticatedRequest, res: Res
     return res.json({ success: true, unreadCount: count });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * POST /api/messages/:id/poll/vote
+ * Cast or update vote on a poll inside a message
+ */
+export async function votePoll(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { id } = req.params;
+    const { optionId } = req.body;
+
+    if (!optionId) {
+      return res.status(400).json({ success: false, message: 'optionId is required' });
+    }
+
+    const message = await Message.findById(id);
+    if (!message || !message.poll) {
+      return res.status(404).json({ success: false, message: 'Poll message not found' });
+    }
+
+    if (message.poll.closed) {
+      return res.status(400).json({ success: false, message: 'This poll has ended' });
+    }
+
+    // Verify membership
+    let isAuthorized = false;
+    if (message.groupId) {
+      const membership = await GroupMembership.findOne({
+        groupId: message.groupId,
+        userId: user._id,
+        status: 'Active',
+      });
+      if (membership) isAuthorized = true;
+    } else {
+      const conv = await Conversation.findById(message.conversationId);
+      if (conv && conv.participants.includes(user._id)) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to vote in this conversation' });
+    }
+
+    const poll = { ...message.poll };
+    const allowMultiple = Boolean(poll.allowMultiple);
+
+    if (allowMultiple) {
+      poll.options = poll.options.map((opt) => {
+        if (opt.id === optionId) {
+          const hasVoted = opt.votes.includes(user._id);
+          return {
+            ...opt,
+            votes: hasVoted ? opt.votes.filter((uid) => uid !== user._id) : [...opt.votes, user._id],
+          };
+        }
+        return opt;
+      });
+    } else {
+      poll.options = poll.options.map((opt) => {
+        if (opt.id === optionId) {
+          const hasVoted = opt.votes.includes(user._id);
+          return {
+            ...opt,
+            votes: hasVoted ? [] : [user._id],
+          };
+        }
+        return {
+          ...opt,
+          votes: opt.votes.filter((uid) => uid !== user._id),
+        };
+      });
+    }
+
+    const allVoters = new Set<string>();
+    poll.options.forEach((opt) => opt.votes.forEach((uid) => allVoters.add(uid)));
+    poll.totalVotes = allVoters.size;
+
+    await Message.findByIdAndUpdate(id, { poll });
+
+    return res.json({ success: true, message: 'Vote recorded', poll });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 }

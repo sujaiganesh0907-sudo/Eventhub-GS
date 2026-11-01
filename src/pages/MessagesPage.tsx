@@ -28,6 +28,7 @@ import {
   Edit3,
   Shield,
   Lock,
+  BarChart2,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -50,6 +51,8 @@ import { GroupInfoModal } from '../components/chat/GroupInfoModal';
 import { ChatSettingsModal } from '../components/chat/ChatSettingsModal';
 import { EditGroupModal } from '../components/chat/EditGroupModal';
 import { ChatEmptyIllustration } from '../components/chat/ChatEmptyIllustration';
+import { CreatePollModal } from '../components/chat/CreatePollModal';
+import { PollBubble } from '../components/chat/PollBubble';
 
 interface MessagesPageProps {
   initialConversationId?: string | null;
@@ -153,6 +156,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     isOpen: false,
     type: 'for-me',
   });
+
+  const [showCreatePollModal, setShowCreatePollModal] = useState(false);
+  const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState(false);
 
   // In-App Toast Feedback
   const [toast, setToast] = useState<{
@@ -623,6 +630,57 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       showToast(err.message || 'Error clearing chat.', 'error');
     } finally {
       setClearingChat(false);
+    }
+  };
+
+  const handleCreatePoll = async (pollData: { question: string; options: string[]; allowMultiple: boolean }) => {
+    try {
+      setSending(true);
+      if (activeTab === 'groups' && selectedGroupId) {
+        const res = await api.post<any>(`/groups/${selectedGroupId}/messages`, { poll: pollData });
+        if (res.success && res.message) {
+          setMessages((prev) => [...prev, res.message]);
+          showToast('Poll created in group chat!');
+          setTimeout(scrollToBottom, 100);
+        } else {
+          showToast(res.message || 'Failed to create poll.', 'error');
+        }
+      } else if (selectedConvId) {
+        const res = await api.post<any>(`/messages/conversations/${selectedConvId}`, { poll: pollData });
+        if (res.success && res.message) {
+          setMessages((prev) => [...prev, res.message]);
+          showToast('Poll sent in conversation!');
+          setTimeout(scrollToBottom, 100);
+        } else {
+          showToast(res.message || 'Failed to create poll.', 'error');
+        }
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error creating poll.', 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!activeGroup) return;
+    try {
+      setDeletingGroup(true);
+      const res = await api.delete<any>(`/groups/${activeGroup._id}`);
+      if (res.success) {
+        showToast('Group deleted successfully.');
+        setGroups((prev) => prev.filter((g) => g._id !== activeGroup._id));
+        setSelectedGroupId(null);
+        setActiveGroup(null);
+        setShowDeleteGroupConfirm(false);
+        setShowGroupInfoModal(false);
+      } else {
+        showToast(res.message || 'Failed to delete group.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error deleting group.', 'error');
+    } finally {
+      setDeletingGroup(false);
     }
   };
 
@@ -1257,7 +1315,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                         {/* Message Bubble */}
                         <div
-                          className={`rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-1.5 ${
+                          className={`rounded-2xl px-3 py-1.5 shadow-2xs space-y-1 ${
                             isAnnouncement
                               ? 'bg-amber-500/15 border-2 border-amber-500 text-[var(--text-primary)] rounded-xl'
                               : isMine
@@ -1267,8 +1325,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         >
                           {/* Announcement banner tag */}
                           {isAnnouncement && (
-                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-700 mb-1">
-                              <Megaphone className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1">
+                              <Megaphone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                               <span>Official Announcement</span>
                             </div>
                           )}
@@ -1291,10 +1349,26 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                             <p className="text-xs italic opacity-75">This message was deleted</p>
                           ) : (
                             <>
-                              {m.text && (
-                                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
-                                  {m.text}
-                                </p>
+                              {m.poll ? (
+                                <PollBubble
+                                  messageId={m._id}
+                                  poll={m.poll}
+                                  currentUserId={user?._id || ''}
+                                  isMine={isMine}
+                                  onPollUpdated={(updatedPoll) => {
+                                    setMessages((prev) =>
+                                      prev.map((msg) =>
+                                        msg._id === m._id ? { ...msg, poll: updatedPoll } : msg
+                                      )
+                                    );
+                                  }}
+                                />
+                              ) : (
+                                m.text && (
+                                  <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                    {m.text}
+                                  </p>
+                                )
                               )}
 
                               {m.attachmentUrl && (
@@ -1441,6 +1515,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     title="Attach Image"
                   >
                     <Image className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePollModal(true)}
+                    className="p-2.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer shrink-0"
+                    title="Create Poll"
+                  >
+                    <BarChart2 className="w-4 h-4" />
                   </button>
 
                   {/* Announcement Mode Toggle for Owner/Admin */}
@@ -1624,7 +1707,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         )}
 
                         <div
-                          className={`rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-1.5 ${
+                          className={`rounded-2xl px-3 py-1.5 shadow-2xs space-y-1 ${
                             isMine
                               ? 'bg-[var(--primary-color)] text-[var(--primary-text)] rounded-br-xs'
                               : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-bl-xs'
@@ -1634,10 +1717,26 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                             <p className="text-xs italic opacity-75">This message was deleted</p>
                           ) : (
                             <>
-                              {m.text && (
-                                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
-                                  {m.text}
-                                </p>
+                              {m.poll ? (
+                                <PollBubble
+                                  messageId={m._id}
+                                  poll={m.poll}
+                                  currentUserId={user?._id || ''}
+                                  isMine={isMine}
+                                  onPollUpdated={(updatedPoll) => {
+                                    setMessages((prev) =>
+                                      prev.map((msg) =>
+                                        msg._id === m._id ? { ...msg, poll: updatedPoll } : msg
+                                      )
+                                    );
+                                  }}
+                                />
+                              ) : (
+                                m.text && (
+                                  <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                    {m.text}
+                                  </p>
+                                )
                               )}
                               {m.attachmentUrl && (
                                 <div className="rounded-xl overflow-hidden border border-black/10 mt-1 max-h-60 bg-black/5">
@@ -1746,6 +1845,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   <Image className="w-4 h-4" />
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePollModal(true)}
+                  className="p-2.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer shrink-0"
+                  title="Create Poll"
+                >
+                  <BarChart2 className="w-4 h-4" />
+                </button>
+
                 <input
                   type="text"
                   value={inputText}
@@ -1831,6 +1939,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               type: 'leave-group',
               groupId: activeGroup._id,
             });
+          }}
+          onDeleteGroup={() => {
+            setShowGroupInfoModal(false);
+            setShowDeleteGroupConfirm(true);
           }}
           onClearChat={() => {
             setShowGroupInfoModal(false);
@@ -1978,6 +2090,52 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           }}
         />
       )}
+
+      {/* DELETE GROUP CONFIRMATION MODAL */}
+      {showDeleteGroupConfirm && activeGroup && (
+        <Modal
+          isOpen={showDeleteGroupConfirm}
+          onClose={() => setShowDeleteGroupConfirm(false)}
+          title="Delete Group"
+          maxWidth="sm"
+        >
+          <div className="space-y-3 py-1">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Are you sure you want to permanently delete{' '}
+              <span className="font-bold text-[var(--text-primary)]">{activeGroup.name}</span>?
+            </p>
+            <p className="text-[11px] text-red-600 dark:text-red-400 bg-red-500/10 p-2.5 rounded-xl border border-red-500/20">
+              This action cannot be undone. All group messages, member associations, and join requests will be permanently removed.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-color)]">
+              <button
+                type="button"
+                onClick={() => setShowDeleteGroupConfirm(false)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingGroup}
+                onClick={handleDeleteGroup}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {deletingGroup && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Delete Group</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* CREATE POLL MODAL */}
+      <CreatePollModal
+        isOpen={showCreatePollModal}
+        onClose={() => setShowCreatePollModal(false)}
+        onSubmit={handleCreatePoll}
+        submitting={sending}
+      />
     </div>
   );
 };

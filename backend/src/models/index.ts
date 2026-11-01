@@ -592,8 +592,33 @@ export interface IOrganizerPost {
   likesCount: number;
   likedBy: string[];
   commentsCount: number;
+  tags?: string[];
+  comments?: Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    userRole?: string;
+    userAvatar?: string;
+    text: string;
+    createdAt: string;
+  }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface IPollOption {
+  id: string;
+  text: string;
+  votes: string[]; // user IDs who voted
+}
+
+export interface IPoll {
+  id: string;
+  question: string;
+  options: IPollOption[];
+  allowMultiple?: boolean;
+  totalVotes: number;
+  closed?: boolean;
 }
 
 export interface INotification {
@@ -700,6 +725,8 @@ export interface IMessage {
   deletedForEveryone?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  poll?: IPoll;
+  isPoll?: boolean;
   createdAt: string;
   updatedAt: string;
 }

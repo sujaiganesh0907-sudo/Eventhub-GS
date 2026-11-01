@@ -38,6 +38,7 @@ export const CreateOrganizerPostModal: React.FC<CreateOrganizerPostModalProps> =
   const [selectedEventId, setSelectedEventId] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [tagsInput, setTagsInput] = useState('');
 
   const [eventsList, setEventsList] = useState<IEvent[]>(organizerEvents);
   const [loadingEvents, setLoadingEvents] = useState(false);
@@ -126,6 +127,11 @@ export const CreateOrganizerPostModal: React.FC<CreateOrganizerPostModalProps> =
 
     try {
       const selectedEvent = eventsList.find((ev) => ev._id === selectedEventId);
+      const parsedTags = tagsInput
+        .split(',')
+        .map((t) => t.trim().replace(/^#/, ''))
+        .filter(Boolean);
+
       const res = await api.post<any>('/organizer/posts', {
         title: title.trim(),
         description: description.trim(),
@@ -135,6 +141,7 @@ export const CreateOrganizerPostModal: React.FC<CreateOrganizerPostModalProps> =
         eventTitle: selectedEvent?.title || undefined,
         mediaUrl: mediaUrl.trim() || undefined,
         mediaType: postType === 'Event Video' ? 'video' : mediaType,
+        tags: parsedTags,
       });
 
       if (res.success && res.post) {
@@ -145,6 +152,7 @@ export const CreateOrganizerPostModal: React.FC<CreateOrganizerPostModalProps> =
         setTimeout(() => {
           setTitle('');
           setDescription('');
+          setTagsInput('');
           setMediaUrl('');
           setSelectedEventId('');
           setPostType('Event Announcement');
@@ -297,6 +305,20 @@ export const CreateOrganizerPostModal: React.FC<CreateOrganizerPostModalProps> =
               You haven't published any events yet. Posts can still be created as general updates.
             </p>
           )}
+        </div>
+
+        {/* 4B. Topic Tags / Hashtags */}
+        <div>
+          <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+            Topic Tags / Hashtags <span className="text-[10px] font-normal text-[var(--text-muted)]">(Optional, comma separated)</span>
+          </label>
+          <input
+            type="text"
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+            placeholder="e.g. TechFest, AIWorkshop, Hackathon2026, Coding"
+            className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium"
+          />
         </div>
 
         {/* 5. Media (Image/Video Upload or URL Link) */}

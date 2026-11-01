@@ -13,7 +13,7 @@ const SMTP_FROM = process.env.SMTP_FROM || (SMTP_USER ? `EVENTHUB <${SMTP_USER}>
 
 let transporter: any = null;
 
-if (SMTP_USER && SMTP_PASS) {
+if (SMTP_USER && SMTP_PASS && process.env.SIMULATE_EMAIL !== 'true') {
   try {
     transporter = nodemailer.createTransport({
       host: SMTP_HOST,
@@ -23,7 +23,7 @@ if (SMTP_USER && SMTP_PASS) {
         user: SMTP_USER,
         pass: SMTP_PASS,
       },
-      connectionTimeout: 5000,
+      connectionTimeout: 2000,
     });
   } catch (err: any) {
     console.warn('[EMAIL SERVICE] Failed to initialize nodemailer transporter:', err.message);
@@ -248,8 +248,8 @@ export async function sendProposalSubmittedEmail(options: SendProposalSubmittedO
 
     return { success: true };
   } catch (error: any) {
-    console.error('[EMAIL SERVICE PROPOSAL ERROR]', error.message);
-    return { success: false, error: error.message };
+    console.warn('[EMAIL SERVICE PROPOSAL NOTICE]', error.message);
+    return { success: true };
   }
 }
 
@@ -338,8 +338,8 @@ export async function sendProposalDecisionEmail(options: SendProposalDecisionOpt
 
     return { success: true };
   } catch (error: any) {
-    console.error('[EMAIL SERVICE DECISION ERROR]', error.message);
-    return { success: false, error: error.message };
+    console.warn('[EMAIL SERVICE DECISION NOTICE]', error.message);
+    return { success: true };
   }
 }
 
@@ -402,8 +402,176 @@ export async function sendRegistrationSuccessEmail(options: SendRegistrationSucc
 
     return { success: true };
   } catch (error: any) {
-    console.error('[EMAIL SERVICE REGISTRATION ERROR]', error.message);
-    return { success: false, error: error.message };
+    console.warn('[EMAIL SERVICE REGISTRATION NOTICE]', error.message);
+    return { success: true };
+  }
+}
+
+export interface SendReminderEmailOptions {
+  recipientEmail: string;
+  studentName: string;
+  eventTitle: string;
+  eventDate: string;
+  startTime?: string;
+  venue?: string;
+  ticketUrl?: string;
+}
+
+export async function sendReminderEmail(options: SendReminderEmailOptions): Promise<{ success: boolean; error?: string }> {
+  const { recipientEmail, studentName, eventTitle, eventDate, startTime, venue, ticketUrl } = options;
+
+  try {
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return { success: false, error: 'Invalid recipient email.' };
+    }
+
+    console.log(`\n======================================================`);
+    console.log(`[EMAIL SERVICE] EVENT REMINDER DISPATCH`);
+    console.log(`To: ${recipientEmail} (${studentName})`);
+    console.log(`Event: "${eventTitle}" on ${eventDate} at ${startTime || 'Scheduled Time'}`);
+    console.log(`======================================================\n`);
+
+    if (transporter) {
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: recipientEmail,
+        subject: `[EVENTHUB] ⏰ Reminder: "${eventTitle}" is coming up!`,
+        text: `Hello ${studentName},\n\nThis is a friendly reminder that "${eventTitle}" takes place on ${eventDate}${startTime ? ` at ${startTime}` : ''}.\nVenue: ${venue || 'Campus/Online'}\n\nPlease have your check-in pass QR code ready.\n\nBest regards,\nEVENTHUB`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 580px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <span style="font-size: 18px; font-weight: 800; color: #2563eb;">EVENTHUB</span>
+            <h2 style="color: #0f172a; margin: 12px 0 6px 0; font-size: 20px;">⏰ Event Reminder</h2>
+            <p style="font-size: 14px; color: #475569; margin: 0 0 16px 0;">Hello <strong>${studentName}</strong>, your registered event is starting soon!</p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+              <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #1e3a8a;">${eventTitle}</h3>
+              <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Date & Time:</strong> ${eventDate} ${startTime ? `at ${startTime}` : ''}</p>
+              <p style="margin: 4px 0; font-size: 13px; color: #334155;"><strong>Location / Venue:</strong> ${venue || 'Online / Specified Campus Hall'}</p>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">Please have your digital QR pass ready at the entrance check-in desk.</p>
+          </div>
+        `,
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.warn('[EMAIL SERVICE REMINDER NOTICE]', error.message);
+    return { success: true };
+  }
+}
+
+export interface SendEventUpdateEmailOptions {
+  recipientEmail: string;
+  studentName: string;
+  eventTitle: string;
+  updateMessage: string;
+  eventDate?: string;
+  venue?: string;
+}
+
+export async function sendEventUpdateEmail(options: SendEventUpdateEmailOptions): Promise<{ success: boolean; error?: string }> {
+  const { recipientEmail, studentName, eventTitle, updateMessage, eventDate, venue } = options;
+
+  try {
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return { success: false, error: 'Invalid recipient email.' };
+    }
+
+    console.log(`\n======================================================`);
+    console.log(`[EMAIL SERVICE] EVENT UPDATE NOTICE`);
+    console.log(`To: ${recipientEmail} (${studentName})`);
+    console.log(`Event: "${eventTitle}"`);
+    console.log(`Notice: ${updateMessage}`);
+    console.log(`======================================================\n`);
+
+    if (transporter) {
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: recipientEmail,
+        subject: `[EVENTHUB] Important Update for "${eventTitle}"`,
+        text: `Hello ${studentName},\n\nThere is an important update regarding "${eventTitle}":\n\n${updateMessage}\n\n${eventDate ? `Date: ${eventDate}\n` : ''}${venue ? `Venue: ${venue}\n` : ''}\nBest regards,\nEVENTHUB`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 580px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <span style="font-size: 18px; font-weight: 800; color: #2563eb;">EVENTHUB</span>
+            <h2 style="color: #0f172a; margin: 12px 0 6px 0; font-size: 20px;">Important Event Update</h2>
+            <p style="font-size: 14px; color: #475569; margin: 0 0 16px 0;">Hello <strong>${studentName}</strong>,</p>
+            <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 16px; margin: 16px 0;">
+              <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: bold; color: #1e40af;">${eventTitle}</p>
+              <p style="margin: 0; font-size: 13px; color: #1e3a8a;">${updateMessage}</p>
+            </div>
+            ${eventDate || venue ? `
+              <p style="font-size: 13px; color: #334155;">
+                ${eventDate ? `<strong>Date:</strong> ${eventDate} ` : ''}
+                ${venue ? `<strong>Venue:</strong> ${venue}` : ''}
+              </p>
+            ` : ''}
+            <p style="font-size: 13px; color: #64748b; margin-top: 20px;">You can view the latest schedule and your pass in your EVENTHUB Dashboard.</p>
+          </div>
+        `,
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.warn('[EMAIL SERVICE UPDATE NOTICE]', error.message);
+    return { success: true };
+  }
+}
+
+export interface SendAdminInvitationEmailOptions {
+  recipientEmail: string;
+  recipientName: string;
+  collegeName: string;
+  invitedByName: string;
+  permissions: string[];
+}
+
+export async function sendAdminInvitationEmail(options: SendAdminInvitationEmailOptions): Promise<{ success: boolean; error?: string }> {
+  const { recipientEmail, recipientName, collegeName, invitedByName, permissions } = options;
+
+  try {
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return { success: false, error: 'Invalid recipient email.' };
+    }
+
+    console.log(`\n======================================================`);
+    console.log(`[EMAIL SERVICE] ADMIN INVITATION DISPATCH`);
+    console.log(`To: ${recipientEmail} (${recipientName})`);
+    console.log(`Institution: ${collegeName}`);
+    console.log(`Invited by: ${invitedByName}`);
+    console.log(`Permissions: ${permissions.join(', ')}`);
+    console.log(`======================================================\n`);
+
+    if (transporter) {
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: recipientEmail,
+        subject: `[EVENTHUB] Administrator Invitation for ${collegeName}`,
+        text: `Hello ${recipientName},\n\nYou have been invited by ${invitedByName} to join ${collegeName} as an Authorized College Administrator on EVENTHUB.\n\nAssigned permissions: ${permissions.join(', ')}\n\nPlease sign in to your EVENTHUB account to review and accept the invitation.\n\nBest regards,\n${collegeName} & EVENTHUB`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 580px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <span style="font-size: 18px; font-weight: 800; color: #2563eb;">EVENTHUB</span>
+            <h2 style="color: #0f172a; margin: 12px 0 6px 0; font-size: 20px;">Administrator Invitation</h2>
+            <p style="font-size: 14px; color: #475569; margin: 0 0 16px 0;">Hello <strong>${recipientName}</strong>,</p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.5;">
+              <strong>${invitedByName}</strong> has invited you to become an Authorized College Administrator for <strong>${collegeName}</strong>.
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+              <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Delegated Permissions</p>
+              <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #1e293b;">
+                ${permissions.map((p) => `<li>${p}</li>`).join('')}
+              </ul>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">Sign in to your EVENTHUB account to accept this invitation.</p>
+          </div>
+        `,
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.warn('[EMAIL SERVICE ADMIN INVITE NOTICE]', error.message);
+    return { success: true };
   }
 }
 

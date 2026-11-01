@@ -300,6 +300,8 @@ export async function createOrganizerPost(req: AuthenticatedRequest, res: Respon
       eventTitle: resolvedEventTitle || undefined,
       mediaUrl: mediaUrl || undefined,
       mediaType: (mediaType === 'video' || sanitizedType === 'Event Video') ? 'video' : 'image',
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
+      comments: [],
       likesCount: 0,
       likedBy: [],
       commentsCount: 0,
@@ -359,6 +361,51 @@ export async function toggleLikeOrganizerPost(req: AuthenticatedRequest, res: Re
       liked: !isLiked,
       likesCount: updatedLikedBy.length,
       post: updated,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function addCommentToOrganizerPost(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
+
+    const { id } = req.params;
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ success: false, message: 'Comment text is required.' });
+    }
+
+    const post = await OrganizerPost.findById(id);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+
+    const existingComments = (post as any).comments || [];
+    const newComment = {
+      id: 'comm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      userId: user._id,
+      userName: user.fullName,
+      userRole: user.role,
+      userAvatar: (user as any).avatar || '',
+      text: text.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedComments = [...existingComments, newComment];
+
+    await OrganizerPost.findByIdAndUpdate(id, {
+      $set: {
+        comments: updatedComments,
+        commentsCount: updatedComments.length,
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      comment: newComment,
+      commentsCount: updatedComments.length,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

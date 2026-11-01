@@ -447,15 +447,6 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
               <Plus className="w-3.5 h-3.5" /> Add Facility
             </button>
           )}
-          {isSelf && activeTab === 'admins' && (
-            <button
-              onClick={() => setShowAddAdminModal(true)}
-              disabled={admins.length >= 10}
-              className="px-3.5 py-1.5 rounded-xl bg-[var(--primary-color)] text-[var(--primary-text)] text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Admin ({admins.length}/10)
-            </button>
-          )}
         </div>
       </div>
 

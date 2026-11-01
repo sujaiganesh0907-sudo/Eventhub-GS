@@ -38,6 +38,31 @@ export interface IOrganizerProfile {
   updatedAt?: string;
 }
 
+export interface IPostComment {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole?: string;
+  userAvatar?: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface IPollOption {
+  id: string;
+  text: string;
+  votes: string[];
+}
+
+export interface IPoll {
+  id: string;
+  question: string;
+  options: IPollOption[];
+  allowMultiple?: boolean;
+  totalVotes: number;
+  closed?: boolean;
+}
+
 export interface IOrganizerPost {
   _id: string;
   id?: string;
@@ -56,6 +81,8 @@ export interface IOrganizerPost {
   likesCount: number;
   likedBy?: string[];
   commentsCount: number;
+  tags?: string[];
+  comments?: IPostComment[];
   createdAt?: string;
 }
 
@@ -547,6 +574,8 @@ export interface IMessage {
   deletedForEveryone?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  poll?: IPoll;
+  isPoll?: boolean;
   createdAt: string;
   updatedAt: string;
 }
