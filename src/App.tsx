@@ -16,6 +16,7 @@ import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { StudentHomePage } from './pages/StudentHomePage';
 import { CollegeHomePage } from './pages/CollegeHomePage';
+import { OrganizerHomePage } from './pages/OrganizerHomePage';
 import { ViewEventPage } from './pages/ViewEventPage';
 import { EventsManagementPage } from './pages/EventsManagementPage';
 import { CollegesListPage } from './pages/CollegesListPage';
@@ -114,7 +115,7 @@ interface NavHistoryItem {
 }
 
 const AppContent: React.FC = () => {
-  const { user, loading: authLoading, isAuthenticated, isCollege, isStudent, college, studentProfile } = useAuth();
+  const { user, loading: authLoading, isAuthenticated, isCollege, isStudent, isOrganizer, college, studentProfile } = useAuth();
   const { unreadCount } = useNotifications();
 
   // Navigation State initialized safely from URL pathname
@@ -466,7 +467,7 @@ const AppContent: React.FC = () => {
               isSidebarCollapsed ? 'w-16' : 'w-60'
             }`}
           >
-            <div className="sticky top-20 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
+            <div className="sticky top-28 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
               <Sidebar
                 activeTab={activeTab}
                 onSelectTab={(tab) => {
@@ -484,7 +485,7 @@ const AppContent: React.FC = () => {
                 isCollege={isCollege}
                 unreadNotifications={unreadCount}
                 unreadMessages={unreadMessagesCount}
-                onCreateEventClick={() => handleOpenCreateEvent(isStudent)}
+                onCreateEventClick={() => handleOpenCreateEvent(isStudent && !isOrganizer)}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={handleToggleSidebar}
               />
@@ -514,7 +515,7 @@ const AppContent: React.FC = () => {
             unreadMessages={unreadMessagesCount}
             onCreateEventClick={() => {
               setIsMobileSidebarOpen(false);
-              handleOpenCreateEvent(isStudent);
+              handleOpenCreateEvent(isStudent && !isOrganizer);
             }}
             isMobileOpen={isMobileSidebarOpen}
             onCloseMobile={() => setIsMobileSidebarOpen(false)}
@@ -571,6 +572,12 @@ const AppContent: React.FC = () => {
           {isAuthenticated && activeTab === 'home' && (
             isCollege ? (
               <CollegeHomePage
+                onOpenCreateEvent={() => handleOpenCreateEvent(false)}
+                onSelectTab={(tab) => navigateToTab(tab)}
+                onViewEvent={handleViewEvent}
+              />
+            ) : isOrganizer ? (
+              <OrganizerHomePage
                 onOpenCreateEvent={() => handleOpenCreateEvent(false)}
                 onSelectTab={(tab) => navigateToTab(tab)}
                 onViewEvent={handleViewEvent}

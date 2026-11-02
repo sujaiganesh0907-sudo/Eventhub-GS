@@ -6,6 +6,7 @@ import { DEFAULT_COLLEGE_LOGO } from '../services/imageDefaults';
 import { Modal } from '../components/common/Modal';
 import { DocxCertificateManagerModal } from '../components/certificate/DocxCertificateManagerModal';
 import { AttendanceModal } from '../components/attendance/AttendanceModal';
+import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
 import {
   Calendar,
   Users,
@@ -27,6 +28,7 @@ import {
   FileText,
   Eye,
   Copy,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface CollegeHomePageProps {
@@ -116,6 +118,7 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
   const [drilldownSelectedEventId, setDrilldownSelectedEventId] = useState<string | null>(null);
   const [selectedEventForAttendance, setSelectedEventForAttendance] = useState<IEvent | null>(null);
   const [selectedEventForCertificates, setSelectedEventForCertificates] = useState<IEvent | null>(null);
+  const [selectedEventForRegistrations, setSelectedEventForRegistrations] = useState<IEvent | null>(null);
   const [requestFilter, setRequestFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected' | 'Changes Requested'>('All');
   const [actionProcessing, setActionProcessing] = useState(false);
 
@@ -748,6 +751,18 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedEventForRegistrations(ev);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                            title="Open Google Sheets style table and export CSV"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                            <span>Spreadsheet</span>
+                          </button>
                           <div className="text-right">
                             <span className="text-base font-black text-[var(--primary-color)]">
                               {regCount}
@@ -764,13 +779,27 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
             ) : (
               // Selected Event Student Roster
               <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setDrilldownSelectedEventId(null)}
-                  className="text-xs font-semibold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  ← Back to event registration list
-                </button>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDrilldownSelectedEventId(null)}
+                    className="text-xs font-semibold text-[var(--primary-color)] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    ← Back to event registration list
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ev = events.find((e) => e._id === drilldownSelectedEventId);
+                      if (ev) setSelectedEventForRegistrations(ev);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Open Full Spreadsheet Table & CSV Export</span>
+                  </button>
+                </div>
 
                 {registrations.filter((r) => r.eventId === drilldownSelectedEventId).length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)] text-center py-8">
@@ -1267,6 +1296,14 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
             </div>
           </div>
         </Modal>
+      )}
+
+      {selectedEventForRegistrations && (
+        <EventRegistrationsModal
+          isOpen={Boolean(selectedEventForRegistrations)}
+          onClose={() => setSelectedEventForRegistrations(null)}
+          event={selectedEventForRegistrations}
+        />
       )}
     </div>
   );

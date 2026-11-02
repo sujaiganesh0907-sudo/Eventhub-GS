@@ -120,6 +120,29 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
       }
     }
 
+    // Build snapshot of question responses for permanent historical preservation
+    const answersList: Array<{ questionId: string; label: string; type?: string; answer: any }> = [];
+    if (event.registrationQuestions && Array.isArray(event.registrationQuestions)) {
+      for (const q of event.registrationQuestions) {
+        const ans = customResponses[q.id] !== undefined ? customResponses[q.id] : (customResponses[q.label] !== undefined ? customResponses[q.label] : '');
+        answersList.push({
+          questionId: q.id,
+          label: q.label,
+          type: q.type,
+          answer: ans,
+        });
+      }
+    }
+    for (const [k, v] of Object.entries(customResponses)) {
+      if (!answersList.some((item) => item.questionId === k || item.label === k)) {
+        answersList.push({
+          questionId: k,
+          label: k,
+          answer: v,
+        });
+      }
+    }
+
     // Generate readable unique registration ID
     const regCode = crypto.randomBytes(3).toString('hex').toUpperCase();
     const registrationId = `EH-2026-${regCode}`;
@@ -146,6 +169,8 @@ export async function registerForEvent(req: AuthenticatedRequest, res: Response)
       customResponses,
       customAnswers: customResponses,
       answers: customResponses,
+      answersList,
+      registrationDate: new Date().toISOString(),
       isFree,
       amount,
       paymentStatus: isFree ? 'Waived' : 'Pending',
@@ -314,10 +339,43 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
     }
 
     if (isAuthorizedCollegeAdmin && targetCollegeId) {
-      filter.collegeId = targetCollegeId;
-      if (eventId) filter.eventId = eventId;
+      // Validate college boundary if an eventId is specified
+      if (eventId) {
+        const targetEv = await Event.findById(String(eventId));
+        if (!targetEv) {
+          return res.status(404).json({ success: false, message: 'Event not found.' });
+        }
+        if (targetEv.hostCollegeId !== targetCollegeId && targetEv.targetCollegeId !== targetCollegeId) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied. You cannot access participant details for an event belonging to another institution.',
+          });
+        }
+        filter.eventId = eventId;
+      } else {
+        filter.collegeId = targetCollegeId;
+      }
+    } else if (user.role === 'Organizer') {
+      // Organizer viewing registrations for events they created or manage
+      if (eventId) {
+        const targetEv = await Event.findById(String(eventId));
+        if (!targetEv) {
+          return res.status(404).json({ success: false, message: 'Event not found.' });
+        }
+        if (targetEv.creatorUserId !== user._id && (targetEv as any).organizerUserId !== user._id) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied. You are not authorized to view registrations for this event.',
+          });
+        }
+        filter.eventId = eventId;
+      } else {
+        const orgEvents = await Event.find({ creatorUserId: user._id }).exec();
+        const eventIds = orgEvents.map((e) => e._id);
+        filter.eventId = { $in: eventIds };
+      }
     } else if (user.role === 'Student') {
-      // Student organizer viewing registrations for their own event
+      // Student organizer viewing registrations for their own event proposal
       if (!eventId) {
         return res.status(400).json({ success: false, message: 'Event ID is required' });
       }
@@ -327,7 +385,7 @@ export async function getCollegeRegistrations(req: AuthenticatedRequest, res: Re
       }
       filter.eventId = eventId;
     } else {
-      return res.status(403).json({ success: false, message: 'College administrator privileges required.' });
+      return res.status(403).json({ success: false, message: 'Privileges required to view participant registrations.' });
     }
 
     if (paymentStatus) filter.paymentStatus = paymentStatus;

@@ -22,22 +22,30 @@ import { logAdminActivityHelper } from './adminController';
  * 1. College Super Admin (for this college's events)
  * 2. College Admin with ATTENDANCE_SCAN, ATTENDANCE_MANAGE, or EVENTS_MANAGE permission
  * 3. Approved Student Event Creator (for their own approved event)
+ * 4. Organizer (for their own created/organized event)
  */
 export async function isUserAuthorizedForEventAttendance(user: any, event: any): Promise<boolean> {
   if (!user || !event) return false;
 
-  // 1. Student Creator check
+  // 1. Organizer check
+  if (user.role === 'Organizer' && (event.creatorUserId === user._id || (event as any).organizerUserId === user._id)) {
+    return true;
+  }
+
+  // 2. Student Creator check
   if (user.role === 'Student' && event.creatorUserId === user._id) {
     const isApprovedOrCompleted = ['Published', 'Approved', 'Completed'].includes(event.status);
     return isApprovedOrCompleted;
   }
 
-  // 2. College Super Admin check
-  if (user.role === 'College Super Admin' && event.hostCollegeId === user.collegeId) {
-    return true;
+  // 3. College Super Admin check
+  if (user.role === 'College Super Admin') {
+    if (event.hostCollegeId === user.collegeId || event.targetCollegeId === user.collegeId) return true;
+    const c = await College.findOne({ superAdminId: user._id });
+    if (c && (c._id === event.hostCollegeId || c._id === event.targetCollegeId)) return true;
   }
 
-  // 3. College Admin check (works whether base account role is Student or College Admin)
+  // 4. College Admin check (works whether base account role is Student or College Admin)
   const membership = await CollegeAdminMembership.findOne({
     collegeId: event.hostCollegeId,
     userId: user._id,

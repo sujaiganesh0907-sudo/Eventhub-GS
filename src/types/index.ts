@@ -332,7 +332,23 @@ export interface IEvent {
   };
   hasGroup?: boolean;
   groupId?: string;
+  groupDetails?: {
+    groupName?: string;
+    groupDescription?: string;
+    groupVisibility?: 'Event Participants Only' | 'Public' | 'Private' | string;
+    minMembers?: number;
+    maxMembers?: number;
+    teamLeaderRequired?: boolean;
+    rules?: string[];
+  };
   createdAt: string;
+}
+
+export interface IRegistrationAnswerItem {
+  questionId: string;
+  label: string;
+  type?: string;
+  answer: any;
 }
 
 export interface IEventRegistration {
@@ -353,6 +369,10 @@ export interface IEventRegistration {
   teamName?: string;
   teamMembers?: string[];
   customResponses: Record<string, any>;
+  customAnswers?: Record<string, any>;
+  answers?: Record<string, any>;
+  answersList?: IRegistrationAnswerItem[];
+  registrationDate?: string;
   isFree: boolean;
   amount: number;
   paymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Waived';

@@ -150,6 +150,15 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
       externalOrganization: '',
     },
     createEventGroup: true,
+    groupDetails: {
+      groupName: '',
+      groupDescription: '',
+      groupVisibility: 'Event Participants Only' as 'Event Participants Only' | 'Public' | 'Private',
+      minMembers: 2,
+      maxMembers: 50,
+      teamLeaderRequired: true,
+      rules: '',
+    },
   });
 
   // Sync eventToEdit when provided
@@ -212,6 +221,15 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
           externalOrganization: '',
         },
         createEventGroup: Boolean(eventToEdit.hasGroup ?? true),
+        groupDetails: eventToEdit.groupDetails || {
+          groupName: eventToEdit.title ? `${eventToEdit.title} - Official Group` : '',
+          groupDescription: eventToEdit.tagline || '',
+          groupVisibility: 'Event Participants Only',
+          minMembers: eventToEdit.minTeamSize || 2,
+          maxMembers: eventToEdit.maxTeamSize || 50,
+          teamLeaderRequired: true,
+          rules: '',
+        },
       });
     }
   }, [eventToEdit, college, user]);
@@ -474,7 +492,27 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
 
         registrationQuestions: sanitizedQuestions,
         chiefGuest: formData.chiefGuest.hasChiefGuest ? formData.chiefGuest : undefined,
-        createEventGroup: formData.createEventGroup,
+        createEventGroup: formData.createEventGroup || formData.registrationType === 'Team',
+        groupDetails: (formData.createEventGroup || formData.registrationType === 'Team')
+          ? {
+              groupName: formData.groupDetails.groupName.trim() || `${formData.title.trim()} - Discussion Group`,
+              groupDescription:
+                formData.groupDetails.groupDescription.trim() ||
+                formData.tagline.trim() ||
+                `Official group for ${formData.title.trim()}`,
+              groupVisibility: formData.groupDetails.groupVisibility || 'Event Participants Only',
+              minMembers:
+                formData.registrationType === 'Team'
+                  ? Number(formData.minTeamSize)
+                  : Number(formData.groupDetails.minMembers || 2),
+              maxMembers:
+                formData.registrationType === 'Team'
+                  ? Number(formData.maxTeamSize)
+                  : Number(formData.groupDetails.maxMembers || 50),
+              teamLeaderRequired: Boolean(formData.groupDetails.teamLeaderRequired),
+              rules: formData.groupDetails.rules.trim() || formData.rulesAndGuidelines.trim(),
+            }
+          : undefined,
         saveAsDraft,
       };
 
@@ -1427,24 +1465,139 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                   </div>
 
                   {/* Optional Event Group Creation (Part 5) */}
-                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 flex items-center justify-between gap-3">
-                    <div>
-                      <span className="text-xs font-bold text-[var(--text-primary)] block">
-                        Create Official Event Discussion Group
-                      </span>
-                      <p className="text-[11px] text-[var(--text-muted)]">
-                        Automatically provisions an event group where registered participants can join, chat, and coordinate.
-                      </p>
+                  <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)]/40 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-bold text-[var(--text-primary)] block">
+                          {formData.registrationType === 'Team' ? 'Team & Discussion Group Management' : 'Create Official Event Discussion Group'}
+                        </span>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          {formData.registrationType === 'Team'
+                            ? 'Configure group and team collaboration settings, visibility, and rules for event teams.'
+                            : 'Automatically provisions an official group where registered participants can join, chat, and coordinate.'}
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.createEventGroup || formData.registrationType === 'Team'}
+                          disabled={formData.registrationType === 'Team'}
+                          onChange={(e) => updateField('createEventGroup', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--primary-color)]" />
+                      </label>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={formData.createEventGroup}
-                        onChange={(e) => updateField('createEventGroup', e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--primary-color)]" />
-                    </label>
+
+                    {(formData.createEventGroup || formData.registrationType === 'Team') && (
+                      <div className="pt-3 border-t border-[var(--border-color)] space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                              Group Name
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.groupDetails.groupName}
+                              onChange={(e) =>
+                                updateField('groupDetails', {
+                                  ...formData.groupDetails,
+                                  groupName: e.target.value,
+                                })
+                              }
+                              placeholder={formData.title ? `${formData.title} - Official Group` : 'e.g. Hackathon 2026 Collaboration Hub'}
+                              className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                              Group Participation Mode / Visibility
+                            </label>
+                            <select
+                              value={formData.groupDetails.groupVisibility}
+                              onChange={(e) =>
+                                updateField('groupDetails', {
+                                  ...formData.groupDetails,
+                                  groupVisibility: e.target.value as any,
+                                })
+                              }
+                              className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                            >
+                              <option value="Event Participants Only">Event Participants Only (Recommended)</option>
+                              <option value="Public">Public (Any Student / Organizer Can View)</option>
+                              <option value="Private">Private (Invite Only)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Group Description & Purpose
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.groupDetails.groupDescription}
+                            onChange={(e) =>
+                              updateField('groupDetails', {
+                                ...formData.groupDetails,
+                                groupDescription: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. Official space for announcements, project formation, and mentor interaction."
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)] cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={formData.groupDetails.teamLeaderRequired}
+                                onChange={(e) =>
+                                  updateField('groupDetails', {
+                                    ...formData.groupDetails,
+                                    teamLeaderRequired: e.target.checked,
+                                  })
+                                }
+                                className="rounded text-indigo-600 focus:ring-indigo-500"
+                              />
+                              Primary Contact / Team Leader Assignment Required
+                            </label>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+                            <span>
+                              Capacity limits:{' '}
+                              <strong className="text-[var(--text-primary)]">
+                                {formData.registrationType === 'Team'
+                                  ? `${formData.minTeamSize} - ${formData.maxTeamSize} per team`
+                                  : `Up to ${formData.capacity} participants`}
+                              </strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
+                            Group Rules & Eligibility Guidelines
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={formData.groupDetails.rules}
+                            onChange={(e) =>
+                              updateField('groupDetails', {
+                                ...formData.groupDetails,
+                                rules: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. 1. Respect fellow team members. 2. Post questions in the designated channels. 3. No spamming."
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)] resize-none"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Custom Participant Questions Builder (Part 13: 4 exact types) */}
@@ -1710,6 +1863,15 @@ export const MultiStepEventForm: React.FC<MultiStepEventFormProps> = ({
                         </span>
                       </div>
                     </div>
+
+                    {(formData.createEventGroup || formData.registrationType === 'Team') && (
+                      <div className="pt-2 border-t border-[var(--border-color)] text-xs">
+                        <span className="text-[10px] text-[var(--text-muted)] block">Event Discussion & Team Group</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          {formData.groupDetails.groupName || `${formData.title} - Official Group`} ({formData.groupDetails.groupVisibility})
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

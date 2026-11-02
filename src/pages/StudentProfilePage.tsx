@@ -13,6 +13,7 @@ import { AddCertificateModal } from '../components/certificate/AddCertificateMod
 import { CertificateModal } from '../components/certificate/CertificateModal';
 import { TicketModal } from '../components/registration/TicketModal';
 import { OrganizedEventCard } from '../components/event/OrganizedEventCard';
+import { RegisteredPassCard } from '../components/event/RegisteredPassCard';
 import { EventInsightsModal } from '../components/event/EventInsightsModal';
 import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { Modal } from '../components/common/Modal';
@@ -769,9 +770,10 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
 
         {/* Profile Card Info */}
         <div className="px-4 sm:px-6 pb-6 pt-0 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 -mt-12 sm:-mt-16 md:-mt-20 mb-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
-              <div className="relative shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 min-w-0">
+              {/* Profile Avatar overlapping bottom edge of cover */}
+              <div className="relative shrink-0 -mt-12 sm:-mt-16 md:-mt-20 z-10">
                 <img
                   src={profile?.profilePhoto || DEFAULT_STUDENT_AVATAR}
                   alt={profile?.fullName || 'Student'}
@@ -781,7 +783,9 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
                   }}
                 />
               </div>
-              <div className="pt-1 sm:pt-0 sm:mb-2 min-w-0">
+
+              {/* Name, ID, & Bio strictly below cover */}
+              <div className="pt-2 sm:pt-0 sm:pb-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">
                     {profile?.fullName || user?.fullName}
@@ -815,7 +819,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap pt-1 sm:pt-0">
+            <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap pt-2 sm:pt-0">
               {/* If viewing another student: Follow & Message buttons */}
               {!isOwnProfile && (
                 <>
@@ -1433,142 +1437,19 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {registrations.map((reg) => (
-                    <div
+                    <RegisteredPassCard
                       key={reg._id}
-                      className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3 flex flex-col justify-between relative group hover:border-[var(--primary-color)]/40 transition-colors"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
-                            {isOwnProfile ? reg.registrationId : 'Verified Participant'}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              reg.attended
-                                ? 'bg-emerald-500/15 text-emerald-600'
-                                : 'bg-blue-500/15 text-blue-600'
-                            }`}
-                          >
-                            {reg.attended ? 'Attended' : 'Registered'}
-                          </span>
-                        </div>
-                        <h4 className="text-sm font-bold text-[var(--text-primary)] line-clamp-1">
-                          {reg.eventTitle || 'Campus Event'}
-                        </h4>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {reg.eventDate} · {reg.registrationType}
-                        </p>
-                      </div>
-
-                      {isOwnProfile && (
-                        <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)] relative">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedReg(reg)}
-                            className="grow px-3 py-1.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-xs active:scale-95"
-                          >
-                            <Ticket className="w-3.5 h-3.5" /> View Ticket
-                          </button>
-
-                          {/* 3-Dot Options Button with 5 Actions (Part 14) */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveCardMenuId(activeCardMenuId === reg._id ? null : reg._id);
-                              }}
-                              className="p-1.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
-                              title="More Options"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-
-                            {activeCardMenuId === reg._id && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-30"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveCardMenuId(null);
-                                  }}
-                                />
-                                <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-[var(--surface)] border border-[var(--border-color)] rounded-xl shadow-xl py-1.5 z-40 text-xs animate-in fade-in slide-in-from-bottom-1 divide-y divide-[var(--border-color)]">
-                                  <div className="py-0.5">
-                                    {/* Action 1: View Ticket */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveCardMenuId(null);
-                                        setSelectedReg(reg);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
-                                    >
-                                      <Ticket className="w-4 h-4 text-[var(--text-secondary)]" />
-                                      <span>View Ticket</span>
-                                    </button>
-
-                                    {/* Action 2: Download Ticket */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveCardMenuId(null);
-                                        handleDownloadTicket(reg);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
-                                    >
-                                      <Download className="w-4 h-4 text-[var(--text-secondary)]" />
-                                      <span>Download Ticket</span>
-                                    </button>
-                                  </div>
-
-                                  <div className="py-0.5">
-                                    {/* Action 3: View Event */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveCardMenuId(null);
-                                        handleViewEventDetails(reg);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
-                                    >
-                                      <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
-                                      <span>View Event</span>
-                                    </button>
-
-                                    {/* Action 4: Share Event */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveCardMenuId(null);
-                                        handleShareRegisteredEvent(reg);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
-                                    >
-                                      <Share2 className="w-4 h-4 text-[var(--text-secondary)]" />
-                                      <span>Share Event</span>
-                                    </button>
-
-                                    {/* Action 5: Add Reminder */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveCardMenuId(null);
-                                        setReminderModalReg(reg);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
-                                    >
-                                      <Bell className="w-4 h-4 text-[var(--text-secondary)]" />
-                                      <span>Add Reminder</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      registration={reg}
+                      event={reg.event}
+                      isOwner={isOwnProfile}
+                      onViewTicket={(r) => setSelectedReg(r)}
+                      onDownloadTicket={(r) => handleDownloadTicket(r)}
+                      onViewEvent={(ev) => (onViewEvent ? onViewEvent(ev) : (window.location.href = `/event/${ev._id}`))}
+                      onShareEvent={(ev) => handleShareRegisteredEvent({ ...reg, eventId: ev._id, eventTitle: ev.title } as any)}
+                      onAddReminder={(r, ev) => {
+                        setReminderModalReg({ ...r, event: ev });
+                      }}
+                    />
                   ))}
                 </div>
               )}

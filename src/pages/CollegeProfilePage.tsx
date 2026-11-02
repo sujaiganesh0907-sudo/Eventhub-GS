@@ -279,17 +279,22 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
 
         {/* Institution Info */}
         <div className="px-4 sm:px-6 pb-6 pt-0 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 -mt-12 sm:-mt-16 md:-mt-20 mb-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
-              <img
-                src={college.logo || DEFAULT_COLLEGE_LOGO}
-                alt={college.name}
-                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg shrink-0"
-                onError={(e) => {
-                  (e.target as any).src = DEFAULT_COLLEGE_LOGO;
-                }}
-              />
-              <div className="pt-1 sm:pt-0 sm:mb-2 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 min-w-0">
+              {/* Institution Logo overlapping bottom edge of cover */}
+              <div className="relative shrink-0 -mt-12 sm:-mt-16 md:-mt-20 z-10">
+                <img
+                  src={college.logo || DEFAULT_COLLEGE_LOGO}
+                  alt={college.name}
+                  className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-2xl object-cover border-4 border-[var(--surface)] bg-[var(--surface)] shadow-lg shrink-0"
+                  onError={(e) => {
+                    (e.target as any).src = DEFAULT_COLLEGE_LOGO;
+                  }}
+                />
+              </div>
+
+              {/* Institution Name strictly below cover */}
+              <div className="pt-2 sm:pt-0 sm:pb-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">
                     {college.name}

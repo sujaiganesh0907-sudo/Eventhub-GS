@@ -4,6 +4,14 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { updateEventGroupLifecycle } from '../services/eventGroupService';
 import { sendProposalSubmittedEmail, sendProposalDecisionEmail, sendEventUpdateEmail } from '../services/emailService';
 
+function normalizeRules(r: any): string[] {
+  if (Array.isArray(r)) return r.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof r === 'string' && r.trim()) {
+    return r.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 function calculateDeadlineStatus(deadlineStr: string): 'Open' | 'Closing Soon' | 'Closed' {
   if (!deadlineStr) return 'Open';
   const deadline = new Date(deadlineStr).getTime();
@@ -460,7 +468,16 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
         externalDesignation: body.chiefGuest.externalDesignation || '',
         externalOrganization: body.chiefGuest.externalOrganization || '',
       } : undefined,
-      hasGroup: false,
+      hasGroup: Boolean(body.createEventGroup || body.registrationType === 'Team'),
+      groupDetails: (body.createEventGroup || body.registrationType === 'Team') ? {
+        groupName: body.groupDetails?.groupName || body.groupName || `${body.title} - Official Group`,
+        groupDescription: body.groupDetails?.groupDescription || body.groupDescription || `Official participant group for ${body.title}`,
+        groupVisibility: body.groupDetails?.groupVisibility || body.groupVisibility || 'Event Participants Only',
+        minMembers: body.registrationType === 'Team' ? (Number(body.minTeamSize) || 2) : 1,
+        maxMembers: body.registrationType === 'Team' ? (Number(body.maxTeamSize) || 4) : (Number(body.capacity) || 500),
+        teamLeaderRequired: body.registrationType === 'Team',
+        rules: normalizeRules(body.groupDetails?.rules || body.groupRules),
+      } : undefined,
 
       creatorRole: user.role === 'Student' ? 'Student' : (user.role === 'Organizer' ? 'Organizer' : 'College'),
       creatorUserId: user._id,
@@ -472,19 +489,27 @@ export async function createEvent(req: AuthenticatedRequest, res: Response) {
       certificatesIssuedCount: 0,
     });
 
-    // Part 5: Optional Event Group Creation
-    if (body.createEventGroup) {
+    // Part 5: Event Group Creation
+    if (body.createEventGroup || body.registrationType === 'Team') {
       try {
+        const grpName = body.groupDetails?.groupName || body.groupName || `${event.title} - Official Group`;
+        const grpDesc = body.groupDetails?.groupDescription || body.groupDescription || `Official participant group for ${event.title}`;
+        const grpVis = body.groupDetails?.groupVisibility || body.groupVisibility || 'Event Participants Only';
+        const grpMax = body.registrationType === 'Team' ? (Number(body.maxTeamSize) || 4) : (Number(body.capacity) || 500);
+        const grpRules = body.groupDetails?.rules || body.groupRules || [];
+
         const newGroup = await Group.create({
-          name: `${event.title} - Official Group`,
-          description: `Official participant group for ${event.title}`,
+          name: grpName,
+          description: grpDesc,
           type: 'Event',
           eventId: event._id,
           ownerId: user._id,
           membersCount: 1,
-          visibility: 'Event Participants Only',
+          visibility: grpVis,
           chatPermissions: 'Everyone',
           editPermissions: 'Admins Only',
+          maxMembers: grpMax,
+          rules: normalizeRules(grpRules),
         });
         await GroupMembership.create({
           groupId: newGroup._id,
@@ -1005,9 +1030,26 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
 
     const isStudent = user.role === 'Student';
+    const isOrganizer = user.role === 'Organizer';
     const isCollegeStaff = user.role === 'College Super Admin' || user.role === 'College Admin';
-    const isCreator = event.creatorUserId === user._id;
-    const isHostCollege = isCollegeStaff && (event.hostCollegeId === user.collegeId || event.targetCollegeId === user.collegeId);
+    const isCreator = event.creatorUserId === user._id || (event as any).organizerUserId === user._id;
+
+    let userCollegeId = user.collegeId;
+    if (!userCollegeId && isCollegeStaff) {
+      if (user.role === 'College Super Admin') {
+        const c = await College.findOne({ superAdminId: user._id });
+        if (c) userCollegeId = c._id;
+      }
+      if (!userCollegeId) {
+        const m = await CollegeAdminMembership.findOne({ userId: user._id, status: 'Active' });
+        if (m) userCollegeId = m.collegeId;
+      }
+    }
+
+    const isHostCollege = isCollegeStaff && (
+      (userCollegeId && (event.hostCollegeId === userCollegeId || event.targetCollegeId === userCollegeId)) ||
+      user.role === 'College Super Admin'
+    );
 
     // Permission and lifecycle rules (Requirements 15, 16, 17, 18, 19)
     if (event.status === 'Completed' || event.status === 'Cancelled') {
@@ -1019,7 +1061,23 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
 
     const body = req.body;
 
-    if (isStudent) {
+    if (isOrganizer) {
+      if (!isCreator) {
+        return res.status(403).json({ success: false, message: 'You can only edit events you created or organize.' });
+      }
+      if (event.status === 'Published') {
+        return res.status(403).json({
+          success: false,
+          message: 'Published events cannot have core details modified directly. Contact the partner college administrator.',
+        });
+      }
+      if (event.status === 'Pending Approval' && !body.submitForReview && !body.resubmit) {
+        return res.status(400).json({
+          success: false,
+          message: 'Events currently pending administrative review cannot be modified until the review is completed.',
+        });
+      }
+    } else if (isStudent) {
       if (!isCreator) {
         return res.status(403).json({ success: false, message: 'You can only edit events you created.' });
       }
@@ -1029,7 +1087,7 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
           message: 'Published events cannot be edited by students. Contact the host college administrator.',
         });
       }
-      if (event.status === 'Pending Approval' && !body.submitForReview) {
+      if (event.status === 'Pending Approval' && !body.submitForReview && !body.resubmit) {
         return res.status(400).json({
           success: false,
           message: 'Events currently pending administrative review cannot be modified until the review is completed.',
@@ -1189,12 +1247,28 @@ export async function updateEvent(req: AuthenticatedRequest, res: Response) {
               : [],
           }),
           ...(!isPublished && body.registrationQuestions && { registrationQuestions: body.registrationQuestions }),
+          ...(body.groupDetails !== undefined && { groupDetails: { ...body.groupDetails, rules: normalizeRules(body.groupDetails.rules) } }),
           ...(body.changesRequestedComment !== undefined && { changesRequestedComment: body.changesRequestedComment }),
           status: nextStatus,
         },
       },
       { new: true }
     );
+
+    // Update associated Event Group details if group configuration changed
+    if (event.groupId && (body.groupDetails || body.groupName || body.groupDescription)) {
+      try {
+        await Group.findByIdAndUpdate(event.groupId, {
+          ...(body.groupDetails?.groupName && { name: body.groupDetails.groupName }),
+          ...(body.groupDetails?.groupDescription && { description: body.groupDetails.groupDescription }),
+          ...(body.groupDetails?.groupVisibility && { visibility: body.groupDetails.groupVisibility }),
+          ...(body.groupDetails?.maxMembers && { maxMembers: Number(body.groupDetails.maxMembers) }),
+          ...(body.groupDetails?.rules !== undefined && { rules: normalizeRules(body.groupDetails.rules) }),
+        });
+      } catch (gUpdateErr) {
+        console.warn('Notice: Could not sync event group details:', gUpdateErr);
+      }
+    }
 
     // PART 5C: Propagate event lifecycle changes to associated Event Group
     if (nextStatus === 'Completed' || nextStatus === 'Cancelled') {

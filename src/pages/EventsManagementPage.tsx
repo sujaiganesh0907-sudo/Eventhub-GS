@@ -13,6 +13,7 @@ import { Modal } from '../components/common/Modal';
 import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
 import { DocxCertificateManagerModal } from '../components/certificate/DocxCertificateManagerModal';
 import { IssueCertificateModal } from '../components/certificate/IssueCertificateModal';
+import { RegisteredPassCard } from '../components/event/RegisteredPassCard';
 import { DEFAULT_EVENT_POSTER } from '../services/imageDefaults';
 import {
   Calendar,
@@ -91,6 +92,65 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   // Student proposal edit modal
   const [editingProposal, setEditingProposal] = useState<IEvent | null>(null);
   const [isEditProposalOpen, setIsEditProposalOpen] = useState(false);
+
+  const handleDownloadTicket = (reg: IEventRegistration, ev?: IEvent) => {
+    if (reg.qrCodeUrl && reg.qrCodeUrl.startsWith('data:image')) {
+      const link = document.createElement('a');
+      link.href = reg.qrCodeUrl;
+      link.download = `ticket-${reg.registrationId}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    const ticketWindow = window.open('', '_blank');
+    if (ticketWindow) {
+      const title = reg.eventTitle || ev?.title || 'Event Entry Pass';
+      ticketWindow.document.write(`
+        <html>
+          <head>
+            <title>Ticket - ${reg.registrationId}</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f4f4f5; }
+              .card { background: white; padding: 28px; border-radius: 18px; border: 2px solid #e4e4e7; max-width: 380px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+              .qr { margin: 18px auto; width: 180px; height: 180px; }
+              h2 { margin: 0 0 8px; color: #18181b; font-size: 18px; }
+              p { margin: 5px 0; color: #71717a; font-size: 13px; }
+              .code { font-family: monospace; font-size: 14px; font-weight: bold; background: #f4f4f5; padding: 4px 10px; border-radius: 6px; display: inline-block; color: #18181b; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>${title}</h2>
+              <p><strong>Participant:</strong> ${reg.studentName || 'Student'}</p>
+              <p><strong>Pass ID:</strong> <span class="code">${reg.registrationId}</span></p>
+              <div class="qr">
+                ${reg.qrCodeUrl ? `<img src="${reg.qrCodeUrl}" width="180" height="180" alt="QR Code" />` : `<div style="padding: 40px 10px; background: #eee; border-radius: 8px;">QR Token: ${reg.qrToken || reg.registrationId}</div>`}
+              </div>
+              <p>📅 ${reg.eventDate || ev?.eventDate || 'Scheduled Event'}</p>
+              <p>📍 ${ev?.venue || 'Campus Venue'}</p>
+              <script>window.onload = function() { window.print(); };</script>
+            </div>
+          </body>
+        </html>
+      `);
+      ticketWindow.document.close();
+    }
+  };
+
+  const handleSharePassEvent = (ev: IEvent) => {
+    const shareUrl = `${window.location.origin}/event/${ev._id}`;
+    if (navigator.share) {
+      navigator.share({
+        title: ev.title,
+        text: ev.tagline || `Join ${ev.title} on EVENTHUB!`,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Event link copied to clipboard!');
+    }
+  };
 
   const handleEditProposal = (event: IEvent) => {
     setEditingProposal(event);
@@ -370,163 +430,22 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(studentRegSubTab === 'upcoming' ? upcomingRegistrations : completedRegistrations).map((reg) => {
-                    const existingRem = reminders.find(
-                      (r) => r.registrationId === reg.registrationId || r.eventId === reg.eventId
-                    );
-
-                    return (
-                      <div
-                        key={reg._id}
-                        className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-4 flex flex-col justify-between"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-[var(--border-color)]">
-                              {reg.registrationId}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                                  reg.attended
-                                    ? 'bg-emerald-500/10 text-emerald-600'
-                                    : 'bg-blue-500/10 text-blue-600'
-                                }`}
-                              >
-                                {reg.attended ? 'Attended (Present)' : 'Confirmed Pass'}
-                              </span>
-
-                              <ActionMenu
-                                items={[
-                                  {
-                                    id: 'view',
-                                    label: 'View Event',
-                                    icon: Eye,
-                                    onClick: async () => {
-                                      if (reg.event) onViewEvent(reg.event);
-                                      else {
-                                        try {
-                                          const res = await api.get<any>(`/events/${reg.eventId}`);
-                                          if (res.success && res.event) onViewEvent(res.event);
-                                        } catch (e) {}
-                                      }
-                                    },
-                                  },
-                                  {
-                                    id: 'pass',
-                                    label: 'View Entry Pass',
-                                    icon: Ticket,
-                                    onClick: () => setSelectedReg(reg),
-                                  },
-                                  {
-                                    id: 'share',
-                                    label: 'Share Event',
-                                    icon: Share2,
-                                    onClick: async () => {
-                                      if (reg.event) {
-                                        setEventToShare(reg.event);
-                                        setShowShareModal(true);
-                                      } else {
-                                        try {
-                                          const res = await api.get<any>(`/events/${reg.eventId}`);
-                                          if (res.success && res.event) {
-                                            setEventToShare(res.event);
-                                            setShowShareModal(true);
-                                          }
-                                        } catch (e) {}
-                                      }
-                                    },
-                                  },
-                                ]}
-                                ariaLabel={`Actions for pass ${reg.registrationId}`}
-                              />
-                            </div>
-                          </div>
-
-                          <h3 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">
-                            {reg.eventTitle || 'Collegiate Event'}
-                          </h3>
-                          <p className="text-xs text-[var(--text-muted)]">
-                            {reg.eventDate} · {reg.registrationType} Registration
-                          </p>
-
-                          {reg.certificateStatus && reg.certificateStatus !== 'Not Eligible' && (
-                            <div className="pt-1">
-                              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-                                <Award className="w-3 h-3" /> Certificate: {reg.certificateStatus}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="pt-3 border-t border-[var(--border-color)] flex flex-wrap items-center justify-between gap-2">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (reg.event) {
-                                onViewEvent(reg.event);
-                              } else {
-                                try {
-                                  const res = await api.get<any>(`/events/${reg.eventId}`);
-                                  if (res.success && res.event) onViewEvent(res.event);
-                                } catch (e) {
-                                  console.error('Failed to open event', e);
-                                }
-                              }
-                            }}
-                            className="flex-1 min-w-[110px] px-3 py-2 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-blue-500" /> View Event
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setSelectedReg(reg)}
-                            className="flex-1 min-w-[110px] px-3 py-2 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                          >
-                            <Ticket className="w-3.5 h-3.5" /> View Pass QR
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              let ev = reg.event;
-                              if (!ev) {
-                                try {
-                                  const res = await api.get<any>(`/events/${reg.eventId}`);
-                                  if (res.success && res.event) ev = res.event;
-                                } catch (e) {}
-                              }
-                              if (ev) {
-                                setSelectedEventForReminder(ev);
-                                setSelectedRegForReminder(reg);
-                              }
-                            }}
-                            className={`w-full px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
-                              existingRem
-                                ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 hover:bg-indigo-500/20'
-                                : 'border-[var(--border-color)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                            }`}
-                          >
-                            {existingRem ? (
-                              <>
-                                <BellRing className="w-3.5 h-3.5 text-indigo-600" />
-                                <span>
-                                  Reminder: {new Date(existingRem.reminderTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} at{' '}
-                                  {new Date(existingRem.reminderTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (Click to edit)
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Bell className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                                <span>Add Event Reminder</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {(studentRegSubTab === 'upcoming' ? upcomingRegistrations : completedRegistrations).map((reg) => (
+                    <RegisteredPassCard
+                      key={reg._id}
+                      registration={reg}
+                      event={reg.event}
+                      isOwner={true}
+                      onViewTicket={(r) => setSelectedReg(r)}
+                      onDownloadTicket={(r, ev) => handleDownloadTicket(r, ev)}
+                      onViewEvent={(ev) => onViewEvent(ev)}
+                      onShareEvent={(ev) => handleSharePassEvent(ev)}
+                      onAddReminder={(r, ev) => {
+                        setSelectedEventForReminder(ev);
+                        setSelectedRegForReminder(r);
+                      }}
+                    />
+                  ))}
                 </div>
               )}
             </div>

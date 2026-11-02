@@ -42,10 +42,15 @@ export async function issueCertificate(req: AuthenticatedRequest, res: Response)
 
     // Authorization check
     let authorized = false;
-    if (user.role === 'Student') {
-      authorized = event.creatorUserId === user._id && ['Published', 'Approved', 'Completed'].includes(event.status);
-    } else if (user.collegeId && user.collegeId === event.hostCollegeId) {
+    if (user.role === 'Organizer' && (event.creatorUserId === user._id || (event as any).organizerUserId === user._id)) {
       authorized = true;
+    } else if (user.role === 'Student') {
+      authorized = event.creatorUserId === user._id && ['Published', 'Approved', 'Completed'].includes(event.status);
+    } else if (user.collegeId && (user.collegeId === event.hostCollegeId || user.collegeId === event.targetCollegeId)) {
+      authorized = true;
+    } else if (user.role === 'College Super Admin') {
+      const c = await College.findOne({ superAdminId: user._id });
+      if (c && (c._id === event.hostCollegeId || c._id === event.targetCollegeId)) authorized = true;
     }
 
     if (!authorized) {
