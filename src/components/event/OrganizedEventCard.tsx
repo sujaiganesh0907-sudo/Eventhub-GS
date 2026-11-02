@@ -139,6 +139,23 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
     });
   }
 
+  // Event deletion rule: (Finished AND Attendance Finalized) OR (Finished AND 0 Registrations)
+  // Or Draft with 0 registrations
+  const eventEndTimeStr = event.endTime ? `${event.eventDate}T${event.endTime}` : `${event.eventDate}T23:59:59`;
+  const eventEndMs = new Date(eventEndTimeStr).getTime();
+  const isFinished = !isNaN(eventEndMs) && Date.now() > eventEndMs;
+  const registeredCount = event.registeredCount || 0;
+
+  const isDeletable = isDraft
+    ? registeredCount === 0
+    : isFinished && (Boolean(event.attendanceFinalized) || registeredCount === 0);
+
+  const deleteDisabledTooltip = !isFinished && !isDraft
+    ? 'Event cannot be deleted until the event date/time has passed'
+    : !event.attendanceFinalized && registeredCount > 0
+    ? 'Attendance must be finalized at Check-In Desk before deleting'
+    : undefined;
+
   // Pre-approval actions or draft actions
   if (!isApproved && !isCompleted) {
     if (onSubmitForReview && isDraft) {
@@ -163,6 +180,8 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
         label: 'Delete Event',
         icon: Trash2,
         danger: true,
+        disabled: !isDeletable,
+        title: deleteDisabledTooltip || 'Delete Event',
         onClick: handleDelete,
       });
     }
@@ -225,6 +244,8 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
         label: 'Delete Event',
         icon: Trash2,
         danger: true,
+        disabled: !isDeletable,
+        title: deleteDisabledTooltip || 'Delete Event',
         onClick: handleDelete,
       });
     }

@@ -11,9 +11,9 @@ import { OrganizedEventCard } from '../components/event/OrganizedEventCard';
 import { MultiStepEventForm } from '../components/event/MultiStepEventForm';
 import { Modal } from '../components/common/Modal';
 import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
+import { RegisteredPassCard } from '../components/event/RegisteredPassCard';
 import { DocxCertificateManagerModal } from '../components/certificate/DocxCertificateManagerModal';
 import { IssueCertificateModal } from '../components/certificate/IssueCertificateModal';
-import { RegisteredPassCard } from '../components/event/RegisteredPassCard';
 import { DEFAULT_EVENT_POSTER } from '../services/imageDefaults';
 import {
   Calendar,
@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { ActionMenu } from '../components/common/ActionMenu';
 import { ShareToChatModal } from '../components/common/ShareToChatModal';
+import { ProposalDetailsModal } from '../components/event/ProposalDetailsModal';
 
 interface EventsManagementPageProps {
   onOpenCreateEvent: (isProposal?: boolean) => void;
@@ -84,7 +85,8 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
   const [selectedEventForCertificates, setSelectedEventForCertificates] = useState<IEvent | null>(null);
   const [editingCollegeEvent, setEditingCollegeEvent] = useState<IEvent | null>(null);
 
-  // College proposal rejection modal
+  // College proposal rejection modal & proposal preview
+  const [selectedProposalForReview, setSelectedProposalForReview] = useState<IEvent | null>(null);
   const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processingAction, setProcessingAction] = useState(false);
@@ -293,7 +295,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
           {[
             { id: 'published', label: `Published Events (${collegeEvents.filter((e) => e.status === 'Published').length})` },
             { id: 'drafts', label: `Drafts (${collegeEvents.filter((e) => e.status === 'Draft').length})` },
-            { id: 'requests', label: `Student Proposals (${pendingRequests.length})` },
+            { id: 'requests', label: `Proposals (${pendingRequests.length})` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -679,9 +681,27 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                                             label: 'Delete Event',
                                             icon: Trash2,
                                             danger: true,
+                                            disabled: !(() => {
+                                              const endMs = new Date(ev.endTime ? `${ev.eventDate}T${ev.endTime}` : `${ev.eventDate}T23:59:59`).getTime();
+                                              const finished = !isNaN(endMs) && Date.now() > endMs;
+                                              return finished && (Boolean(ev.attendanceFinalized) || (ev.registeredCount || 0) === 0);
+                                            })(),
+                                            title: (() => {
+                                              const endMs = new Date(ev.endTime ? `${ev.eventDate}T${ev.endTime}` : `${ev.eventDate}T23:59:59`).getTime();
+                                              const finished = !isNaN(endMs) && Date.now() > endMs;
+                                              if (!finished) return 'Event cannot be deleted until the event has concluded';
+                                              if (!ev.attendanceFinalized && (ev.registeredCount || 0) > 0) return 'Attendance must be finalized at Check-In Desk before deleting';
+                                              return 'Delete Event';
+                                            })(),
                                             onClick: async () => {
+                                              const endMs = new Date(ev.endTime ? `${ev.eventDate}T${ev.endTime}` : `${ev.eventDate}T23:59:59`).getTime();
+                                              const finished = !isNaN(endMs) && Date.now() > endMs;
                                               const hasRegistrations = (ev.registeredCount || 0) > 0;
-                                              if ((ev.status === 'Published' || hasRegistrations) && !ev.attendanceFinalized) {
+                                              if (!finished) {
+                                                alert('Event cannot be deleted until the event has concluded.');
+                                                return;
+                                              }
+                                              if (hasRegistrations && !ev.attendanceFinalized) {
                                                 alert('Event cannot be deleted until attendance has been fully completed and finalized at the Check-In Desk.');
                                                 return;
                                               }
@@ -779,15 +799,18 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                   {pendingRequests.map((req) => (
                     <div
                       key={req._id}
-                      className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] shadow-xs space-y-3"
+                      className="p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] hover:border-[var(--primary-color)] transition-all shadow-xs space-y-3 group"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                           <span className="text-[10px] uppercase font-bold text-[var(--primary-color)]">
-                            Student Proposal · {req.category}
+                            Proposal · {req.category}
                           </span>
-                          <h3 className="text-base font-bold text-[var(--text-primary)]">
-                            {req.title}
+                          <h3
+                            onClick={() => setSelectedProposalForReview(req)}
+                            className="text-base font-bold text-[var(--text-primary)] hover:text-[var(--primary-color)] transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span>{req.title}</span>
                           </h3>
                         </div>
                         <div className="text-xs text-[var(--text-muted)]">
@@ -795,19 +818,31 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                         </div>
                       </div>
 
-                      <p className="text-xs text-[var(--text-secondary)]">{req.description}</p>
+                      <p
+                        onClick={() => setSelectedProposalForReview(req)}
+                        className="text-xs text-[var(--text-secondary)] line-clamp-2 cursor-pointer hover:text-[var(--text-primary)]"
+                      >
+                        {req.description}
+                      </p>
 
-                      <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+                      <div className="pt-3 border-t border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="text-xs text-[var(--text-muted)]">
-                          Organizer Contact: {req.primaryCoordinator?.name} ({req.primaryCoordinator?.email})
+                          Submitted by: <strong className="text-[var(--text-primary)]">{req.primaryCoordinator?.name || req.creatorRole || 'Proposer'}</strong> ({req.primaryCoordinator?.email || 'No email provided'})
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProposalForReview(req)}
+                            className="px-3.5 py-2 rounded-xl border border-[var(--border-color)] hover:bg-[var(--surface-subtle)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Review Details
+                          </button>
                           <button
                             type="button"
                             disabled={processingAction}
                             onClick={() => setRejectingEventId(req._id)}
-                            className="px-4 py-2 rounded-xl border border-red-500/20 text-red-600 hover:bg-red-500/10 text-xs font-bold cursor-pointer"
+                            className="px-4 py-2 rounded-xl border border-red-500/20 text-red-600 hover:bg-red-500/10 text-xs font-bold cursor-pointer transition-all"
                           >
                             Reject
                           </button>
@@ -815,7 +850,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                             type="button"
                             disabled={processingAction}
                             onClick={() => handleApproveProposal(req._id)}
-                            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition-all"
                           >
                             <CheckCircle2 className="w-4 h-4" /> Approve & Publish
                           </button>
@@ -914,6 +949,36 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Comprehensive Proposal Details Review Modal */}
+      {selectedProposalForReview && (
+        <ProposalDetailsModal
+          isOpen={!!selectedProposalForReview}
+          onClose={() => setSelectedProposalForReview(null)}
+          proposal={selectedProposalForReview}
+          isProcessing={processingAction}
+          onApprove={async (id) => {
+            await handleApproveProposal(id);
+            setSelectedProposalForReview(null);
+          }}
+          onReject={async (id, reason) => {
+            setProcessingAction(true);
+            try {
+              const res = await api.put<any>(`/events/${id}/reject`, { reason });
+              if (res.success) {
+                fetchData();
+                setSelectedProposalForReview(null);
+              } else {
+                alert(res.message || 'Failed to reject proposal');
+              }
+            } catch (err: any) {
+              alert(err.message || 'Failed to reject proposal');
+            } finally {
+              setProcessingAction(false);
+            }
+          }}
+        />
       )}
 
       {/* Edit Student Proposal Modal */}

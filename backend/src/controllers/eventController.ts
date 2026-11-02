@@ -719,7 +719,7 @@ export async function approveStudentEvent(req: AuthenticatedRequest, res: Respon
 export async function rejectStudentEvent(req: AuthenticatedRequest, res: Response) {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const reason = req.body.reason || req.body.rejectionReason;
     const user = req.user;
 
     if (!reason || !reason.trim()) {
@@ -1379,9 +1379,25 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Approver & Organizer requirement: Allow event deletion ONLY after attendance is fully completed
-    const hasRegistrationsOrPublished = event.status === 'Published' || ((event.registeredCount || 0) > 0);
-    if (hasRegistrationsOrPublished && !event.attendanceFinalized) {
+    // Strict deletion rule across all roles:
+    // An event can only be deleted if:
+    // (Event is Finished AND Attendance is Finalized) OR (Event is Finished AND Registered Count == 0)
+    // (Draft events that were never published and have 0 registrations can also be safely discarded)
+    const eventEndTimeStr = event.endTime ? `${event.eventDate}T${event.endTime}` : `${event.eventDate}T23:59:59`;
+    const eventEndMs = new Date(eventEndTimeStr).getTime();
+    const isFinished = !isNaN(eventEndMs) && Date.now() > eventEndMs;
+    const registeredCount = event.registeredCount || 0;
+    const isDraftWithZero = event.status === 'Draft' && registeredCount === 0;
+    const isFinishedWithFinalizedAttendance = isFinished && Boolean(event.attendanceFinalized);
+    const isFinishedWithZeroRegistrations = isFinished && registeredCount === 0;
+
+    if (!isDraftWithZero && !isFinishedWithFinalizedAttendance && !isFinishedWithZeroRegistrations) {
+      if (!isFinished) {
+        return res.status(400).json({
+          success: false,
+          message: 'Event cannot be deleted because it has not yet concluded. Deletion is only allowed once the event has finished and attendance is finalized (or if there were zero registrations).',
+        });
+      }
       return res.status(400).json({
         success: false,
         message: 'Event cannot be deleted until attendance has been fully completed and finalized at the Check-In Desk.',

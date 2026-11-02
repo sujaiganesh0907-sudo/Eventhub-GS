@@ -9,6 +9,7 @@ export interface ActionMenuItem {
   danger?: boolean;
   disabled?: boolean;
   hidden?: boolean;
+  title?: string;
 }
 
 interface ActionMenuProps {
@@ -89,6 +90,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
                 key={item.id}
                 type="button"
                 disabled={item.disabled}
+                title={item.title}
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsOpen(false);

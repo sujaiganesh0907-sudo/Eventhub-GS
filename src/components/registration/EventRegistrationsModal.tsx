@@ -474,17 +474,6 @@ export const EventRegistrationsModal: React.FC<EventRegistrationsModalProps> = (
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
               </div>
-
-              {/* CSV Export Button */}
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Download complete registrations as Excel/Google Sheets compatible CSV"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
-              </button>
             </div>
           </div>
 

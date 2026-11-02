@@ -76,7 +76,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'otp'>(initialMode);
-  const [role, setRole] = useState<'student' | 'college' | 'organizer'>(initialRole);
+  const [role, setRole] = useState<'student' | 'college' | 'organizer'>(
+    initialMode === 'register' && initialRole === 'college' ? 'student' : initialRole
+  );
+
+  useEffect(() => {
+    if (mode === 'register' && role === 'college') {
+      setRole('student');
+    }
+  }, [mode, role]);
 
   // Common Login Fields
   const [loginEmail, setLoginEmail] = useState('');
@@ -736,9 +744,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           </div>
         )}
 
-        {/* 3-Role Switcher (Participant vs Approver vs Organizer) */}
+        {/* Role Switcher (Participant vs Approver vs Organizer for login; Participant vs Organizer for registration) */}
         {mode !== 'otp' && (
-          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] mb-5">
+          <div className={`grid ${mode === 'register' ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] mb-5`}>
             <button
               type="button"
               onClick={() => {
@@ -753,20 +761,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             >
               <User className="w-3.5 h-3.5" /> Participant
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setRole('college');
-                setError(null);
-              }}
-              className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                role === 'college'
-                  ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" /> Approver
-            </button>
+            {mode === 'login' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('college');
+                  setError(null);
+                }}
+                className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                  role === 'college'
+                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" /> Approver
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

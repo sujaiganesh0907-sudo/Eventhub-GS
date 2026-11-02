@@ -467,7 +467,7 @@ const AppContent: React.FC = () => {
               isSidebarCollapsed ? 'w-16' : 'w-60'
             }`}
           >
-            <div className="sticky top-28 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
+            <div className="sticky top-20 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface)] shadow-xs">
               <Sidebar
                 activeTab={activeTab}
                 onSelectTab={(tab) => {

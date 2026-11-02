@@ -7,6 +7,7 @@ import { Modal } from '../components/common/Modal';
 import { DocxCertificateManagerModal } from '../components/certificate/DocxCertificateManagerModal';
 import { AttendanceModal } from '../components/attendance/AttendanceModal';
 import { EventRegistrationsModal } from '../components/registration/EventRegistrationsModal';
+import { ProposalDetailsModal } from '../components/event/ProposalDetailsModal';
 import {
   Calendar,
   Users,
@@ -120,6 +121,7 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
   const [selectedEventForCertificates, setSelectedEventForCertificates] = useState<IEvent | null>(null);
   const [selectedEventForRegistrations, setSelectedEventForRegistrations] = useState<IEvent | null>(null);
   const [requestFilter, setRequestFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected' | 'Changes Requested'>('All');
+  const [selectedProposalForReview, setSelectedProposalForReview] = useState<IEvent | null>(null);
   const [actionProcessing, setActionProcessing] = useState(false);
 
   // Requirement 11: Domain Ownership Verification State
@@ -193,17 +195,17 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
     }
   };
 
-  const handleRejectProposal = async (eventId: string) => {
-    const reason = window.prompt('Enter rejection or change request reason:');
-    if (reason === null) return;
+  const handleRejectProposal = async (eventId: string, reason?: string) => {
+    const finalReason = reason && reason.trim() ? reason.trim() : 'Schedule or venue conflict.';
     try {
       setActionProcessing(true);
-      const res = await api.put<any>(`/events/${eventId}/reject`, { reason });
+      const res = await api.put<any>(`/events/${eventId}/reject`, { reason: finalReason });
       if (res.success) {
         setStudentRequests((prev) =>
-          prev.map((ev) => (ev._id === eventId ? { ...ev, status: 'Rejected', rejectionReason: reason } : ev))
+          prev.map((ev) => (ev._id === eventId ? { ...ev, status: 'Rejected', rejectionReason: finalReason } : ev))
         );
         fetchDashboardData();
+        setSelectedProposalForReview(null);
       } else {
         alert(res.message || 'Failed to reject event');
       }
@@ -438,9 +440,9 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
             <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
               <FileQuestion className="w-5 h-5" />
             </div>
-            <h4 className="text-sm font-bold text-[var(--text-primary)]">Student Proposals</h4>
+            <h4 className="text-sm font-bold text-[var(--text-primary)]">Proposals</h4>
             <p className="text-xs text-[var(--text-secondary)]">
-              Review, approve, or reject student-initiated event submissions ({studentRequests.length} pending).
+              Review, approve, or reject event submissions ({studentRequests.length} pending).
             </p>
           </div>
 
@@ -985,13 +987,13 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
         </Modal>
       )}
 
-      {/* 6. Student Event Requests Modal (Pending / Changes Requested / Approved / Rejected) */}
+      {/* 6. Event Proposals Modal (Pending / Changes Requested / Approved / Rejected) */}
       {activeDrilldownModal === 'student_requests' && (
         <Modal
           isOpen={true}
           onClose={() => setActiveDrilldownModal(null)}
-          title="Student Event Proposals"
-          subtitle="Proposals initiated by students targeting this college for hosting or affiliation"
+          title="Event Proposals"
+          subtitle="Proposals submitted targeting this institution for review, hosting, or affiliation"
           maxWidth="3xl"
         >
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
@@ -1022,7 +1024,7 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
               return true;
             }).length === 0 ? (
               <p className="text-sm text-[var(--text-muted)] text-center py-8">
-                No student proposals found for this filter.
+                No proposals found for this filter.
               </p>
             ) : (
               <div className="divide-y divide-[var(--border-color)]">
@@ -1038,11 +1040,14 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
                   .map((ev) => (
                     <div
                       key={ev._id}
-                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2.5 rounded-xl transition-colors"
+                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-subtle)] p-2.5 rounded-xl transition-colors cursor-pointer"
+                      onClick={() => setSelectedProposalForReview(ev)}
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{ev.title}</h4>
+                          <h4 className="text-sm font-bold text-[var(--text-primary)] hover:text-[var(--primary-color)]">
+                            {ev.title}
+                          </h4>
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                               ev.status === 'Approved' || ev.status === 'Published'
@@ -1070,13 +1075,10 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          onClick={() => {
-                            setActiveDrilldownModal(null);
-                            onViewEvent(ev);
-                          }}
+                          onClick={() => setSelectedProposalForReview(ev)}
                           className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] text-xs font-semibold hover:bg-[var(--surface-subtle)] flex items-center gap-1 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" /> Details
@@ -1094,7 +1096,7 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
                             <button
                               type="button"
                               disabled={actionProcessing}
-                              onClick={() => handleRejectProposal(ev._id)}
+                              onClick={() => setSelectedProposalForReview(ev)}
                               className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
                             >
                               Reject / Changes
@@ -1108,6 +1110,23 @@ export const CollegeHomePage: React.FC<CollegeHomePageProps> = ({
             )}
           </div>
         </Modal>
+      )}
+
+      {/* Proposal Details Modal */}
+      {selectedProposalForReview && (
+        <ProposalDetailsModal
+          isOpen={!!selectedProposalForReview}
+          onClose={() => setSelectedProposalForReview(null)}
+          proposal={selectedProposalForReview}
+          isProcessing={actionProcessing}
+          onApprove={async (id) => {
+            await handleApproveProposal(id);
+            setSelectedProposalForReview(null);
+          }}
+          onReject={async (id, reason) => {
+            await handleRejectProposal(id, reason);
+          }}
+        />
       )}
 
       {/* Attendance Modal connected from drilldown */}
