@@ -681,28 +681,14 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                                             label: 'Delete Event',
                                             icon: Trash2,
                                             danger: true,
-                                            disabled: !(() => {
-                                              const endMs = new Date(ev.endTime ? `${ev.eventDate}T${ev.endTime}` : `${ev.eventDate}T23:59:59`).getTime();
-                                              const finished = !isNaN(endMs) && Date.now() > endMs;
-                                              return finished && (Boolean(ev.attendanceFinalized) || (ev.registeredCount || 0) === 0);
-                                            })(),
-                                            title: (() => {
-                                              const endMs = new Date(ev.endTime ? `${ev.eventDate}T${ev.endTime}` : `${ev.eventDate}T23:59:59`).getTime();
-                                              const finished = !isNaN(endMs) && Date.now() > endMs;
-                                              if (!finished) return 'Event cannot be deleted until the event has concluded';
-                                              if (!ev.attendanceFinalized && (ev.registeredCount || 0) > 0) return 'Attendance must be finalized at Check-In Desk before deleting';
-                                              return 'Delete Event';
-                                            })(),
+                                            disabled: !Boolean(ev.attendanceFinalized || (ev as any).attendanceStatus === 'Completed'),
+                                            title: Boolean(ev.attendanceFinalized || (ev as any).attendanceStatus === 'Completed')
+                                              ? 'Delete Event'
+                                              : 'Event cannot be deleted until attendance has been marked as finished and finalized at the Check-In Desk.',
                                             onClick: async () => {
-                                              const endMs = new Date(ev.endTime ? `${ev.eventDate}T${ev.endTime}` : `${ev.eventDate}T23:59:59`).getTime();
-                                              const finished = !isNaN(endMs) && Date.now() > endMs;
-                                              const hasRegistrations = (ev.registeredCount || 0) > 0;
-                                              if (!finished) {
-                                                alert('Event cannot be deleted until the event has concluded.');
-                                                return;
-                                              }
-                                              if (hasRegistrations && !ev.attendanceFinalized) {
-                                                alert('Event cannot be deleted until attendance has been fully completed and finalized at the Check-In Desk.');
+                                              const isAttendanceFinalized = Boolean(ev.attendanceFinalized || (ev as any).attendanceStatus === 'Completed');
+                                              if (!isAttendanceFinalized) {
+                                                alert('Event cannot be deleted until attendance has been marked as finished and finalized at the Check-In Desk.');
                                                 return;
                                               }
                                               if (confirm(`Are you sure you want to delete "${ev.title}"? This will safely remove registrations, attendance, certificates, and event groups.`)) {
@@ -711,6 +697,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
                                                   if (res && res.success === false) {
                                                     alert(res.message || 'Failed to delete event');
                                                   } else {
+                                                    alert('Event deleted successfully.');
                                                     fetchData();
                                                   }
                                                 } catch (err: any) {

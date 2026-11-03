@@ -662,6 +662,14 @@ export async function approveStudentEvent(req: AuthenticatedRequest, res: Respon
       return res.status(403).json({ success: false, message: 'Only authorized college admins can approve event requests' });
     }
 
+    const hostCollege = await College.findById(userCollegeId);
+    if (hostCollege && hostCollege.verificationStatus !== 'Verified') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your approver account is waiting for verification. Approver permissions will be granted once your institution account is verified.',
+      });
+    }
+
     const event = await Event.findById(id);
     if (!event) {
       return res.status(404).json({ success: false, message: 'Event proposal not found' });
@@ -744,6 +752,14 @@ export async function rejectStudentEvent(req: AuthenticatedRequest, res: Respons
 
     if (!userCollegeId) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const hostCollegeRecord = await College.findById(userCollegeId);
+    if (hostCollegeRecord && hostCollegeRecord.verificationStatus !== 'Verified') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your approver account is waiting for verification. Approver permissions will be granted once your institution account is verified.',
+      });
     }
 
     const event = await Event.findById(id);
@@ -1379,29 +1395,15 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Strict deletion rule across all roles:
-    // An event can only be deleted if:
-    // (Event is Finished AND Attendance is Finalized) OR (Event is Finished AND Registered Count == 0)
-    // (Draft events that were never published and have 0 registrations can also be safely discarded)
-    const datePart = event.eventDate ? String(event.eventDate).split('T')[0] : '';
-    const eventEndTimeStr = event.endTime ? `${datePart}T${event.endTime}` : `${datePart}T23:59:59`;
-    const eventEndMs = new Date(eventEndTimeStr).getTime();
-    const isFinished = event.status === 'Completed' || (!isNaN(eventEndMs) && Date.now() > eventEndMs);
-    const registeredCount = event.registeredCount || 0;
-    const isDraftWithZero = event.status === 'Draft' && registeredCount === 0;
-    const isFinishedWithFinalizedAttendance = isFinished && Boolean(event.attendanceFinalized);
-    const isFinishedWithZeroRegistrations = isFinished && registeredCount === 0;
+    // Strict deletion rule: An event may be deleted only when attendance has been marked as finished/finalized.
+    const isAttendanceFinalized = Boolean(
+      event.attendanceFinalized === true || (event as any).attendanceStatus === 'Completed'
+    );
 
-    if (!isDraftWithZero && !isFinishedWithFinalizedAttendance && !isFinishedWithZeroRegistrations) {
-      if (!isFinished) {
-        return res.status(400).json({
-          success: false,
-          message: 'Event cannot be deleted because it has not yet concluded. Deletion is only allowed once the event has finished and attendance is finalized (or if there were zero registrations).',
-        });
-      }
+    if (!isAttendanceFinalized) {
       return res.status(400).json({
         success: false,
-        message: 'Event cannot be deleted until attendance has been fully completed and finalized at the Check-In Desk.',
+        message: 'Event cannot be deleted until attendance has been marked as finished and finalized at the Check-In Desk.',
       });
     }
 

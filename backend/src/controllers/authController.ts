@@ -10,6 +10,7 @@ import {
   extractEmailDomain,
   validateEmailMatchesCollegeDomain,
   verifyDomainDns,
+  isBlockedEmailProvider,
 } from '../services/domainValidationService';
 import {
   logSecurityAudit,
@@ -255,9 +256,8 @@ export async function requestStudentOtp(req: Request, res: Response) {
 }
 
 /**
- * 2. College Registration: Request Email Verification OTP
- * Validates institution inputs, enforces strict domain normalization and verification,
- * prevents duplicate domains, checks free email provider blocks, and logs security audits.
+ * 2. College / Approver Registration: Request Email Verification OTP
+ * Supports Option A (Email ID Registration) and Option B (Official College Domain Email).
  */
 export async function requestCollegeOtp(req: Request, res: Response) {
   try {
@@ -270,10 +270,12 @@ export async function requestCollegeOtp(req: Request, res: Response) {
       confirmPassword,
       location,
       bio,
+      fullName,
+      registrationMethod = 'OFFICIAL_DOMAIN', // 'REGULAR_EMAIL' | 'OFFICIAL_DOMAIN'
     } = req.body;
 
-    if (!collegeName || !officialEmail || !officialDomain || !contactNumber || !password) {
-      return res.status(400).json({ success: false, message: 'All college registration fields are required.' });
+    if (!collegeName || !officialEmail || !password) {
+      return res.status(400).json({ success: false, message: 'All required Approver registration fields are required.' });
     }
 
     if (password !== confirmPassword) {
@@ -285,63 +287,89 @@ export async function requestCollegeOtp(req: Request, res: Response) {
     }
 
     const cleanEmail = officialEmail.trim().toLowerCase();
-    const cleanDomain = normalizeDomain(officialDomain);
-
-    // 1. Domain Syntax & Security Validation
-    const domainSyntaxCheck = isValidDomainSyntax(cleanDomain);
-    if (!domainSyntaxCheck.valid) {
-      await logSecurityAudit({
-        actionType: 'COLLEGE_DOMAIN_REJECTED',
-        details: `Rejected registration attempt with invalid domain "${officialDomain}": ${domainSyntaxCheck.reason}`,
-      });
-      return res.status(400).json({
-        success: false,
-        message: domainSyntaxCheck.reason || 'Invalid official college domain format.',
-      });
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
+    if (!isEmailValid) {
+      return res.status(400).json({ success: false, message: 'Invalid email address format.' });
     }
 
-    // 2. Email Syntax & Domain Extraction
-    const emailDomain = extractEmailDomain(cleanEmail);
-    if (!emailDomain) {
-      return res.status(400).json({ success: false, message: 'Invalid institutional email format.' });
-    }
-
-    // 3. Match Email Domain against Official College Domain
-    const domainMatchCheck = validateEmailMatchesCollegeDomain(emailDomain, cleanDomain);
-    if (!domainMatchCheck.matches) {
-      await logSecurityAudit({
-        actionType: 'COLLEGE_DOMAIN_REJECTED',
-        details: `Domain mismatch attempt: Email domain "${emailDomain}" does not match college domain "${cleanDomain}".`,
-      });
-      return res.status(400).json({
-        success: false,
-        message:
-          domainMatchCheck.reason ||
-          `Institutional email domain (@${emailDomain}) does not match the registered college domain (${cleanDomain}).`,
-      });
-    }
-
-    // 4. Duplicate College Check: Domain already registered
-    const existingCollege = await College.findOne({ officialDomain: cleanDomain });
-    if (existingCollege) {
-      await logSecurityAudit({
-        actionType: 'SUSPICIOUS_REGISTRATION_ATTEMPT',
-        details: `Duplicate college registration attempt for domain "${cleanDomain}". Existing college: ${existingCollege.name} (${existingCollege._id}).`,
-        collegeId: existingCollege._id,
-      });
-      return res.status(400).json({
-        success: false,
-        message:
-          'This college domain is already registered. If you are an administrator for this institution, please contact your existing College Super Admin or request delegated admin access.',
-        isDuplicateDomain: true,
-        existingCollegeName: existingCollege.name,
-      });
-    }
-
-    // Check duplicate email
+    // Check duplicate user email
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'An account with this institutional email already exists.' });
+      return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
+    }
+
+    let cleanDomain = '';
+    let matchedEmailDomain = '';
+
+    if (registrationMethod === 'REGULAR_EMAIL') {
+      // Option A: Allow registration using regular email address
+      cleanDomain = officialDomain ? normalizeDomain(officialDomain) : (extractEmailDomain(cleanEmail) || 'institution.edu');
+      matchedEmailDomain = extractEmailDomain(cleanEmail) || cleanDomain;
+    } else {
+      // Option B: Official College Domain Email Registration
+      const rawDomain = officialDomain || extractEmailDomain(cleanEmail) || '';
+      cleanDomain = normalizeDomain(rawDomain);
+
+      // 1. Domain Syntax & Security Validation
+      const domainSyntaxCheck = isValidDomainSyntax(cleanDomain);
+      if (!domainSyntaxCheck.valid) {
+        await logSecurityAudit({
+          actionType: 'COLLEGE_DOMAIN_REJECTED',
+          details: `Rejected registration attempt with invalid domain "${cleanDomain}": ${domainSyntaxCheck.reason}`,
+        });
+        return res.status(400).json({
+          success: false,
+          message: domainSyntaxCheck.reason || 'Invalid official college domain format.',
+        });
+      }
+
+      // 2. Email Syntax & Domain Extraction
+      const emailDomain = extractEmailDomain(cleanEmail);
+      if (!emailDomain) {
+        return res.status(400).json({ success: false, message: 'Invalid institutional email format.' });
+      }
+
+      // Reject free/public email providers
+      if (isBlockedEmailProvider(emailDomain) || isBlockedEmailProvider(cleanDomain)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Public and free email domains (e.g., gmail.com, yahoo.com, outlook.com) are not allowed for Official Domain registration. Please use your official university domain email or select Option A (Email ID).',
+        });
+      }
+
+      // 3. Match Email Domain against Official College Domain
+      const domainMatchCheck = validateEmailMatchesCollegeDomain(emailDomain, cleanDomain);
+      if (!domainMatchCheck.matches) {
+        await logSecurityAudit({
+          actionType: 'COLLEGE_DOMAIN_REJECTED',
+          details: `Domain mismatch attempt: Email domain "${emailDomain}" does not match college domain "${cleanDomain}".`,
+        });
+        return res.status(400).json({
+          success: false,
+          message:
+            domainMatchCheck.reason ||
+            `Institutional email domain (@${emailDomain}) does not match the registered college domain (${cleanDomain}).`,
+        });
+      }
+
+      matchedEmailDomain = domainMatchCheck.matchedDomain || cleanDomain;
+
+      // 4. Duplicate College Check: Domain already registered
+      const existingCollege = await College.findOne({ officialDomain: cleanDomain });
+      if (existingCollege) {
+        await logSecurityAudit({
+          actionType: 'SUSPICIOUS_REGISTRATION_ATTEMPT',
+          details: `Duplicate college registration attempt for domain "${cleanDomain}". Existing college: ${existingCollege.name} (${existingCollege._id}).`,
+          collegeId: existingCollege._id,
+        });
+        return res.status(400).json({
+          success: false,
+          message:
+            'This college domain is already registered. If you are an administrator for this institution, please contact your existing College Super Admin or request delegated admin access.',
+          isDuplicateDomain: true,
+          existingCollegeName: existingCollege.name,
+        });
+      }
     }
 
     // Check resend rate limit (60s cooldown, max attempts)
@@ -357,7 +385,6 @@ export async function requestCollegeOtp(req: Request, res: Response) {
       }
     }
 
-    // 5. Generate cryptographically secure OTP & Hash
     const passwordHash = await bcrypt.hash(password, 10);
     const otp = generate6DigitOtp();
     const otpHash = await bcrypt.hash(otp, 10);
@@ -366,14 +393,16 @@ export async function requestCollegeOtp(req: Request, res: Response) {
     const resendAvailableAt = new Date(Date.now() + 60 * 1000).toISOString();
 
     const payload = {
+      fullName: (fullName || collegeName + ' Admin').trim(),
       collegeName: collegeName.trim(),
       officialEmail: cleanEmail,
       officialDomain: cleanDomain,
-      matchedEmailDomain: domainMatchCheck.matchedDomain || cleanDomain,
-      contactNumber: contactNumber.trim(),
+      matchedEmailDomain,
+      contactNumber: contactNumber ? contactNumber.trim() : 'N/A',
       location: location ? location.trim() : 'Campus Grounds',
-      bio: bio ? bio.trim() : `Official account of ${collegeName.trim()}.`,
+      bio: bio ? bio.trim() : `Approver account for ${collegeName.trim()}.`,
       passwordHash,
+      registrationMethod,
     };
 
     if (existingOtp) {
@@ -402,31 +431,34 @@ export async function requestCollegeOtp(req: Request, res: Response) {
     const emailResult = await sendOtpEmail({
       email: cleanEmail,
       otp,
-      recipientName: collegeName.trim(),
+      recipientName: payload.fullName,
       purpose: 'COLLEGE_REGISTRATION',
     });
 
     await logSecurityAudit({
       actionType: 'COLLEGE_OTP_SENT',
-      details: `6-digit institutional OTP dispatched to ${cleanEmail} for domain "${cleanDomain}".`,
+      details: `6-digit institutional OTP dispatched to ${cleanEmail} (method: ${registrationMethod}).`,
     });
 
     if (!emailResult.success) {
       return res.status(500).json({
         success: false,
-        message: 'Unable to send verification code to your institutional email. Please try again.',
+        message: 'Unable to send verification code to your email. Please try again.',
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Verification code sent to your official institutional email.',
+      message: registrationMethod === 'REGULAR_EMAIL'
+        ? 'Verification code sent to your email. Account status will be Waiting for Verification.'
+        : 'Verification code sent to your official institutional email.',
       email: cleanEmail,
       officialDomain: cleanDomain,
+      registrationMethod,
       ...(process.env.NODE_ENV !== 'production' ? { devOtp: otp } : {}),
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: error.message || 'College registration failed.' });
+    return res.status(500).json({ success: false, message: error.message || 'Approver registration failed.' });
   }
 }
 
@@ -544,34 +576,39 @@ export async function verifyOtp(req: Request, res: Response) {
         role: 'Student',
       });
     } else if (record.purpose === 'COLLEGE_REGISTRATION') {
+      const isRegularEmail = record.payload?.registrationMethod === 'REGULAR_EMAIL';
+
       const user = await User.create({
         email: cleanEmail,
         passwordHash: record.payload.passwordHash,
         role: 'College Super Admin',
-        fullName: record.payload.collegeName + ' Admin',
+        fullName: record.payload.fullName || (record.payload.collegeName + ' Admin'),
         isEmailVerified: true,
+        status: isRegularEmail ? 'Waiting for Verification' : 'Active',
       });
 
-      const colBase = record.payload.collegeName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
+      const colBase = record.payload.collegeName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15) || 'college';
       let colCandidate = colBase;
       let colCounter = 1;
       while (await College.findOne({ username: colCandidate })) {
         colCandidate = `${colBase}${colCounter++}`;
       }
 
-      // Crucial: verificationStatus is 'Pending' until institutional verification is confirmed
       const college = await College.create({
         name: record.payload.collegeName,
         username: colCandidate,
         officialEmail: cleanEmail,
         officialDomain: record.payload.officialDomain,
-        contactNumber: record.payload.contactNumber,
+        contactNumber: record.payload.contactNumber || 'N/A',
         location: record.payload.location || 'Campus Main Grounds',
         bio: record.payload.bio || `Official account of ${record.payload.collegeName}.`,
         logo: record.payload.logo || '',
         coverPhoto: record.payload.coverPhoto || '',
-        verificationStatus: 'Pending',
+        verificationStatus: isRegularEmail ? 'Pending' : 'Verified',
+        isDomainVerified: !isRegularEmail,
+        domainVerifiedAt: !isRegularEmail ? new Date().toISOString() : undefined,
         superAdminId: user._id,
+        superAdminEmail: cleanEmail,
         messagePrivacy: 'Everyone',
         connectionsCount: 0,
       });
@@ -584,16 +621,30 @@ export async function verifyOtp(req: Request, res: Response) {
         role: 'College Super Admin',
         name: user.fullName,
         email: user.email,
-        permissions: ['ALL_PERMISSIONS'],
+        permissions: isRegularEmail ? [] : ['ALL_PERMISSIONS'],
+        status: isRegularEmail ? 'Pending' : 'Active',
         addedBy: 'SYSTEM',
       });
 
-      return res.json({
-        success: true,
-        message: 'Email verified successfully! Your college account is created with Pending accreditation status. You can now sign in.',
-        role: 'College Super Admin',
-        collegeId: college._id,
-      });
+      if (isRegularEmail) {
+        return res.json({
+          success: true,
+          message: 'Account created in MongoDB with status Waiting for Verification. Approver permissions will be granted once your institution account is verified. You can now sign in.',
+          role: 'College Super Admin',
+          collegeId: college._id,
+          verificationStatus: 'Pending',
+          status: 'Waiting for Verification',
+        });
+      } else {
+        return res.json({
+          success: true,
+          message: 'Official institutional domain verified successfully! Your Approver account is active without waiting. You can now sign in.',
+          role: 'College Super Admin',
+          collegeId: college._id,
+          verificationStatus: 'Verified',
+          status: 'Active',
+        });
+      }
     } else if (record.purpose === 'ORGANIZER_REGISTRATION') {
       const user = await User.create({
         email: cleanEmail,

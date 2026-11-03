@@ -8,6 +8,7 @@ import {
   Phone,
   GraduationCap,
   ArrowRight,
+  ArrowLeft,
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
@@ -77,14 +78,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   const [mode, setMode] = useState<'login' | 'register' | 'otp'>(initialMode);
   const [role, setRole] = useState<'student' | 'college' | 'organizer'>(
-    initialMode === 'register' && initialRole === 'college' ? 'student' : initialRole
+    initialRole === 'college' ? 'college' : initialRole === 'organizer' ? 'organizer' : 'student'
+  );
+  // In registration mode, if user is on the role chooser screen, selectedRole is null
+  const [selectedRole, setSelectedRole] = useState<'student' | 'college' | 'organizer' | null>(
+    initialMode === 'register'
+      ? (initialRole === 'college' ? 'college' : initialRole === 'organizer' ? 'organizer' : null)
+      : (initialRole || 'student')
   );
 
-  useEffect(() => {
-    if (mode === 'register' && role === 'college') {
-      setRole('student');
-    }
-  }, [mode, role]);
+  // Approver registration states
+  const [approverMethod, setApproverMethod] = useState<'REGULAR_EMAIL' | 'OFFICIAL_DOMAIN'>('REGULAR_EMAIL');
+  const [approverFullName, setApproverFullName] = useState('');
+  const [approverEmail, setApproverEmail] = useState('');
+  const [approverPassword, setApproverPassword] = useState('');
+  const [approverConfirmPassword, setApproverConfirmPassword] = useState('');
+  const [approverInstitutionName, setApproverInstitutionName] = useState('');
+  const [approverCampusOrDomain, setApproverCampusOrDomain] = useState('');
+  const [showApproverPassword, setShowApproverPassword] = useState(false);
+  const [showApproverConfirmPassword, setShowApproverConfirmPassword] = useState(false);
 
   // Common Login Fields
   const [loginEmail, setLoginEmail] = useState('');
@@ -474,60 +486,78 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
+  const approverPasswordMismatch =
+    Boolean(approverPassword && approverConfirmPassword && approverPassword !== approverConfirmPassword);
+
   const handleCollegeRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setMessage(null);
 
-    if (collegePassword !== collegeConfirmPassword) {
+    if (!approverFullName || !approverEmail || !approverPassword || !approverInstitutionName || !approverCampusOrDomain) {
+      setError('Please fill in all required Approver registration fields.');
+      return;
+    }
+
+    if (approverPassword !== approverConfirmPassword) {
       setError('Passwords do not match.');
       return;
     }
 
-    if (collegePassword.length < 6) {
+    if (approverPassword.length < 6) {
       setError('Password must be at least 6 characters.');
       return;
     }
 
-    if (isDomainMismatch) {
-      setError(`Official email domain (@${emailDomainPart}) must match the official college domain (${enteredDomain}).`);
-      return;
+    if (approverMethod === 'OFFICIAL_DOMAIN') {
+      const emailDomain = approverEmail.trim().split('@')[1]?.toLowerCase();
+      const blocked = [
+        'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com', 'hotmail.com',
+        'outlook.com', 'live.com', 'msn.com', 'icloud.com', 'me.com', 'mac.com',
+        'aol.com', 'protonmail.com', 'proton.me', 'zoho.com', 'mail.com', 'fastmail.com'
+      ];
+      if (emailDomain && blocked.includes(emailDomain)) {
+        setError('Public and free email domains (e.g. Gmail, Yahoo, Outlook) are not allowed for Official Domain registration. Please use your official university domain email or switch to Option A (Email ID).');
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const res = await requestCollegeOtp({
-        collegeName,
-        officialDomain: collegeOfficialDomain,
-        location: collegeLocation,
-        officialEmail: collegeEmail,
-        contactNumber: collegePhone,
-        password: collegePassword,
-        confirmPassword: collegeConfirmPassword,
+        registrationMethod: approverMethod,
+        fullName: approverFullName.trim(),
+        collegeName: approverInstitutionName.trim(),
+        officialEmail: approverEmail.trim(),
+        officialDomain: approverCampusOrDomain.trim(),
+        location: approverCampusOrDomain.trim(),
+        contactNumber: 'N/A',
+        password: approverPassword,
+        confirmPassword: approverConfirmPassword,
       });
 
       if (res.success) {
-        // Store pending verification safely in sessionStorage (Requirement 3)
         setPendingVerification({
           role: 'college',
-          email: collegeEmail,
+          email: approverEmail.trim(),
           purpose: 'COLLEGE_REGISTRATION',
           status: 'pending',
           registrationData: {
-            collegeName,
-            officialDomain: collegeOfficialDomain,
-            location: collegeLocation,
-            phoneNumber: collegePhone,
+            fullName: approverFullName.trim(),
+            collegeName: approverInstitutionName.trim(),
+            officialEmail: approverEmail.trim(),
+            officialDomain: approverCampusOrDomain.trim(),
+            location: approverCampusOrDomain.trim(),
+            registrationMethod: approverMethod,
           },
           createdAt: Date.now(),
         });
 
-        setOtpEmail(collegeEmail);
+        setOtpEmail(approverEmail.trim());
         setOtpPurpose('COLLEGE_REGISTRATION');
         setMode('otp');
-        setMessage(res.message || 'Verification code sent to official email.');
+        setMessage(res.message || 'Verification code sent to your email.');
 
-        // Navigate to OTP Verification route without resetting page (Requirement 4, 5, 6)
         if (onNavigateTab) {
           onNavigateTab('verify-otp');
         } else {
@@ -536,17 +566,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       } else {
         if ((res as any).isDuplicateDomain) {
           setDuplicateCollegeDomain({
-            domain: collegeOfficialDomain,
+            domain: approverCampusOrDomain.trim(),
             collegeName: (res as any).existingCollegeName,
           });
-          setRequestAdminName(collegeName ? `${collegeName} Representative` : '');
-          setRequestAdminEmail(collegeEmail);
-          setRequestAdminPhone(collegePhone);
+          setRequestAdminName(approverFullName ? `${approverFullName}` : '');
+          setRequestAdminEmail(approverEmail);
+          setRequestAdminPhone('');
         }
-        setError(res.message || 'College registration failed.');
+        setError(res.message || 'Approver registration failed.');
       }
     } catch (err: any) {
-      setError(err.message || 'Unable to send verification code. Please try again.');
+      setError(err?.data?.message || err.message || 'Unable to send verification code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -744,9 +774,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           </div>
         )}
 
-        {/* Role Switcher (Participant vs Approver vs Organizer for login; Participant vs Organizer for registration) */}
-        {mode !== 'otp' && (
-          <div className={`grid ${mode === 'register' ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] mb-5`}>
+        {/* Role Switcher (Participant vs Approver vs Organizer for login ONLY) */}
+        {mode === 'login' && !isMfaRequired && (
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] mb-5">
             <button
               type="button"
               onClick={() => {
@@ -761,22 +791,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             >
               <User className="w-3.5 h-3.5" /> Participant
             </button>
-            {mode === 'login' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setRole('college');
-                  setError(null);
-                }}
-                className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                  role === 'college'
-                    ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5" /> Approver
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setRole('college');
+                setError(null);
+              }}
+              className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                role === 'college'
+                  ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" /> Approver
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -958,6 +986,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   setError(null);
                   setMessage(null);
                   setMode('register');
+                  setSelectedRole(null);
                 }}
                 className="font-bold text-[var(--primary-color)] hover:underline cursor-pointer ml-1"
               >
@@ -970,226 +999,443 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         {/* 2. REGISTRATION MODE */}
         {mode === 'register' && (
           <div>
-            {/* STUDENT REGISTRATION FORM */}
-            {role === 'student' && (
-              <form onSubmit={handleStudentRegister} className="space-y-3">
-                {/* Full Name */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={studentFullName}
-                    onChange={(e) => setStudentFullName(e.target.value)}
-                    placeholder="Enter your full name"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
-
-                {/* Unique Username Handle */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Username (Unique Handle)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">
-                      @
-                    </span>
-                    <input
-                      type="text"
-                      value={studentUsername}
-                      onChange={(e) => setStudentUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
-                      placeholder="Enter chosen username"
-                      className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                    />
-                  </div>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                    Letters, numbers, underscore, period. No spaces. (Optional — will auto-generate if empty)
+            {/* A. CHOOSE ROLE SCREEN (Exactly 3 Options: Participant, Approver, Organization) */}
+            {selectedRole === null && (
+              <div className="space-y-4">
+                <div className="text-center mb-2">
+                  <h3 className="text-lg font-black text-[var(--text-primary)]">
+                    Choose Your Account Role
+                  </h3>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">
+                    Select your role to open the corresponding registration form
                   </p>
                 </div>
 
-                {/* College / University Name */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    College / University Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={studentCollegeName}
-                    onChange={(e) => setStudentCollegeName(e.target.value)}
-                    placeholder="Enter your college or university name"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
-
-                {/* Department & Year in 2 Columns */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Department *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      list="departments-list"
-                      value={studentDepartment}
-                      onChange={(e) => setStudentDepartment(e.target.value)}
-                      placeholder="Enter or select your department"
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                    />
-                    <datalist id="departments-list">
-                      {COMMON_DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Year *
-                    </label>
-                    <select
-                      required
-                      value={studentYearOfStudy}
-                      onChange={(e) => setStudentYearOfStudy(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                    >
-                      <option value="">Select your year of study</option>
-                      {YEAR_OPTIONS.map((year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Email Address */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={studentEmail}
-                    onChange={(e) => setStudentEmail(e.target.value)}
-                    placeholder="Enter your email address"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
-
-                {/* Contact Phone */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Contact Phone *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={studentPhone}
-                    onChange={(e) => setStudentPhone(e.target.value)}
-                    placeholder="Enter your contact number"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
-
-                {/* Password Fields with Eye Toggles & Mismatch Validation (Requirement 1) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Create Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showStudentPassword ? 'text' : 'password'}
-                        required
-                        value={studentPassword}
-                        onChange={(e) => setStudentPassword(e.target.value)}
-                        placeholder="Create a password"
-                        className="w-full p-2.5 pr-9 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowStudentPassword(!showStudentPassword)}
-                        aria-label={showStudentPassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                <div className="space-y-3">
+                  {/* Option 1: Participant */}
+                  <div
+                    onClick={() => {
+                      setSelectedRole('student');
+                      setRole('student');
+                      setError(null);
+                      setMessage(null);
+                    }}
+                    className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] hover:border-[var(--primary-color)] transition-all cursor-pointer shadow-xs group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 shrink-0 group-hover:scale-105 transition-transform">
+                        <GraduationCap className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">1. Participant</h4>
+                          <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-color)] group-hover:translate-x-1 transition-all" />
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+                          For students and attendees. Discover collegiate hackathons, competitions, workshops, reserve QR passes, and earn verified certificates.
+                        </p>
+                        <span className="inline-block mt-2 text-[11px] font-bold text-[var(--primary-color)]">
+                          Register as Participant →
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Confirm Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showStudentConfirmPassword ? 'text' : 'password'}
-                        required
-                        value={studentConfirmPassword}
-                        onChange={(e) => setStudentConfirmPassword(e.target.value)}
-                        placeholder="Re-enter your password"
-                        className={`w-full p-2.5 pr-9 rounded-xl border bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden ${
-                          studentPasswordMismatch
-                            ? 'border-red-500 focus:border-red-500'
-                            : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowStudentConfirmPassword(!showStudentConfirmPassword)}
-                        aria-label={showStudentConfirmPassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        {showStudentConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                  {/* Option 2: Approver */}
+                  <div
+                    onClick={() => {
+                      setSelectedRole('college');
+                      setRole('college');
+                      setError(null);
+                      setMessage(null);
+                    }}
+                    className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] hover:border-[var(--primary-color)] transition-all cursor-pointer shadow-xs group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0 group-hover:scale-105 transition-transform">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">2. Approver</h4>
+                          <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-color)] group-hover:translate-x-1 transition-all" />
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+                          For universities and collegiate authorities. Review event proposals, manage campus venues, scan ticket check-ins, and issue credentials.
+                        </p>
+                        <span className="inline-block mt-2 text-[11px] font-bold text-emerald-600">
+                          Register as Approver →
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Option 3: Organization */}
+                  <div
+                    onClick={() => {
+                      setSelectedRole('organizer');
+                      setRole('organizer');
+                      setError(null);
+                      setMessage(null);
+                    }}
+                    className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] hover:border-[var(--primary-color)] transition-all cursor-pointer shadow-xs group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 shrink-0 group-hover:scale-105 transition-transform">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">3. Organization</h4>
+                          <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-color)] group-hover:translate-x-1 transition-all" />
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+                          For tech clubs, student chapters, companies, and communities. Propose events to host universities, manage attendee lists, and collect registrations.
+                        </p>
+                        <span className="inline-block mt-2 text-[11px] font-bold text-purple-600">
+                          Register as Organization →
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Password Mismatch Alert: ONLY when BOTH are entered and mismatched */}
-                {studentPasswordMismatch && (
-                  <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 mt-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    Passwords do not match.
-                  </p>
-                )}
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={loading || studentPasswordMismatch}
-                  className="w-full mt-3 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Sending Verification Code...' : 'Register Student Account'}
-                </button>
-
-                {/* Sign In Link (Requirement 15) */}
-                <div className="text-center pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
-                  Already have an account?{' '}
+                {/* Already registered? Sign In */}
+                <div className="text-center pt-4 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+                  Already registered?{' '}
                   <button
                     type="button"
                     onClick={() => {
                       setError(null);
                       setMessage(null);
                       setMode('login');
+                      setSelectedRole(null);
                     }}
                     className="font-bold text-[var(--primary-color)] hover:underline cursor-pointer ml-1"
                   >
-                    Sign in
+                    Sign In
                   </button>
                 </div>
-              </form>
+              </div>
             )}
 
-            {/* COLLEGE REGISTRATION FORM */}
-            {role === 'college' && (
-              <div className="space-y-3">
+            {/* B. PARTICIPANT REGISTRATION FORM */}
+            {selectedRole === 'student' && (
+              <div className="space-y-4">
+                {/* Back to Role Selection Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRole(null);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to Role Selection
+                </button>
+
+                <div className="flex items-center gap-2 pb-2 border-b border-[var(--border-color)]">
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Participant Registration</h3>
+                    <p className="text-[11px] text-[var(--text-muted)]">Students and event attendees</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleStudentRegister} className="space-y-3">
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={studentFullName}
+                      onChange={(e) => setStudentFullName(e.target.value)}
+                      placeholder="Enter your full name"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Unique Username Handle */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Username (Unique Handle)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">
+                        @
+                      </span>
+                      <input
+                        type="text"
+                        value={studentUsername}
+                        onChange={(e) => setStudentUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
+                        placeholder="Enter chosen username"
+                        className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                      />
+                    </div>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                      Letters, numbers, underscore, period. No spaces. (Optional — will auto-generate if empty)
+                    </p>
+                  </div>
+
+                  {/* College / University Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      College / University Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={studentCollegeName}
+                      onChange={(e) => setStudentCollegeName(e.target.value)}
+                      placeholder="Enter your college or university name"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Department & Year in 2 Columns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Department *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        list="departments-list"
+                        value={studentDepartment}
+                        onChange={(e) => setStudentDepartment(e.target.value)}
+                        placeholder="Enter or select your department"
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                      />
+                      <datalist id="departments-list">
+                        {COMMON_DEPARTMENTS.map((dept) => (
+                          <option key={dept} value={dept} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Year *
+                      </label>
+                      <select
+                        required
+                        value={studentYearOfStudy}
+                        onChange={(e) => setStudentYearOfStudy(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                      >
+                        <option value="">Select your year of study</option>
+                        {YEAR_OPTIONS.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Email Address */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={studentEmail}
+                      onChange={(e) => setStudentEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Contact Phone */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Contact Phone *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={studentPhone}
+                      onChange={(e) => setStudentPhone(e.target.value)}
+                      placeholder="Enter your contact number"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Password Fields with Eye Toggles & Mismatch Validation */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Create Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showStudentPassword ? 'text' : 'password'}
+                          required
+                          value={studentPassword}
+                          onChange={(e) => setStudentPassword(e.target.value)}
+                          placeholder="Create a password"
+                          className="w-full p-2.5 pr-9 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStudentPassword(!showStudentPassword)}
+                          aria-label={showStudentPassword ? 'Hide password' : 'Show password'}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                        >
+                          {showStudentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Confirm Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showStudentConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={studentConfirmPassword}
+                          onChange={(e) => setStudentConfirmPassword(e.target.value)}
+                          placeholder="Re-enter your password"
+                          className={`w-full p-2.5 pr-9 rounded-xl border bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden ${
+                            studentPasswordMismatch
+                              ? 'border-red-500 focus:border-red-500'
+                              : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStudentConfirmPassword(!showStudentConfirmPassword)}
+                          aria-label={showStudentConfirmPassword ? 'Hide password' : 'Show password'}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                        >
+                          {showStudentConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {studentPasswordMismatch && (
+                    <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      Passwords do not match.
+                    </p>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={loading || studentPasswordMismatch}
+                    className="w-full mt-3 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Sending Verification Code...' : 'Register Participant Account'}
+                  </button>
+
+                  {/* Sign In Link */}
+                  <div className="text-center pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+                    Already registered?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setMessage(null);
+                        setMode('login');
+                        setSelectedRole(null);
+                      }}
+                      className="font-bold text-[var(--primary-color)] hover:underline cursor-pointer ml-1"
+                    >
+                      Sign In
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* C. APPROVER REGISTRATION FORM (Option A: Email ID vs Option B: Official College Domain) */}
+            {selectedRole === 'college' && (
+              <div className="space-y-4">
+                {/* Back to Role Selection Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRole(null);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to Role Selection
+                </button>
+
+                <div className="flex items-center gap-2 pb-2 border-b border-[var(--border-color)]">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Approver Registration</h3>
+                    <p className="text-[11px] text-[var(--text-muted)]">Institution administrators & event approvers</p>
+                  </div>
+                </div>
+
+                {/* Two distinct, mutually exclusive registration options */}
+                <div className="p-1 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApproverMethod('REGULAR_EMAIL');
+                      setError(null);
+                    }}
+                    className={`py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
+                      approverMethod === 'REGULAR_EMAIL'
+                        ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    Option A: Email ID
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApproverMethod('OFFICIAL_DOMAIN');
+                      setError(null);
+                    }}
+                    className={`py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
+                      approverMethod === 'OFFICIAL_DOMAIN'
+                        ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-xs'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    Option B: Official Domain
+                  </button>
+                </div>
+
+                {/* Clear informational note based on Option chosen */}
+                {approverMethod === 'REGULAR_EMAIL' ? (
+                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                    <div className="font-bold flex items-center gap-1.5 mb-1">
+                      <ShieldCheck className="w-4 h-4 text-blue-500" /> Option A: Standard Email Registration
+                    </div>
+                    Regular email address allowed. Your account will be created with status <strong>Waiting for Verification</strong>. Approver permissions will be granted once your institution account is verified.
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                    <div className="font-bold flex items-center gap-1.5 mb-1">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" /> Option B: Official Domain Verification
+                    </div>
+                    Official college domain email required. Free or public email domains (gmail, yahoo, etc.) are rejected. Direct verification without waiting for additional approval.
+                  </div>
+                )}
+
                 {duplicateCollegeDomain && (
                   <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs">
                     <div className="font-bold flex items-center gap-1.5 mb-1 text-amber-800 dark:text-amber-200">
@@ -1197,388 +1443,384 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       Domain Already Registered
                     </div>
                     <p className="text-[11px] leading-relaxed mb-2.5">
-                      The domain <span className="font-mono font-semibold">{duplicateCollegeDomain.domain}</span> is already owned by{' '}
+                      The domain <span className="font-mono font-semibold">{duplicateCollegeDomain.domain}</span> is already registered for{' '}
                       <strong>{duplicateCollegeDomain.collegeName || 'an existing college account'}</strong>.
-                      To protect institutional integrity, second Super Admin accounts cannot be created automatically.
                     </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowRequestAdminModal(true)}
-                        className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-bold text-xs shadow-xs transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" /> Request Admin Access
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setError(null);
-                          setMessage('Please sign in with your institutional credentials.');
-                          setMode('login');
-                          setLoginEmail(collegeEmail);
-                        }}
-                        className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] text-xs font-semibold cursor-pointer"
-                      >
-                        Sign In Instead
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setMode('login');
+                        setSelectedRole(null);
+                      }}
+                      className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--text-primary)] text-xs font-semibold cursor-pointer"
+                    >
+                      Sign In Instead
+                    </button>
                   </div>
                 )}
 
                 <form onSubmit={handleCollegeRegister} className="space-y-3">
-                {/* Institution Name */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Institution Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={collegeName}
-                    onChange={(e) => setCollegeName(e.target.value)}
-                    placeholder="Enter institution name"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={approverFullName}
+                      onChange={(e) => setApproverFullName(e.target.value)}
+                      placeholder="Enter your full name"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
 
-                {/* Official College Domain */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Official College Domain *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={collegeOfficialDomain}
-                    onChange={(e) => setCollegeOfficialDomain(e.target.value)}
-                    placeholder="Enter official college domain"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                  <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                    Institutional domain must match your university email (such as apextech.edu)
-                  </p>
-                </div>
+                  {/* Email */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      {approverMethod === 'OFFICIAL_DOMAIN' ? 'Official Institutional Email *' : 'Email Address *'}
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={approverEmail}
+                      onChange={(e) => setApproverEmail(e.target.value)}
+                      placeholder={
+                        approverMethod === 'OFFICIAL_DOMAIN'
+                          ? 'e.g. dean@stanford.edu or admin@college.edu'
+                          : 'Enter your email address'
+                      }
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
 
-                {/* Location */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={collegeLocation}
-                    onChange={(e) => setCollegeLocation(e.target.value)}
-                    placeholder="Enter city and state"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
+                  {/* Institution Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Institution Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={approverInstitutionName}
+                      onChange={(e) => setApproverInstitutionName(e.target.value)}
+                      placeholder="e.g. Stanford University or MIT"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
 
-                {/* Official Institutional Email with Dynamic Domain Validation (Requirement 13) */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Official Institutional Email *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={collegeEmail}
-                    onChange={(e) => setCollegeEmail(e.target.value)}
-                    placeholder="Enter official institutional email"
-                    className={`w-full p-2.5 rounded-xl border bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden ${
-                      isDomainMismatch
-                        ? 'border-red-500 focus:border-red-500'
-                        : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
-                    }`}
-                  />
-                  {isDomainMismatch && (
+                  {/* Campus Location / Domain */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      {approverMethod === 'OFFICIAL_DOMAIN' ? 'Official College Domain *' : 'Campus Location / Domain *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={approverCampusOrDomain}
+                      onChange={(e) => setApproverCampusOrDomain(e.target.value)}
+                      placeholder={
+                        approverMethod === 'OFFICIAL_DOMAIN'
+                          ? 'e.g. stanford.edu'
+                          : 'e.g. Main Campus, Cambridge, MA'
+                      }
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Password & Confirm Password */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Create Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showApproverPassword ? 'text' : 'password'}
+                          required
+                          value={approverPassword}
+                          onChange={(e) => setApproverPassword(e.target.value)}
+                          placeholder="Min 6 characters"
+                          className="w-full p-2.5 pr-9 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApproverPassword(!showApproverPassword)}
+                          aria-label={showApproverPassword ? 'Hide password' : 'Show password'}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                        >
+                          {showApproverPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                        Confirm Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showApproverConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={approverConfirmPassword}
+                          onChange={(e) => setApproverConfirmPassword(e.target.value)}
+                          placeholder="Re-enter password"
+                          className={`w-full p-2.5 pr-9 rounded-xl border bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden ${
+                            approverPasswordMismatch
+                              ? 'border-red-500 focus:border-red-500'
+                              : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApproverConfirmPassword(!showApproverConfirmPassword)}
+                          aria-label={showApproverConfirmPassword ? 'Hide password' : 'Show password'}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                        >
+                          {showApproverConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {approverPasswordMismatch && (
                     <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 mt-1">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      Email domain (@{emailDomainPart}) must match official college domain ({enteredDomain}).
+                      Passwords do not match.
                     </p>
                   )}
-                </div>
 
-                {/* Contact Phone */}
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                    Contact Phone *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={collegePhone}
-                    onChange={(e) => setCollegePhone(e.target.value)}
-                    placeholder="Enter contact number"
-                    className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
-
-                {/* Password Fields with Eye Toggles & Mismatch Validation (Requirement 2) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Create Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showCollegePassword ? 'text' : 'password'}
-                        required
-                        value={collegePassword}
-                        onChange={(e) => setCollegePassword(e.target.value)}
-                        placeholder="Create a password"
-                        className="w-full p-2.5 pr-9 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCollegePassword(!showCollegePassword)}
-                        aria-label={showCollegePassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        {showCollegePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                      Confirm Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showCollegeConfirmPassword ? 'text' : 'password'}
-                        required
-                        value={collegeConfirmPassword}
-                        onChange={(e) => setCollegeConfirmPassword(e.target.value)}
-                        placeholder="Re-enter your password"
-                        className={`w-full p-2.5 pr-9 rounded-xl border bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden ${
-                          collegePasswordMismatch
-                            ? 'border-red-500 focus:border-red-500'
-                            : 'border-[var(--border-color)] focus:border-[var(--primary-color)]'
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCollegeConfirmPassword(!showCollegeConfirmPassword)}
-                        aria-label={showCollegeConfirmPassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        {showCollegeConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {collegePasswordMismatch && (
-                  <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 mt-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    Passwords do not match.
-                  </p>
-                )}
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={loading || collegePasswordMismatch || isDomainMismatch}
-                  className="w-full mt-3 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Sending Verification Code...' : 'Register College Account'}
-                </button>
-
-                {/* Sign In Link (Requirement 15) */}
-                <div className="text-center pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
-                  Already have an account?{' '}
+                  {/* Submit Button */}
                   <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setMessage(null);
-                      setMode('login');
-                    }}
-                    className="font-bold text-[var(--primary-color)] hover:underline cursor-pointer ml-1"
+                    type="submit"
+                    disabled={loading || approverPasswordMismatch}
+                    className="w-full mt-3 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Sign in
+                    {loading ? 'Sending Verification Code...' : 'Register Approver Account'}
                   </button>
-                </div>
-              </form>
-            </div>
-          )}
 
-          {/* ORGANIZER REGISTRATION FORM */}
-          {role === 'organizer' && (
-            <form onSubmit={handleOrganizerRegister} className="space-y-3">
-              {/* Full Name */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Lead Representative Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={organizerFullName}
-                  onChange={(e) => setOrganizerFullName(e.target.value)}
-                  placeholder="e.g. Alex Vance"
-                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                />
-              </div>
-
-              {/* Organization Name */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Organization / Company / Club Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={organizerOrgName}
-                  onChange={(e) => setOrganizerOrgName(e.target.value)}
-                  placeholder="e.g. TechNexus Innovations Community"
-                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                />
-              </div>
-
-              {/* Organization Type */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Organization Type *
-                </label>
-                <select
-                  value={organizerOrgType}
-                  onChange={(e) => setOrganizerOrgType(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                >
-                  <option value="Community">Community / Tech Guild</option>
-                  <option value="Company">Corporate / Company</option>
-                  <option value="Non-Profit">Non-Profit / NGO</option>
-                  <option value="Student Society">Student Society</option>
-                  <option value="Independent Organizer">Independent Organizer</option>
-                </select>
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Official Work Email *
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                  <input
-                    type="email"
-                    required
-                    value={organizerEmail}
-                    onChange={(e) => setOrganizerEmail(e.target.value)}
-                    placeholder="e.g. alex@technexus.org"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Mobile Phone (10 Digits) *
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                  <input
-                    type="tel"
-                    required
-                    maxLength={10}
-                    value={organizerPhone}
-                    onChange={(e) => setOrganizerPhone(e.target.value.replace(/\D/g, ''))}
-                    placeholder="e.g. 9876543210"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                  />
-                </div>
-              </div>
-
-              {/* Website */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
-                  Website URL (Optional)
-                </label>
-                <input
-                  type="url"
-                  value={organizerWebsite}
-                  onChange={(e) => setOrganizerWebsite(e.target.value)}
-                  placeholder="e.g. https://technexus.org"
-                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                />
-              </div>
-
-              {/* Password and Confirm Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">Password *</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                    <input
-                      type={showOrganizerPassword ? 'text' : 'password'}
-                      required
-                      value={organizerPassword}
-                      onChange={(e) => setOrganizerPassword(e.target.value)}
-                      placeholder="Min 6 characters"
-                      className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                    />
+                  {/* Sign In Link */}
+                  <div className="text-center pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+                    Already registered?{' '}
                     <button
                       type="button"
-                      onClick={() => setShowOrganizerPassword(!showOrganizerPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                      onClick={() => {
+                        setError(null);
+                        setMessage(null);
+                        setMode('login');
+                        setSelectedRole(null);
+                      }}
+                      className="font-bold text-[var(--primary-color)] hover:underline cursor-pointer ml-1"
                     >
-                      {showOrganizerPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      Sign In
                     </button>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">Confirm Password *</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                    <input
-                      type={showOrganizerConfirmPassword ? 'text' : 'password'}
-                      required
-                      value={organizerConfirmPassword}
-                      onChange={(e) => setOrganizerConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password"
-                      className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowOrganizerConfirmPassword(!showOrganizerConfirmPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-                    >
-                      {showOrganizerConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
+                </form>
               </div>
+            )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-3 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
-              >
-                {loading ? 'Sending Verification Code...' : 'Register Organizer Account'}
-              </button>
-
-              {/* Sign In Link */}
-              <div className="text-center pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
-                Already have an account?{' '}
+            {/* D. ORGANIZATION REGISTRATION FORM */}
+            {selectedRole === 'organizer' && (
+              <div className="space-y-4">
+                {/* Back to Role Selection Button */}
                 <button
                   type="button"
                   onClick={() => {
+                    setSelectedRole(null);
                     setError(null);
                     setMessage(null);
-                    setMode('login');
                   }}
-                  className="font-bold text-[var(--primary-color)] hover:underline cursor-pointer ml-1"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
-                  Sign in
+                  <ArrowLeft className="w-4 h-4" /> Back to Role Selection
                 </button>
+
+                <div className="flex items-center gap-2 pb-2 border-b border-[var(--border-color)]">
+                  <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Organization Registration</h3>
+                    <p className="text-[11px] text-[var(--text-muted)]">Independent clubs, student chapters, companies & communities</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleOrganizerRegister} className="space-y-3">
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Lead Representative Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={organizerFullName}
+                      onChange={(e) => setOrganizerFullName(e.target.value)}
+                      placeholder="e.g. Alex Vance"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Organization Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Organization / Company / Club Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={organizerOrgName}
+                      onChange={(e) => setOrganizerOrgName(e.target.value)}
+                      placeholder="e.g. TechNexus Innovations Community"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Organization Type */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Organization Type *
+                    </label>
+                    <select
+                      value={organizerOrgType}
+                      onChange={(e) => setOrganizerOrgType(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    >
+                      <option value="Community">Community / Tech Guild</option>
+                      <option value="Company">Corporate / Company</option>
+                      <option value="Non-Profit">Non-Profit / NGO</option>
+                      <option value="Student Society">Student Society</option>
+                      <option value="Independent Organizer">Independent Organizer</option>
+                    </select>
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Official Work Email *
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                      <input
+                        type="email"
+                        required
+                        value={organizerEmail}
+                        onChange={(e) => setOrganizerEmail(e.target.value)}
+                        placeholder="e.g. alex@technexus.org"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Mobile Phone (10 Digits) *
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                      <input
+                        type="tel"
+                        required
+                        maxLength={10}
+                        value={organizerPhone}
+                        onChange={(e) => setOrganizerPhone(e.target.value.replace(/\D/g, ''))}
+                        placeholder="e.g. 9876543210"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Website */}
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">
+                      Website URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={organizerWebsite}
+                      onChange={(e) => setOrganizerWebsite(e.target.value)}
+                      placeholder="e.g. https://technexus.org"
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                    />
+                  </div>
+
+                  {/* Password and Confirm Password */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">Password *</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                        <input
+                          type={showOrganizerPassword ? 'text' : 'password'}
+                          required
+                          value={organizerPassword}
+                          onChange={(e) => setOrganizerPassword(e.target.value)}
+                          placeholder="Min 6 characters"
+                          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowOrganizerPassword(!showOrganizerPassword)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                        >
+                          {showOrganizerPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text-primary)] mb-1">Confirm Password *</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                        <input
+                          type={showOrganizerConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={organizerConfirmPassword}
+                          onChange={(e) => setOrganizerConfirmPassword(e.target.value)}
+                          placeholder="Re-enter password"
+                          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--primary-color)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowOrganizerConfirmPassword(!showOrganizerConfirmPassword)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                        >
+                          {showOrganizerConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full mt-3 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    {loading ? 'Sending Verification Code...' : 'Register Organization Account'}
+                  </button>
+
+                  {/* Sign In Link */}
+                  <div className="text-center pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setMessage(null);
+                        setMode('login');
+                        setSelectedRole(null);
+                      }}
+                      className="font-bold text-[var(--primary-color)] hover:underline cursor-pointer ml-1"
+                    >
+                      Sign in
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          )}
+            )}
           </div>
         )}
 

@@ -150,7 +150,7 @@ export interface ICollegeAdminMembership {
   email: string;
   username?: string;
   permissions: string[];
-  status?: 'Active' | 'Invited' | 'Rejected' | 'Disabled';
+  status?: 'Active' | 'Invited' | 'Rejected' | 'Disabled' | 'Pending';
   invitedBy?: string;
   invitedAt?: string;
   acceptedAt?: string;

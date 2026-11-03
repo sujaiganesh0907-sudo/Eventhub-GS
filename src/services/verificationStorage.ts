@@ -13,11 +13,13 @@ export interface PendingVerificationState {
     department?: string;
     yearOfStudy?: string;
     phoneNumber?: string;
+    officialEmail?: string;
     officialDomain?: string;
     location?: string;
     organizationName?: string;
     organizationType?: string;
     website?: string;
+    registrationMethod?: string;
   };
   createdAt: number;
 }

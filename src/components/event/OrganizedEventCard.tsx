@@ -139,21 +139,13 @@ export const OrganizedEventCard: React.FC<OrganizedEventCardProps> = ({
     });
   }
 
-  // Event deletion rule: (Finished AND Attendance Finalized) OR (Finished AND 0 Registrations)
-  // Or Draft with 0 registrations
-  const eventEndTimeStr = event.endTime ? `${event.eventDate}T${event.endTime}` : `${event.eventDate}T23:59:59`;
-  const eventEndMs = new Date(eventEndTimeStr).getTime();
-  const isFinished = !isNaN(eventEndMs) && Date.now() > eventEndMs;
-  const registeredCount = event.registeredCount || 0;
-
-  const isDeletable = isDraft
-    ? registeredCount === 0
-    : isFinished && (Boolean(event.attendanceFinalized) || registeredCount === 0);
-
-  const deleteDisabledTooltip = !isFinished && !isDraft
-    ? 'Event cannot be deleted until the event date/time has passed'
-    : !event.attendanceFinalized && registeredCount > 0
-    ? 'Attendance must be finalized at Check-In Desk before deleting'
+  // Event deletion rule: An event may be deleted ONLY when attendance has been marked as finished/finalized.
+  const isAttendanceFinalized = Boolean(
+    event.attendanceFinalized || (event as any).attendanceStatus === 'Completed'
+  );
+  const isDeletable = isAttendanceFinalized;
+  const deleteDisabledTooltip = !isAttendanceFinalized
+    ? 'Event cannot be deleted until attendance has been marked as finished and finalized at the Check-In Desk.'
     : undefined;
 
   // Pre-approval actions or draft actions

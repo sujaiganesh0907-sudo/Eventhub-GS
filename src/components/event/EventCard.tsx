@@ -227,17 +227,10 @@ export const EventCard: React.FC<EventCardProps> = ({
             )}
 
             {(() => {
-              const isFinished =
-                event.status === 'Completed' ||
-                Boolean(event.eventDate && new Date(event.eventDate).getTime() < Date.now());
               const attendanceFinalized = Boolean(
                 event.attendanceFinalized || (event as any).attendanceStatus === 'Completed'
               );
-              const regCount = event.registeredCount || 0;
-              const canDelete =
-                ['Draft', 'Pending Approval', 'Rejected'].includes(event.status) ||
-                (isFinished && attendanceFinalized) ||
-                (isFinished && regCount === 0);
+              const canDelete = attendanceFinalized;
 
               const menuItems: ActionMenuItem[] = [
                 {
@@ -275,7 +268,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                   disabled: !canDelete,
                   title: canDelete
                     ? 'Delete this event record'
-                    : 'Events can only be deleted once concluded and attendance finalized, or if 0 registrations exist.',
+                    : 'Event cannot be deleted until attendance has been marked as finished and finalized at the Check-In Desk.',
                   onClick: () => onDeleteEvent(event),
                 });
               }

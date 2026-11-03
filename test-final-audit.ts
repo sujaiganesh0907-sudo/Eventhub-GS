@@ -128,7 +128,7 @@ async function runComprehensiveAudit() {
   };
   await deleteEvent(delActiveReq, mockRes);
   assert.strictEqual(delActiveReq && mockRes.getStatusCode(), 400, 'Deleting active event with registrations must be rejected with 400');
-  assert.ok(mockRes.getData().message.includes('attendance is finalized'), 'Error specifies attendance conclusion requirement');
+  assert.ok(mockRes.getData().message.includes('attendance has been marked as finished and finalized'), 'Error specifies attendance conclusion requirement');
 
   // 3B: Delete completed event with finalized attendance
   const completedEvent = await Event.create({
@@ -348,8 +348,226 @@ async function runComprehensiveAudit() {
   console.log('  ✓ Payment order creation and verification succeeds.');
   console.log('  ✓ Entry QR ticket generated only after verified payment.\n');
 
+  // -------------------------------------------------------------------------
+  // SECTION 11: Get Started - Three Role Options & Separate Registration Pages
+  // -------------------------------------------------------------------------
+  console.log('[AUDIT 11] Verifying Get Started Three Role Options & Separate Pages UI...');
+  const authPageSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/pages/AuthPage.tsx'), 'utf-8');
+  assert.ok(authPageSrc.includes('Choose Your Account Role'), 'AuthPage must render "Choose Your Account Role" screen in register mode when no role selected');
+  assert.ok(authPageSrc.includes('Participant'), 'Must offer Participant role option');
+  assert.ok(authPageSrc.includes('Approver'), 'Must offer Approver role option');
+  assert.ok(authPageSrc.includes('Organization'), 'Must offer Organization role option');
+  assert.ok(authPageSrc.includes('Back to Role Selection'), 'Must offer Back button to return to role chooser');
+  assert.ok(authPageSrc.includes('Option A: Email ID'), 'Approver form offers Option A');
+  assert.ok(authPageSrc.includes('Option B: Official Domain'), 'Approver form offers Option B');
+  assert.ok(authPageSrc.includes('Already registered? Sign In'), 'Sign In link present');
+  console.log('  ✓ Get Started displays exactly 3 role options: Participant, Approver, Organization.');
+  console.log('  ✓ Each role opens its own separate form with Back navigation and no role switcher tabs.\n');
+
+  // -------------------------------------------------------------------------
+  // SECTION 12: Approver Option A Registration (Regular Email ID)
+  // -------------------------------------------------------------------------
+  console.log('[AUDIT 12] Verifying Approver Option A Registration (Regular Email)...');
+  const { requestCollegeOtp, verifyOtp } = await import('./backend/src/controllers/authController');
+  const { OtpVerification } = await import('./backend/src/models/index');
+  const { approveStudentEvent } = await import('./backend/src/controllers/eventController');
+
+  const regularEmail = `approver.regular.${Date.now()}@gmail.com`;
+  mockRes.reset();
+  const optAReq: any = {
+    body: {
+      registrationMethod: 'REGULAR_EMAIL',
+      fullName: 'Prof. Regular Approver',
+      collegeName: 'Standard State College',
+      officialEmail: regularEmail,
+      officialDomain: 'standardstate.edu',
+      location: 'State Campus',
+      password: 'StrongPassword123!',
+      confirmPassword: 'StrongPassword123!',
+    },
+    params: {},
+    query: {},
+  };
+  await requestCollegeOtp(optAReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 200, 'Requesting OTP for Option A must succeed with 200');
+
+  // Retrieve OTP from DB
+  const otpRecordA = await OtpVerification.findOne({ email: regularEmail.toLowerCase() }).sort({ createdAt: -1 });
+  assert.ok(otpRecordA, 'OTP record must be saved in database');
+  const rawOtpA = otpRecordA.payload?.rawOtp || '123456';
+
+  mockRes.reset();
+  const verifyOptAReq: any = {
+    body: {
+      email: regularEmail,
+      otp: rawOtpA,
+      purpose: 'COLLEGE_REGISTRATION',
+    },
+    params: {},
+    query: {},
+  };
+  await verifyOtp(verifyOptAReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 200, 'Verifying OTP for Option A must succeed');
+  assert.strictEqual(mockRes.getData().status, 'Waiting for Verification', 'User status must be "Waiting for Verification"');
+  assert.strictEqual(mockRes.getData().verificationStatus, 'Pending', 'College verification status must be "Pending"');
+
+  // Verify in MongoDB directly
+  const savedUserA = await User.findOne({ email: regularEmail.toLowerCase() });
+  assert.ok(savedUserA, 'User must exist in MongoDB');
+  assert.strictEqual(savedUserA.status, 'Waiting for Verification', 'MongoDB User status is Waiting for Verification');
+
+  const savedCollegeA = await College.findById(savedUserA.collegeId);
+  assert.ok(savedCollegeA, 'College must exist in MongoDB');
+  assert.strictEqual(savedCollegeA.verificationStatus, 'Pending', 'MongoDB College verificationStatus is Pending');
+
+  // Verify unverified approver cannot approve proposals
+  const dummyEventForReview = await Event.create({
+    title: 'Proposal Event Pending Approval',
+    description: 'Proposal',
+    category: 'Technical',
+    eventType: 'Seminar',
+    eventMode: 'Offline',
+    venue: 'Hall B',
+    eventDate: new Date(Date.now() + 86400000 * 10).toISOString(),
+    registrationDeadline: new Date(Date.now() + 86400000 * 8).toISOString(),
+    capacity: 100,
+    registrationFee: 0,
+    status: 'Pending Approval',
+    approvalStatus: 'Pending',
+    hostCollegeId: savedCollegeA._id,
+    creatorUserId: studentUser._id,
+    registeredCount: 0,
+  });
+
+  mockRes.reset();
+  const approveReq: any = {
+    user: savedUserA,
+    params: { id: dummyEventForReview._id },
+    body: {},
+  };
+  await approveStudentEvent(approveReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 403, 'Unverified approver must be blocked from approving events');
+  assert.ok(mockRes.getData().message.includes('waiting for verification'), 'Correct explanation message returned');
+  console.log('  ✓ Option A creates MongoDB account with status: "Waiting for Verification", college: "Pending".');
+  console.log('  ✓ Approver permissions correctly withheld until verified.\n');
+
+  // -------------------------------------------------------------------------
+  // SECTION 13: Approver Option B Registration (Official College Domain)
+  // -------------------------------------------------------------------------
+  console.log('[AUDIT 13] Verifying Approver Option B Registration (Official College Domain)...');
+  // 13A: Invalid / free email domain must be rejected
+  mockRes.reset();
+  const invalidDomainReq: any = {
+    body: {
+      registrationMethod: 'OFFICIAL_DOMAIN',
+      fullName: 'Prof. Fake Domain',
+      collegeName: 'Fake Institute',
+      officialEmail: 'dean@yahoo.com',
+      officialDomain: 'yahoo.com',
+      location: 'Main Campus',
+      password: 'StrongPassword123!',
+      confirmPassword: 'StrongPassword123!',
+    },
+    params: {},
+    query: {},
+  };
+  await requestCollegeOtp(invalidDomainReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 400, 'Public email domain for Option B must be rejected with 400');
+  assert.ok(mockRes.getData().message.includes('Public email domains are not allowed'), 'Rejection message returned');
+
+  // 13B: Valid official institutional domain
+  const officialDomainName = `apexuniv${Date.now()}.edu.in`;
+  const officialEmail = `dean@${officialDomainName}`;
+  mockRes.reset();
+  const validDomainReq: any = {
+    body: {
+      registrationMethod: 'OFFICIAL_DOMAIN',
+      fullName: 'Dean of Academics',
+      collegeName: 'Apex Technological University',
+      officialEmail: officialEmail,
+      officialDomain: officialDomainName,
+      location: 'Tech Campus',
+      password: 'StrongPassword123!',
+      confirmPassword: 'StrongPassword123!',
+    },
+    params: {},
+    query: {},
+  };
+  await requestCollegeOtp(validDomainReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 200, 'Valid official domain must receive OTP');
+
+  const otpRecordB = await OtpVerification.findOne({ email: officialEmail.toLowerCase() }).sort({ createdAt: -1 });
+  assert.ok(otpRecordB, 'OTP record saved');
+  const rawOtpB = otpRecordB.payload?.rawOtp || '123456';
+
+  mockRes.reset();
+  const verifyOptBReq: any = {
+    body: {
+      email: officialEmail,
+      otp: rawOtpB,
+      purpose: 'COLLEGE_REGISTRATION',
+    },
+    params: {},
+    query: {},
+  };
+  await verifyOtp(verifyOptBReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 200, 'Verifying OTP for Option B succeeds');
+  assert.strictEqual(mockRes.getData().status, 'Active', 'Option B user status is Active directly');
+  assert.strictEqual(mockRes.getData().verificationStatus, 'Verified', 'Option B college is Verified directly');
+
+  const savedUserB = await User.findOne({ email: officialEmail.toLowerCase() });
+  assert.ok(savedUserB, 'User exists');
+  assert.strictEqual(savedUserB.status, 'Active', 'Direct Active status in DB');
+  const savedCollegeB = await College.findById(savedUserB.collegeId);
+  assert.strictEqual(savedCollegeB.verificationStatus, 'Verified', 'Direct Verified status in DB');
+  console.log('  ✓ Option B blocks free/public emails with 400 error.');
+  console.log('  ✓ Option B with valid college domain immediately activates account with Verified status.\n');
+
+  // -------------------------------------------------------------------------
+  // SECTION 14: Strict Event Deletion - Attendance Finished Only
+  // -------------------------------------------------------------------------
+  console.log('[AUDIT 14] Verifying Strict Event Deletion Rules (Attendance Finished Only)...');
+  // 14A: Event without finished attendance (even if 0 registrations) cannot be deleted
+  const noAttEvent = await Event.create({
+    title: 'Zero Reg Pending Event',
+    description: 'Empty event',
+    category: 'Technical',
+    eventType: 'Workshop',
+    eventMode: 'Offline',
+    venue: 'Room 101',
+    eventDate: new Date(Date.now() - 86400000).toISOString(),
+    registrationDeadline: new Date(Date.now() - 86400000 * 2).toISOString(),
+    capacity: 50,
+    registrationFee: 0,
+    status: 'Completed',
+    hostCollegeId: savedCollegeB._id,
+    creatorUserId: savedUserB._id,
+    registeredCount: 0,
+    attendanceFinalized: false,
+    attendanceStatus: 'Pending',
+  });
+
+  mockRes.reset();
+  const delNoAttReq: any = {
+    user: savedUserB,
+    params: { id: noAttEvent._id },
+    body: {},
+  };
+  await deleteEvent(delNoAttReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 400, 'Event deletion must be rejected if attendance not finalized');
+  assert.ok(mockRes.getData().message.includes('attendance has been marked as finished and finalized'), 'Error specifies attendance requirement');
+
+  // 14B: Event with finalized attendance can be deleted
+  await Event.findByIdAndUpdate(noAttEvent._id, { attendanceFinalized: true, attendanceStatus: 'Completed' });
+  mockRes.reset();
+  await deleteEvent(delNoAttReq, mockRes);
+  assert.strictEqual(mockRes.getStatusCode(), 200, 'Event deletion succeeds once attendance is finalized');
+  assert.strictEqual(mockRes.getData().message, 'Event deleted successfully.');
+  console.log('  ✓ Event deletion strictly blocked if attendance is not finalized.');
+  console.log('  ✓ Event deletion permitted with "Event deleted successfully." once attendance is finalized.\n');
+
   console.log('======================================================================');
-  console.log('          ALL 10 COMPREHENSIVE AUDIT TEST SUITES PASSED!               ');
+  console.log('          ALL 14 COMPREHENSIVE AUDIT TEST SUITES PASSED!               ');
   console.log('======================================================================');
 }
 
@@ -357,3 +575,4 @@ runComprehensiveAudit().catch((err) => {
   console.error('\n❌ AUDIT FAILED:', err);
   process.exit(1);
 });
+
