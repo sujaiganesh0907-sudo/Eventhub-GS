@@ -4,9 +4,10 @@ dist/
 coverage/
 .DS_Store
 *.log
-!.env.example
-.env
-backend/.env
 .data/
 public/upload-*
 public/
+# Environment files
+.env
+.env.*
+!.env.example
