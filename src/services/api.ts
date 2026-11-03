@@ -1,6 +1,6 @@
 // Typed HTTP API Client for EVENTHUB with Automatic 401 Refresh Token Retry
 
-const API_BASE = '/api';
+const API_BASE = 'https://eventhub-gs.onrender.com/api';
 
 export class ApiError extends Error {
   status: number;
