@@ -36,6 +36,9 @@ export async function globalSearch(req: AuthenticatedRequest, res: Response) {
           if (type === 'messages' && req.user && s.userId === req.user._id) {
             return false; // Prevent messaging oneself
           }
+          if (s.profileVisibility === 'Private' && (!req.user || req.user._id !== s.userId)) {
+            return false; // Preserve privacy for private profiles
+          }
           const matchName = s.fullName && s.fullName.toLowerCase().includes(query);
           const matchUsername = s.username && s.username.toLowerCase().includes(cleanQuery);
           const matchCollege = s.collegeName && s.collegeName.toLowerCase().includes(query);

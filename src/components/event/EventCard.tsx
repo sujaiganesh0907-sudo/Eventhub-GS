@@ -11,11 +11,13 @@ import {
   Sparkles,
   Share2,
   Eye,
+  BarChart3,
+  Trash2,
 } from 'lucide-react';
 import { formatPrice } from '../../utils/currency';
 import { IEvent } from '../../types';
 import { Modal } from '../common/Modal';
-import { ActionMenu } from '../common/ActionMenu';
+import { ActionMenu, ActionMenuItem } from '../common/ActionMenu';
 import { DEFAULT_EVENT_POSTER, DEFAULT_COLLEGE_LOGO } from '../../services/imageDefaults';
 
 interface EventCardProps {
@@ -24,6 +26,8 @@ interface EventCardProps {
   onRegister?: (event: IEvent) => void;
   isRegistered?: boolean;
   onShareEvent?: (event: IEvent) => void;
+  onInsights?: (event: IEvent) => void;
+  onDeleteEvent?: (event: IEvent) => void;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({
@@ -32,6 +36,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   onRegister,
   isRegistered = false,
   onShareEvent,
+  onInsights,
+  onDeleteEvent,
 }) => {
   const [showPosterModal, setShowPosterModal] = useState(false);
 
@@ -220,26 +226,70 @@ export const EventCard: React.FC<EventCardProps> = ({
               </span>
             )}
 
-            {onShareEvent && (
-              <ActionMenu
-                items={[
-                  {
-                    id: 'view',
-                    label: 'View Event',
-                    icon: Eye,
-                    onClick: () => onViewEvent(event),
-                  },
-                  {
-                    id: 'share',
-                    label: 'Share Event',
-                    icon: Share2,
-                    onClick: () => onShareEvent(event),
-                  },
-                ]}
-                ariaLabel={`Options for ${event.title}`}
-                align="right"
-              />
-            )}
+            {(() => {
+              const isFinished =
+                event.status === 'Completed' ||
+                Boolean(event.eventDate && new Date(event.eventDate).getTime() < Date.now());
+              const attendanceFinalized = Boolean(
+                event.attendanceFinalized || (event as any).attendanceStatus === 'Completed'
+              );
+              const regCount = event.registeredCount || 0;
+              const canDelete =
+                ['Draft', 'Pending Approval', 'Rejected'].includes(event.status) ||
+                (isFinished && attendanceFinalized) ||
+                (isFinished && regCount === 0);
+
+              const menuItems: ActionMenuItem[] = [
+                {
+                  id: 'view',
+                  label: 'View Event',
+                  icon: Eye,
+                  onClick: () => onViewEvent(event),
+                },
+              ];
+
+              if (onShareEvent) {
+                menuItems.push({
+                  id: 'share',
+                  label: 'Share Event',
+                  icon: Share2,
+                  onClick: () => onShareEvent(event),
+                });
+              }
+
+              if (onInsights) {
+                menuItems.push({
+                  id: 'insights',
+                  label: 'Event Insights',
+                  icon: BarChart3,
+                  onClick: () => onInsights(event),
+                });
+              }
+
+              if (onDeleteEvent) {
+                menuItems.push({
+                  id: 'delete',
+                  label: 'Delete Event',
+                  icon: Trash2,
+                  danger: true,
+                  disabled: !canDelete,
+                  title: canDelete
+                    ? 'Delete this event record'
+                    : 'Events can only be deleted once concluded and attendance finalized, or if 0 registrations exist.',
+                  onClick: () => onDeleteEvent(event),
+                });
+              }
+
+              if (menuItems.length <= 1 && !onShareEvent) return null;
+
+              return (
+                <ActionMenu
+                  items={menuItems}
+                  ariaLabel={`Options for ${event.title}`}
+                  align="right"
+                />
+              );
+            })()}
           </div>
         </div>
       </div>

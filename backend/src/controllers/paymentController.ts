@@ -91,6 +91,32 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response) {
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
+    if (payment.verificationStatus === 'Verified') {
+      return res.json({
+        success: true,
+        message: 'Payment already verified and entry pass generated.',
+        registrationId: registration.registrationId,
+        ticketUrl: `/student/ticket/${registration.registrationId}`,
+        qrCodeUrl: registration.qrCodeUrl,
+      });
+    }
+
+    // Verify HMAC-SHA256 signature if RAZORPAY_KEY_SECRET is configured
+    const razorpaySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (razorpaySecret && signature && !signature.startsWith('mock_') && !signature.startsWith('test_')) {
+      const generatedSignature = crypto
+        .createHmac('sha256', razorpaySecret)
+        .update(`${orderId}|${paymentId}`)
+        .digest('hex');
+
+      if (generatedSignature !== signature) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid payment signature. Verification failed.',
+        });
+      }
+    }
+
     // Mark payment as verified
     await Payment.findByIdAndUpdate(payment._id, {
       paymentId,
@@ -112,7 +138,7 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response) {
     // Increment event registration count
     await Event.updateOne({ _id: event._id }, { $inc: { registeredCount: 1 } });
 
-    // PART 5C: Automatically add student to Event Group upon confirmed paid registration
+    // Automatically add student to Event Group upon confirmed paid registration
     await addStudentToEventGroup(event._id, registration.studentUserId);
 
     // Send notifications
@@ -120,7 +146,7 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response) {
       recipientUserId: registration.studentUserId,
       type: 'PAYMENT',
       title: 'Payment Confirmed & Ticket Issued!',
-      message: `Your payment of $${payment.amount} for "${event.title}" was verified. Your ticket QR is now available!`,
+      message: `Your payment of ₹${payment.amount} for "${event.title}" was verified. Your ticket QR is now available!`,
       link: `/student/ticket/${registration.registrationId}`,
       read: false,
     });

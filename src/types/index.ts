@@ -151,9 +151,28 @@ export interface ICollege {
   superAdminId: string;
   messagePrivacy?: 'Everyone' | 'Connected' | 'Nobody';
   connectionsCount: number;
+  followersCount?: number;
+  followingCount?: number;
+  publishedEventsCount?: number;
   activeEventsCount?: number;
   placementsCount?: number;
   infrastructureCount?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  institutionType?: string;
+  departments?: string[];
+  facilities?: string[];
+  establishedYear?: number | string;
+  placementHighlights?: string;
+  galleryUrls?: string[];
+  socialLinks?: {
+    website?: string;
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+  };
 }
 
 export interface IEventCustomField {

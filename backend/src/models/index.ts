@@ -105,6 +105,22 @@ export interface ICollege {
   superAdminEmail?: string;
   messagePrivacy?: 'Everyone' | 'Connected' | 'Nobody';
   connectionsCount: number;
+  followersCount?: number;
+  followingCount?: number;
+  publishedEventsCount?: number;
+  institutionType?: string;
+  departments?: string[];
+  facilities?: string[];
+  establishedYear?: number | string;
+  placementHighlights?: string;
+  galleryUrls?: string[];
+  socialLinks?: {
+    website?: string;
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

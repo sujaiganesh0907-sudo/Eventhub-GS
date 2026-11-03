@@ -8,6 +8,7 @@ import { AddInfrastructureModal } from '../components/profile/AddInfrastructureM
 import { AddAdminModal } from '../components/admin/AddAdminModal';
 import { ManageAdminsModal } from '../components/admin/ManageAdminsModal';
 import { EventCard } from '../components/event/EventCard';
+import { EventInsightsModal } from '../components/event/EventInsightsModal';
 import { ShareToChatModal } from '../components/common/ShareToChatModal';
 import { DEFAULT_COLLEGE_LOGO, DEFAULT_COLLEGE_COVER } from '../services/imageDefaults';
 import {
@@ -31,6 +32,8 @@ import {
   MessageSquare,
   Share2,
   ArrowLeft,
+  GraduationCap,
+  Award,
 } from 'lucide-react';
 
 interface CollegeProfilePageProps {
@@ -83,6 +86,9 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
   const [isFollowing, setIsFollowing] = useState(false);
   const [messagingLoading, setMessagingLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedEventForInsights, setSelectedEventForInsights] = useState<IEvent | null>(null);
+  const [selectedEventForShare, setSelectedEventForShare] = useState<IEvent | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   // Modals
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -217,6 +223,26 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
     }
   };
 
+  const handleDeleteEvent = async (event: IEvent) => {
+    if (!confirm(`Are you sure you want to delete event "${event.title}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      setDeletingEventId(event._id);
+      const res = await api.delete<any>(`/events/${event._id}`);
+      if (res.success) {
+        setEvents((prev) => prev.filter((e) => e._id !== event._id));
+        alert('Event deleted successfully.');
+      } else {
+        alert(res.message || 'Cannot delete event. Events can only be deleted once concluded and attendance finalized, or if 0 registrations exist.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error deleting event.');
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
+
   if (loading && !college) {
     return (
       <div className="py-20 flex justify-center">
@@ -308,13 +334,29 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
                     <span title="Accredited University"><ShieldCheck className="w-5 h-5 text-blue-500 shrink-0" /></span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mt-1 flex-wrap">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" /> {college.location || 'University Campus'}
+                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mt-1.5 flex-wrap">
+                  <span className="flex items-center gap-1 font-medium">
+                    <MapPin className="w-3.5 h-3.5 text-amber-500" /> {college.location || college.city || 'Campus'}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5" /> {college.connectionsCount || 0} Connections
+                  <span className="flex items-center gap-1 font-medium">
+                    <Users className="w-3.5 h-3.5 text-blue-500" /> <strong className="text-[var(--text-primary)]">{college.connectionsCount || 0}</strong> Connections
                   </span>
+                  <span className="flex items-center gap-1 font-medium">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-500" /> <strong className="text-[var(--text-primary)]">{college.followersCount !== undefined ? college.followersCount : (college.connectionsCount || 0)}</strong> Followers
+                  </span>
+                  <span className="flex items-center gap-1 font-medium">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-500" /> <strong className="text-[var(--text-primary)]">{events.length || college.publishedEventsCount || 0}</strong> Published Events
+                  </span>
+                  {college.establishedYear && (
+                    <span className="px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] border border-[var(--border-color)] text-[10px] font-bold text-[var(--text-secondary)]">
+                      Est. {college.establishedYear}
+                    </span>
+                  )}
+                  {college.institutionType && (
+                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold text-blue-600">
+                      {college.institutionType}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -383,6 +425,44 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
             <p className="text-xs sm:text-sm text-[var(--text-secondary)] pt-2 leading-relaxed max-w-4xl">
               {college.bio}
             </p>
+          )}
+
+          {/* Academic & Campus Facilities Overview */}
+          {(college.departments?.length || college.facilities?.length || college.placementHighlights) && (
+            <div className="mt-4 pt-3 border-t border-[var(--border-color)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              {college.departments && college.departments.length > 0 && (
+                <div className="p-3 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] space-y-1">
+                  <p className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-indigo-500" /> Departments
+                  </p>
+                  <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2">
+                    {Array.isArray(college.departments) ? college.departments.join(', ') : college.departments}
+                  </p>
+                </div>
+              )}
+
+              {college.facilities && college.facilities.length > 0 && (
+                <div className="p-3 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] space-y-1">
+                  <p className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-emerald-500" /> Campus Facilities
+                  </p>
+                  <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2">
+                    {Array.isArray(college.facilities) ? college.facilities.join(', ') : college.facilities}
+                  </p>
+                </div>
+              )}
+
+              {college.placementHighlights && (
+                <div className="p-3 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-color)] space-y-1 sm:col-span-2 lg:col-span-1">
+                  <p className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-amber-500" /> Placements
+                  </p>
+                  <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2">
+                    {college.placementHighlights}
+                  </p>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -469,7 +549,10 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
                   key={ev._id}
                   event={ev}
                   onViewEvent={onViewEvent}
-                  onRegister={onRegisterEvent}
+                  onRegister={isSelf ? undefined : onRegisterEvent}
+                  onShareEvent={(e) => setSelectedEventForShare(e)}
+                  onInsights={isSelf ? (e) => setSelectedEventForInsights(e) : undefined}
+                  onDeleteEvent={isSelf ? (e) => handleDeleteEvent(e) : undefined}
                 />
               ))}
             </div>
@@ -688,7 +771,7 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
         />
       )}
 
-      {/* Share Modal */}
+      {/* Share College Profile Modal */}
       {showShareModal && college && (
         <ShareToChatModal
           isOpen={showShareModal}
@@ -696,6 +779,28 @@ export const CollegeProfilePage: React.FC<CollegeProfilePageProps> = ({
           college={college}
           onShareSuccess={(convId) => {
             setShowShareModal(false);
+            if (onNavigateToMessages) onNavigateToMessages(convId);
+          }}
+        />
+      )}
+
+      {/* Event Insights Modal */}
+      {selectedEventForInsights && (
+        <EventInsightsModal
+          isOpen={Boolean(selectedEventForInsights)}
+          onClose={() => setSelectedEventForInsights(null)}
+          event={selectedEventForInsights}
+        />
+      )}
+
+      {/* Share Event Modal */}
+      {selectedEventForShare && (
+        <ShareToChatModal
+          isOpen={Boolean(selectedEventForShare)}
+          onClose={() => setSelectedEventForShare(null)}
+          event={selectedEventForShare}
+          onShareSuccess={(convId) => {
+            setSelectedEventForShare(null);
             if (onNavigateToMessages) onNavigateToMessages(convId);
           }}
         />

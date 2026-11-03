@@ -254,6 +254,10 @@ apiRouter.get('/college/student-requests', authenticate, getCollegeStudentReques
 
 // 3. Registrations routes
 apiRouter.post('/registrations', authenticate, registerForEvent);
+apiRouter.post('/events/:id/register', authenticate, (req, res) => {
+  req.body.eventId = req.params.id;
+  return registerForEvent(req, res);
+});
 apiRouter.get('/registrations/my', authenticate, getStudentRegistrations);
 apiRouter.get('/registrations/student', authenticate, getStudentRegistrations);
 apiRouter.get('/registrations/college', authenticate, getCollegeRegistrations);

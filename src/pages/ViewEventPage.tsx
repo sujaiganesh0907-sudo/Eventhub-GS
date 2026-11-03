@@ -451,6 +451,11 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
             <span className="text-amber-500 font-bold">
               Event capacity has been fully reached.
             </span>
+          ) : isCollegeStaff ? (
+            <span className="text-[var(--text-secondary)] font-medium flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0" />
+              <span>Logged in as Institution Approver. Use management controls to inspect attendance and insights.</span>
+            </span>
           ) : (
             <span className="text-[var(--text-secondary)]">
               Secure your verified entry ticket with instant QR check-in pass.
@@ -505,6 +510,10 @@ export const ViewEventPage: React.FC<ViewEventPageProps> = ({
                 <Bell className="w-4 h-4" /> Set Reminder
               </button>
             </>
+          ) : isCollegeStaff ? (
+            <span className="px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-subtle)] text-xs font-bold text-[var(--text-secondary)] flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-blue-500" /> Approver Account
+            </span>
           ) : isPublished ? (
             <button
               onClick={() => setShowRegModal(true)}

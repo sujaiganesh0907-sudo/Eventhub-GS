@@ -8,6 +8,7 @@ import {
   CollegeAdminMembership,
   CollegeAdminRequest,
   Notification,
+  Follow,
 } from '../models/index';
 import { AuthenticatedRequest } from '../middleware/auth';
 import {
@@ -69,15 +70,21 @@ export async function getCollegeById(req: Request, res: Response) {
 
     // Dynamic stats
     const activeEventsCount = await Event.countDocuments({ hostCollegeId: college._id, status: 'Published' });
+    const publishedEventsCount = activeEventsCount;
     const placementsCount = await PlacementPost.countDocuments({ collegeId: college._id });
     const infrastructureCount = await InfrastructurePost.countDocuments({ collegeId: college._id });
     const connectionsCount = await Connection.countDocuments({ collegeId: college._id });
+    const followersCount = connectionsCount;
+    const followingCount = await Follow.countDocuments({ followerUserId: college.superAdminId });
 
     return res.json({
       success: true,
       college: {
         ...college,
         connectionsCount,
+        followersCount,
+        followingCount,
+        publishedEventsCount,
         activeEventsCount,
         placementsCount,
         infrastructureCount,
@@ -119,24 +126,63 @@ export async function updateCollegeProfile(req: AuthenticatedRequest, res: Respo
     const {
       name,
       contactNumber,
+      phone,
       location,
       bio,
       website,
       logo,
       coverPhoto,
+      officialEmail,
+      address,
+      city,
+      state,
+      institutionType,
+      departments,
+      facilities,
+      establishedYear,
+      placementHighlights,
+      galleryUrls,
+      socialLinks,
     } = req.body;
 
-    const updated = await College.findByIdAndUpdate(user.collegeId, {
-      $set: {
-        ...(name && { name }),
-        ...(contactNumber && { contactNumber }),
-        ...(location !== undefined && { location }),
-        ...(bio !== undefined && { bio }),
-        ...(website !== undefined && { website }),
-        ...(logo !== undefined && { logo }),
-        ...(coverPhoto !== undefined && { coverPhoto }),
+    const phoneValue = contactNumber || phone;
+    const parsedDepartments = Array.isArray(departments)
+      ? departments
+      : typeof departments === 'string'
+      ? departments.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : undefined;
+    const parsedFacilities = Array.isArray(facilities)
+      ? facilities
+      : typeof facilities === 'string'
+      ? facilities.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : undefined;
+
+    const updated = await College.findByIdAndUpdate(
+      user.collegeId,
+      {
+        $set: {
+          ...(name && { name }),
+          ...(phoneValue && { contactNumber: phoneValue }),
+          ...(location !== undefined && { location }),
+          ...(bio !== undefined && { bio }),
+          ...(website !== undefined && { website }),
+          ...(logo !== undefined && { logo }),
+          ...(coverPhoto !== undefined && { coverPhoto }),
+          ...(officialEmail && { officialEmail }),
+          ...(address !== undefined && { address }),
+          ...(city !== undefined && { city }),
+          ...(state !== undefined && { state }),
+          ...(institutionType !== undefined && { institutionType }),
+          ...(parsedDepartments !== undefined && { departments: parsedDepartments }),
+          ...(parsedFacilities !== undefined && { facilities: parsedFacilities }),
+          ...(establishedYear !== undefined && { establishedYear }),
+          ...(placementHighlights !== undefined && { placementHighlights }),
+          ...(galleryUrls !== undefined && { galleryUrls }),
+          ...(socialLinks !== undefined && { socialLinks }),
+        },
       },
-    });
+      { new: true }
+    );
 
     // Propagate logo/name updates so student visitors immediately see updated branding
     if (logo !== undefined || name) {

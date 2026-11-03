@@ -124,55 +124,55 @@ export const RegisteredPassCard: React.FC<RegisteredPassCardProps> = ({
             </button>
 
             {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--surface)] border border-[var(--border-color)] rounded-xl shadow-2xl py-1.5 z-30 text-xs animate-in fade-in duration-150">
-                {/* 1. View Ticket */}
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--surface)] border border-[var(--border-color)] rounded-xl shadow-2xl py-1 z-30 text-xs animate-in fade-in duration-150">
+                {/* View Ticket */}
                 <button
                   type="button"
                   onClick={() => handleAction('view_ticket')}
-                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] focus:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium transition-colors"
                 >
-                  <Ticket className="w-3.5 h-3.5 text-blue-500" />
-                  <span>1. View Ticket</span>
+                  <Ticket className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <span>View Pass / QR</span>
                 </button>
 
-                {/* 2. Download Ticket */}
+                {/* Download Ticket */}
                 <button
                   type="button"
                   onClick={() => handleAction('download_ticket')}
-                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] focus:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium transition-colors"
                 >
-                  <Download className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>2. Download Ticket</span>
+                  <Download className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>Download Pass</span>
                 </button>
 
-                {/* 3. View Event */}
+                {/* View Event */}
                 <button
                   type="button"
                   onClick={() => handleAction('view_event')}
-                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] focus:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium transition-colors"
                 >
-                  <Eye className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>3. View Event</span>
+                  <Eye className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span>View Event Details</span>
                 </button>
 
-                {/* 4. Share Event */}
+                {/* Share Event */}
                 <button
                   type="button"
                   onClick={() => handleAction('share_event')}
-                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] focus:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium transition-colors"
                 >
-                  <Share2 className="w-3.5 h-3.5 text-amber-500" />
-                  <span>4. Share Event</span>
+                  <Share2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>Share Event</span>
                 </button>
 
-                {/* 5. Add Reminder */}
+                {/* Add Reminder */}
                 <button
                   type="button"
                   onClick={() => handleAction('add_reminder')}
-                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium"
+                  className="w-full px-3 py-2 text-left hover:bg-[var(--surface-subtle)] focus:bg-[var(--surface-subtle)] text-[var(--text-primary)] flex items-center gap-2.5 cursor-pointer font-medium transition-colors"
                 >
-                  <Bell className="w-3.5 h-3.5 text-purple-500" />
-                  <span>5. Add Reminder</span>
+                  <Bell className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                  <span>Add Reminder</span>
                 </button>
               </div>
             )}

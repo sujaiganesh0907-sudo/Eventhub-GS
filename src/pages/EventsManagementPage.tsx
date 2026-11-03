@@ -285,7 +285,7 @@ export const EventsManagementPage: React.FC<EventsManagementPageProps> = ({
           className="px-4 py-2.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          {isCollege ? 'Create New Event' : 'Propose Student Event'}
+          {isCollege ? 'Create New Event' : 'Propose Event'}
         </button>
       </div>
 

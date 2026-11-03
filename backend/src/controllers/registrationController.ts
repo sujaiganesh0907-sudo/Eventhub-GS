@@ -21,7 +21,18 @@ import { sendRegistrationSuccessEmail } from '../services/emailService';
 export async function registerForEvent(req: AuthenticatedRequest, res: Response) {
   try {
     const user = req.user;
-    if (!user || user.role !== 'Student') {
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+
+    if (user.role === 'College Super Admin' || user.role === 'College Admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Approvers and College Administrators cannot register as participants for institution events.',
+      });
+    }
+
+    if (user.role !== 'Student') {
       return res.status(403).json({ success: false, message: 'Only students can register for events.' });
     }
 

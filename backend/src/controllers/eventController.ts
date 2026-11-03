@@ -1383,9 +1383,10 @@ export async function deleteEvent(req: AuthenticatedRequest, res: Response) {
     // An event can only be deleted if:
     // (Event is Finished AND Attendance is Finalized) OR (Event is Finished AND Registered Count == 0)
     // (Draft events that were never published and have 0 registrations can also be safely discarded)
-    const eventEndTimeStr = event.endTime ? `${event.eventDate}T${event.endTime}` : `${event.eventDate}T23:59:59`;
+    const datePart = event.eventDate ? String(event.eventDate).split('T')[0] : '';
+    const eventEndTimeStr = event.endTime ? `${datePart}T${event.endTime}` : `${datePart}T23:59:59`;
     const eventEndMs = new Date(eventEndTimeStr).getTime();
-    const isFinished = !isNaN(eventEndMs) && Date.now() > eventEndMs;
+    const isFinished = event.status === 'Completed' || (!isNaN(eventEndMs) && Date.now() > eventEndMs);
     const registeredCount = event.registeredCount || 0;
     const isDraftWithZero = event.status === 'Draft' && registeredCount === 0;
     const isFinishedWithFinalizedAttendance = isFinished && Boolean(event.attendanceFinalized);
