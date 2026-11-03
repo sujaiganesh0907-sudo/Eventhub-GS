@@ -266,8 +266,10 @@ apiRouter.post('/registrations/:id/cancel', authenticate, cancelRegistration);
 apiRouter.post('/registrations/:id/reject', authenticate, rejectRegistration);
 
 // 4. Payment routes
-apiRouter.post('/payments/create-order', authenticate, createPaymentOrder);
-apiRouter.post('/payments/verify', authenticate, verifyPayment);
+apiRouter.post('/create-order', optionalAuthenticate, createPaymentOrder);
+apiRouter.post('/payments/create-order', optionalAuthenticate, createPaymentOrder);
+apiRouter.post('/verify-payment', optionalAuthenticate, verifyPayment);
+apiRouter.post('/payments/verify', optionalAuthenticate, verifyPayment);
 
 // 5. Attendance routes
 apiRouter.post('/attendance/scan', authenticate, verifyAndScanQR);

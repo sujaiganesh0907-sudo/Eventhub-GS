@@ -1,6 +1,14 @@
 // Typed HTTP API Client for EVENTHUB with Automatic 401 Refresh Token Retry
 
-const API_BASE = 'https://eventhub-gs.onrender.com/api';
+const isLocalhost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.endsWith('.local'));
+
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  (isLocalhost ? '/api' : 'https://eventhub-gs.onrender.com/api');
 
 export class ApiError extends Error {
   status: number;
